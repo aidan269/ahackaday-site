@@ -22,7 +22,7 @@ export async function GET(request: Request) {
     (process.env.VERCEL_PROJECT_PRODUCTION_URL &&
       normalizeSiteUrl(process.env.VERCEL_PROJECT_PRODUCTION_URL)) ||
     new URL(request.url).origin;
-  const incidents = getAllIncidents();
+  const incidents = await getAllIncidents();
 
   const items = incidents
     .map((incident) => {

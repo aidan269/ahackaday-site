@@ -39,7 +39,7 @@ function dayKey(date: Date): string {
 
 export default async function CalendarPage({ searchParams }: CalendarPageProps) {
   const params = await searchParams;
-  const incidents = getAllIncidents();
+  const incidents = await getAllIncidents();
   const now = new Date();
 
   const monthParam = readParam(params.month) ?? toMonthKey(now);

@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 
 import matter from "gray-matter";
+import { createClient } from "@supabase/supabase-js";
 
 export type Severity = "critical" | "high" | "medium" | "low";
 
@@ -22,6 +23,7 @@ export type Incident = IncidentFrontmatter & {
 };
 
 const CONTENT_DIR = path.join(process.cwd(), "content");
+const DATA_SOURCE = process.env.DATA_SOURCE ?? "markdown";
 
 const severityRank: Record<Severity, number> = {
   critical: 4,
@@ -30,7 +32,62 @@ const severityRank: Record<Severity, number> = {
   low: 1,
 };
 
-export function getIncidentSlugs(): string[] {
+type SupabaseIncidentRow = {
+  id: string;
+  title: string;
+  source_url: string;
+  source_name: string;
+  raw_content: string;
+  claude_summary: string;
+  severity: Severity;
+  published_at: string;
+  created_at: string;
+};
+
+function slugify(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)/g, "")
+    .slice(0, 80);
+}
+
+function buildSlugFromDb(row: SupabaseIncidentRow): string {
+  const datePrefix = new Date(row.published_at).toISOString().slice(0, 10);
+  const titleSlug = slugify(row.title);
+  const idShort = row.id.slice(0, 8);
+  return `${datePrefix}-${titleSlug}-${idShort}`;
+}
+
+function getSupabaseServerClient() {
+  const url = process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key =
+    process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!url || !key) return null;
+  return createClient(url, key);
+}
+
+function mapDbRowToIncident(row: SupabaseIncidentRow): Incident {
+  const summary = row.claude_summary.trim() || row.raw_content.trim() || "No summary available.";
+  const content = row.claude_summary.trim()
+    ? row.claude_summary.trim()
+    : `## What happened\n${row.raw_content.trim() || "Awaiting analyst summary."}`;
+
+  return {
+    slug: buildSlugFromDb(row),
+    title: row.title,
+    date: row.published_at,
+    severity: row.severity,
+    affected: row.source_name,
+    summary,
+    category: "live-feed",
+    mitigationStatus: "Monitoring updates",
+    sources: [row.source_url],
+    content,
+  };
+}
+
+function getMarkdownIncidentSlugs(): string[] {
   if (!fs.existsSync(CONTENT_DIR)) return [];
   return fs
     .readdirSync(CONTENT_DIR)
@@ -38,7 +95,7 @@ export function getIncidentSlugs(): string[] {
     .map((file) => file.replace(/\.md$/, ""));
 }
 
-export function getIncidentBySlug(slug: string): Incident | null {
+function getMarkdownIncidentBySlug(slug: string): Incident | null {
   const fullPath = path.join(CONTENT_DIR, `${slug}.md`);
   if (!fs.existsSync(fullPath)) return null;
 
@@ -53,15 +110,59 @@ export function getIncidentBySlug(slug: string): Incident | null {
   };
 }
 
-export function getAllIncidents(): Incident[] {
-  return getIncidentSlugs()
-    .map(getIncidentBySlug)
+function getAllMarkdownIncidents(): Incident[] {
+  return getMarkdownIncidentSlugs()
+    .map(getMarkdownIncidentBySlug)
     .filter((incident): incident is Incident => incident !== null)
     .sort((a, b) => {
       const dateDiff = new Date(b.date).getTime() - new Date(a.date).getTime();
       if (dateDiff !== 0) return dateDiff;
       return severityRank[b.severity] - severityRank[a.severity];
     });
+}
+
+async function getAllSupabaseIncidents(): Promise<Incident[]> {
+  const client = getSupabaseServerClient();
+  if (!client) return [];
+
+  const { data, error } = await client
+    .from("incidents")
+    .select("id,title,source_url,source_name,raw_content,claude_summary,severity,published_at,created_at")
+    .order("published_at", { ascending: false })
+    .limit(500);
+
+  if (error || !data) {
+    console.error("Failed loading incidents from Supabase", error);
+    return [];
+  }
+
+  return (data as SupabaseIncidentRow[]).map(mapDbRowToIncident).sort((a, b) => {
+    const dateDiff = new Date(b.date).getTime() - new Date(a.date).getTime();
+    if (dateDiff !== 0) return dateDiff;
+    return severityRank[b.severity] - severityRank[a.severity];
+  });
+}
+
+export async function getAllIncidents(): Promise<Incident[]> {
+  if (DATA_SOURCE === "supabase") {
+    const dbIncidents = await getAllSupabaseIncidents();
+    if (dbIncidents.length > 0) return dbIncidents;
+  }
+  return getAllMarkdownIncidents();
+}
+
+export async function getIncidentBySlug(slug: string): Promise<Incident | null> {
+  if (DATA_SOURCE === "supabase") {
+    const incidents = await getAllSupabaseIncidents();
+    const hit = incidents.find((incident) => incident.slug === slug);
+    if (hit) return hit;
+  }
+  return getMarkdownIncidentBySlug(slug);
+}
+
+export async function getIncidentSlugs(): Promise<string[]> {
+  const incidents = await getAllIncidents();
+  return incidents.map((incident) => incident.slug);
 }
 
 type IncidentFilter = {

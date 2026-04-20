@@ -21,7 +21,8 @@ export default async function Home({ searchParams }: HomeProps) {
   const severity = readParam(params.severity, "all");
   const windowValue = readParam(params.window, "30d");
 
-  const incidents = filterIncidents(getAllIncidents(), {
+  const allIncidents = await getAllIncidents();
+  const incidents = filterIncidents(allIncidents, {
     query,
     severity: severity as Severity | "all",
     window: windowValue as "7d" | "30d" | "90d" | "all",

@@ -16,12 +16,13 @@ type IncidentPageProps = {
 };
 
 export async function generateStaticParams() {
-  return getAllIncidents().map((incident) => ({ slug: incident.slug }));
+  const incidents = await getAllIncidents();
+  return incidents.map((incident) => ({ slug: incident.slug }));
 }
 
 export async function generateMetadata({ params }: IncidentPageProps): Promise<Metadata> {
   const { slug } = await params;
-  const incident = getIncidentBySlug(slug);
+  const incident = await getIncidentBySlug(slug);
   if (!incident) {
     return { title: "Incident Not Found" };
   }
@@ -34,7 +35,7 @@ export async function generateMetadata({ params }: IncidentPageProps): Promise<M
 
 export default async function IncidentPage({ params }: IncidentPageProps) {
   const { slug } = await params;
-  const incident = getIncidentBySlug(slug);
+  const incident = await getIncidentBySlug(slug);
   if (!incident) notFound();
 
   return (
