@@ -1,4 +1,5 @@
 import { FeedControls } from "@/components/feed-controls";
+import Link from "next/link";
 import {
   IncidentItem,
 } from "@/components/incident-item";
@@ -35,13 +36,32 @@ export default async function Home({ searchParams }: HomeProps) {
   });
 
   const critical = incidents.filter((i) => i.severity === "critical").length;
+  const exploited = incidents.filter((i) => i.category === "exploitation").length;
+  const today = new Date();
+  const monthShort = today.toLocaleDateString("en-US", { month: "short" }).toLowerCase();
+
+  const mkHref = (nextSeverity: string) => {
+    const next = new URLSearchParams();
+    if (query) next.set("q", query);
+    if (nextSeverity && nextSeverity !== "all") next.set("severity", nextSeverity);
+    if (typeValue !== "all") next.set("type", typeValue);
+    if (windowValue !== "30d") next.set("window", windowValue);
+    next.set("layout", "card");
+    const qs = next.toString();
+    return qs ? `/?${qs}` : "/";
+  };
 
   return (
     <main className="shell">
       <div className="page-head">
         <div>
+          <div className="mobile-kicker">
+            <span className="live-dot" />
+            <span>live</span>
+            <span className="mobile-kicker-sep">{monthShort} {today.getDate()}</span>
+          </div>
           <h1 className="page-title">
-            What&apos;s breaking <span className="dim">this week</span>
+            This week <span className="dim">in</span> <span className="accent">security</span>
             <span className="accent">.</span>
           </h1>
           <p className="page-sub">
@@ -58,8 +78,8 @@ export default async function Home({ searchParams }: HomeProps) {
             <span className="stat__v crit">{critical}</span>
           </div>
           <div className="stat">
-            <span className="stat__k">total</span>
-            <span className="stat__v orange">{all.length}</span>
+            <span className="stat__k">exploited</span>
+            <span className="stat__v orange">{exploited}</span>
           </div>
         </div>
       </div>
@@ -70,6 +90,13 @@ export default async function Home({ searchParams }: HomeProps) {
         typeValue={typeValue}
         windowValue={windowValue}
       />
+      <div className="mobile-severity-pills">
+        <Link href={mkHref("all")} className={`pill ${severity === "all" ? "is-active" : ""}`}>all</Link>
+        <Link href={mkHref("critical")} className={`pill ${severity === "critical" ? "is-active" : ""}`}>critical</Link>
+        <Link href={mkHref("high")} className={`pill ${severity === "high" ? "is-active" : ""}`}>high</Link>
+        <Link href={mkHref("medium")} className={`pill ${severity === "medium" ? "is-active" : ""}`}>medium</Link>
+        <Link href={mkHref("low")} className={`pill ${severity === "low" ? "is-active" : ""}`}>low</Link>
+      </div>
 
       <div className="feed-meta">
         <span>

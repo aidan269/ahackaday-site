@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { JetBrains_Mono } from "next/font/google";
+import { MobileDock } from "@/components/mobile-dock";
 import { SiteHeader } from "@/components/site-header";
 import "./globals.css";
 
@@ -23,6 +24,7 @@ export default function RootLayout({
       <body className="min-h-full">
         <SiteHeader />
         {children}
+        <MobileDock />
       </body>
     </html>
   );
