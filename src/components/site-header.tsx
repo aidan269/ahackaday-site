@@ -20,7 +20,7 @@ export function SiteHeader() {
         </nav>
         <div className="header-status">
           <span className="status-dot" />
-          <span>live · last scan 00:04 UTC</span>
+          <span>live · updates daily</span>
         </div>
       </div>
     </header>
