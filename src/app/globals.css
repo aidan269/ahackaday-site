@@ -475,7 +475,14 @@ main.shell { max-width: 1560px; margin: 0 auto; padding: 48px 40px 160px; positi
     border-radius: 12px;
   }
   .feed-meta { display: none; }
-  .mobile-severity-pills { display: flex; }
+  .mobile-severity-pills {
+    display: flex;
+    flex-wrap: wrap;
+    overflow-x: visible;
+    white-space: normal;
+    margin: 0 0 12px;
+    padding-bottom: 0;
+  }
 
   .feed--card {
     gap: 10px;
