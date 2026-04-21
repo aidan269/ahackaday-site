@@ -90,11 +90,6 @@ a { color: inherit; text-decoration: none; }
   box-shadow: 0 1px 0 rgba(250,94,6,0.28) inset, 0 10px 24px rgba(0,0,0,0.08);
 }
 .brand { display: flex; align-items: center; gap: 10px; font-size: 12.5px; color: var(--fg); cursor: pointer; }
-.brand__mark {
-  width: 10px; height: 10px; background: var(--brand-orange); border-radius: 2px;
-  box-shadow: 0 0 0 3px rgba(250,94,6,0.12), 0 0 16px rgba(250,94,6,0.55);
-  animation: pulse 2.8s ease-in-out infinite;
-}
 @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.6} }
 .brand__name { font-weight: 600; }
 .brand__tag { color: var(--fg-3); font-size: 11px; padding-left: 14px; margin-left: 4px; border-left: 1px solid var(--border-strong); }
@@ -106,9 +101,6 @@ a { color: inherit; text-decoration: none; }
 }
 .nav-link:hover { color: var(--fg); }
 .nav-link.is-active { color: var(--fg); background: var(--bg-elev-3); box-shadow: 0 0 0 1px var(--border-strong) inset; }
-
-.header-status { display: flex; align-items: center; gap: 8px; font-size: 11px; color: var(--fg-3); padding: 4px 10px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); }
-.status-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--sev-low); box-shadow: 0 0 8px var(--sev-low); animation: pulse 2s ease-in-out infinite; }
 
 /* ===== LAYOUT ===== */
 main.shell { max-width: 1240px; margin: 0 auto; padding: 48px 28px 160px; position: relative; z-index: 1; }

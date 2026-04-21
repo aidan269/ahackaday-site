@@ -5,7 +5,6 @@ export function SiteHeader() {
     <header className="site-header">
       <div className="site-header__inner">
         <Link href="/" className="brand">
-          <span className="brand__mark" />
           <span>
             <span className="brand__name">ahackaday</span>
             <span style={{ color: "var(--brand-orange)" }}>.</span>
