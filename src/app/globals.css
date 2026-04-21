@@ -73,7 +73,7 @@ body::after {
   transform: translateX(-50%);
   width: 1400px; height: 720px;
   pointer-events: none;
-  background: radial-gradient(ellipse 50% 50% at 50% 50%, rgba(250,94,6,0.06) 0%, rgba(250,94,6,0.015) 45%, transparent 72%);
+  background: radial-gradient(ellipse 50% 50% at 50% 50%, rgba(0,0,0,0.02) 0%, rgba(0,0,0,0.005) 45%, transparent 72%);
   z-index: 0;
 }
 
@@ -90,7 +90,7 @@ a { color: inherit; text-decoration: none; }
   backdrop-filter: blur(10px);
   border: 1px solid var(--border-strong);
   border-radius: 12px;
-  box-shadow: 0 1px 0 rgba(245,239,228,0.04) inset, 0 10px 40px rgba(0,0,0,0.4);
+  box-shadow: 0 1px 0 rgba(250,94,6,0.28) inset, 0 10px 24px rgba(0,0,0,0.08);
 }
 .brand { display: flex; align-items: center; gap: 10px; font-size: 12.5px; color: var(--fg); cursor: pointer; }
 .brand__mark {
@@ -121,6 +121,16 @@ main.shell { max-width: 1240px; margin: 0 auto; padding: 48px 28px 160px; positi
 .eyebrow .slash { color: var(--fg-muted); }
 
 .page-head { display: grid; grid-template-columns: 1fr auto; align-items: end; gap: 32px; padding-bottom: 28px; margin-bottom: 28px; border-bottom: 1px solid var(--border); }
+.page-head { position: relative; }
+.page-head::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: -1px;
+  width: 180px;
+  height: 2px;
+  background: linear-gradient(90deg, var(--brand-orange), rgba(250,94,6,0));
+}
 .page-title { font-family: var(--font-mono); font-size: clamp(32px, 4.6vw, 56px); font-weight: 500; letter-spacing: -0.035em; line-height: 1.0; color: var(--fg); margin: 0; text-wrap: balance; max-width: 18ch; }
 .page-title .accent { color: var(--brand-orange); }
 .page-title .dim { color: var(--fg-3); }
@@ -158,6 +168,7 @@ main.shell { max-width: 1240px; margin: 0 auto; padding: 48px 28px 160px; positi
 
 /* ===== CARD ===== */
 .feed--card { display: flex; flex-direction: column; }
+.feed--card { border-top: 1px solid rgba(250,94,6,0.28); }
 .card { position: relative; display: grid; grid-template-columns: 72px 1fr auto; gap: 24px; padding: 20px 8px 20px 16px; border-top: 1px solid var(--border); cursor: pointer; transition: background 200ms var(--ease), padding-left 220ms var(--ease); align-items: start; }
 .card:last-child { border-bottom: 1px solid var(--border); }
 .card::before { content: ""; position: absolute; left: 0; top: -1px; bottom: -1px; width: 2px; background: var(--sev); opacity: 0; transition: opacity 200ms var(--ease); }
