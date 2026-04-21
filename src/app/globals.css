@@ -60,7 +60,12 @@ body::before {
   position: fixed;
   inset: 0;
   pointer-events: none;
-  background: transparent;
+  background-image: url("/feed-bg-singapore-night.png");
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  filter: grayscale(1) brightness(0.4) contrast(0.9) blur(6px);
+  transform: scale(1.04);
   z-index: 0;
 }
 body::after {
@@ -70,7 +75,7 @@ body::after {
   transform: translateX(-50%);
   width: 1400px; height: 720px;
   pointer-events: none;
-  background: transparent;
+  background: rgba(0, 0, 0, 0.56);
   z-index: 0;
 }
 
