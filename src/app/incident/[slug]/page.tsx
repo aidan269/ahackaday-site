@@ -83,11 +83,6 @@ export default async function IncidentPage({ params }: IncidentPageProps) {
         <section className="detail__overview">
           <h3>overview</h3>
           <div className="detail__overview-copy">
-            <h4>What It Is</h4>
-            <p>
-              {incident.title}. Severity is marked {incident.severity}, and this incident is tracked as{" "}
-              {incident.category}.
-            </p>
             <h4>The Impact</h4>
             <p>
               Primary impact is on {incident.affected}. Current mitigation state is {incident.mitigationStatus}.
