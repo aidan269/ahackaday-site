@@ -18,10 +18,6 @@ export function SiteHeader() {
           <Link href="/calendar" className="nav-link">calendar</Link>
           <Link href="/feed.xml" className="nav-link">rss</Link>
         </nav>
-        <div className="header-status">
-          <span className="status-dot" />
-          <span>live · updates daily</span>
-        </div>
       </div>
     </header>
   );
