@@ -72,7 +72,8 @@ function slugify(value: string): string {
 
 function normalizeDisplayText(value: string): string {
   return value
-    .replace(/\[\s*(?:\.\.\.|…)\s*\]/g, "•")
+    .replace(/\[\s*(?:\.\.\.|…)\s*\]/g, "")
+    .replace(/(?:\s+[—–-])?\s*\.\.\.\s*$/, "")
     .replace(/\s{2,}/g, " ")
     .trim();
 }
