@@ -82,26 +82,20 @@ export default async function IncidentPage({ params }: IncidentPageProps) {
 
         <section className="detail__overview">
           <h3>overview</h3>
-          <div className="detail__overview-grid">
-            <div>
-              <span className="k">what it is</span>
-              <p className="v">
-                {incident.title}. Severity is marked {incident.severity}, and this incident is tracked as{" "}
-                {incident.category}.
-              </p>
-            </div>
-            <div>
-              <span className="k">how it affects things</span>
-              <p className="v">
-                Primary impact is on {incident.affected}. Current mitigation state is {incident.mitigationStatus}.
-              </p>
-            </div>
-            <div>
-              <span className="k">what to watch next</span>
-              <p className="v">
-                Monitor source updates for changes to exploitation scope, affected systems, and mitigation guidance.
-              </p>
-            </div>
+          <div className="detail__overview-copy">
+            <h4>What It Is</h4>
+            <p>
+              {incident.title}. Severity is marked {incident.severity}, and this incident is tracked as{" "}
+              {incident.category}.
+            </p>
+            <h4>The Impact</h4>
+            <p>
+              Primary impact is on {incident.affected}. Current mitigation state is {incident.mitigationStatus}.
+            </p>
+            <h4>What Action To Take</h4>
+            <p>
+              Monitor source updates for changes to exploitation scope, affected systems, and mitigation guidance.
+            </p>
           </div>
         </section>
 
