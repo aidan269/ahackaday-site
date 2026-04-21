@@ -60,10 +60,7 @@ body::before {
   position: fixed;
   inset: 0;
   pointer-events: none;
-  background-image: radial-gradient(circle at 1px 1px, rgba(0,0,0,0.04) 1px, transparent 0);
-  background-size: 36px 36px;
-  mask-image: radial-gradient(ellipse 80% 50% at 50% 0%, #000 0%, transparent 70%);
-  -webkit-mask-image: radial-gradient(ellipse 80% 50% at 50% 0%, #000 0%, transparent 70%);
+  background: transparent;
   z-index: 0;
 }
 body::after {
@@ -73,7 +70,7 @@ body::after {
   transform: translateX(-50%);
   width: 1400px; height: 720px;
   pointer-events: none;
-  background: radial-gradient(ellipse 50% 50% at 50% 50%, rgba(0,0,0,0.02) 0%, rgba(0,0,0,0.005) 45%, transparent 72%);
+  background: transparent;
   z-index: 0;
 }
 
@@ -129,7 +126,7 @@ main.shell { max-width: 1240px; margin: 0 auto; padding: 48px 28px 160px; positi
   bottom: -1px;
   width: 180px;
   height: 2px;
-  background: linear-gradient(90deg, var(--brand-orange), rgba(250,94,6,0));
+  background: var(--brand-orange);
 }
 .page-title { font-family: var(--font-mono); font-size: clamp(32px, 4.6vw, 56px); font-weight: 500; letter-spacing: -0.035em; line-height: 1.0; color: var(--fg); margin: 0; text-wrap: balance; max-width: 18ch; }
 .page-title .accent { color: var(--brand-orange); }
@@ -229,7 +226,7 @@ main.shell { max-width: 1240px; margin: 0 auto; padding: 48px 28px 160px; positi
 
 /* ===== TIMELINE ===== */
 .feed--timeline { position: relative; padding-left: 36px; }
-.feed--timeline::before { content: ""; position: absolute; left: 11px; top: 8px; bottom: 8px; width: 1px; background: linear-gradient(180deg, transparent 0%, var(--border-strong) 8%, var(--border-strong) 92%, transparent 100%); }
+.feed--timeline::before { content: ""; position: absolute; left: 11px; top: 8px; bottom: 8px; width: 1px; background: var(--border-strong); }
 .tl-group { margin-bottom: 28px; }
 .tl-group__date { font-size: 13px; font-weight: 500; letter-spacing: -0.01em; color: var(--fg); margin: 0 0 14px -36px; padding-left: 36px; position: relative; display: flex; align-items: center; gap: 10px; }
 .tl-group__date::before { content: ""; position: absolute; left: 7px; top: 50%; transform: translateY(-50%); width: 9px; height: 9px; border-radius: 50%; background: var(--bg); border: 1.5px solid var(--brand-orange); box-shadow: 0 0 12px rgba(250,94,6,0.4); }
