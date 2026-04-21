@@ -11,7 +11,7 @@ export function SiteHeader() {
             <span style={{ color: "var(--brand-orange)" }}>.</span>
             <span style={{ color: "var(--fg-3)" }}>feed</span>
           </span>
-          <span className="brand__tag">incident intelligence / teams that move fast</span>
+          <span className="brand__tag">incident intelligence</span>
         </Link>
         <nav className="site-nav">
           <Link href="/" className="nav-link">feed</Link>

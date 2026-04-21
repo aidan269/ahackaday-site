@@ -56,15 +56,14 @@ export default async function Home({ searchParams }: HomeProps) {
       <div className="page-head">
         <div>
           <div className="eyebrow">
-            incident feed <span className="slash">/</span> cross-org impact{" "}
-            <span className="slash">/</span> reverse chronological
+            incident feed <span className="slash">/</span> reverse chronological
           </div>
           <h1 className="page-title">
             What&apos;s breaking <span className="dim">this week</span>
             <span className="accent">.</span>
           </h1>
           <p className="page-sub">
-            Major cybersecurity incidents with broad implications. Every entry links a full brief with mitigation and sources.
+            Major cybersecurity incidents with broad implications.
           </p>
         </div>
         <div className="page-head__stats">
@@ -93,8 +92,7 @@ export default async function Home({ searchParams }: HomeProps) {
 
       <div className="feed-meta">
         <span>
-          showing <span className="strong">{incidents.length}</span> of {all.length}
-          <span className="dot">·</span> sorted by date desc
+          showing <span className="strong">{incidents.length}</span> of {all.length} sorted by date desc
         </span>
         <span>
           layout : <span style={{ color: "var(--brand-orange)" }}>{layout}</span>

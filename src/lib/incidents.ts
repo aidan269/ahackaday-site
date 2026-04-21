@@ -85,6 +85,23 @@ function getSupabaseServerClient() {
   return createClient(url, key);
 }
 
+function inferAffectedFromRow(row: SupabaseIncidentRow, summary: string): string {
+  const text = `${summary} ${row.raw_content}`.replace(/\s+/g, " ").trim();
+  const matchers = [
+    /(?:affected?|impacted?|target(?:ed|s|ing)?)\s+([^.;]{12,120})/i,
+    /(?:across|in)\s+([^.;]{12,120})/i,
+  ];
+
+  for (const matcher of matchers) {
+    const hit = text.match(matcher);
+    if (hit?.[1]) {
+      return hit[1].replace(/\s+/g, " ").trim();
+    }
+  }
+
+  return row.title;
+}
+
 function mapDbRowToIncident(row: SupabaseIncidentRow): Incident {
   const summary = row.claude_summary.trim() || row.raw_content.trim() || "No summary available.";
   const content = row.claude_summary.trim()
@@ -96,7 +113,7 @@ function mapDbRowToIncident(row: SupabaseIncidentRow): Incident {
     title: row.title,
     date: row.published_at,
     severity: row.severity,
-    affected: row.source_name,
+    affected: inferAffectedFromRow(row, summary),
     summary,
     category: classifyIncidentType(row),
     mitigationStatus: "Monitoring updates",
