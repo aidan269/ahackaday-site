@@ -178,9 +178,11 @@ main.shell { max-width: 1560px; margin: 0 auto; padding: 48px 40px 160px; positi
   overflow-x: auto;
   white-space: nowrap;
   -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
   padding-bottom: 2px;
   margin: -8px 0 12px;
 }
+.mobile-severity-pills::-webkit-scrollbar { display: none; }
 .mobile-severity-pills .pill {
   display: inline-flex;
   align-items: center;
