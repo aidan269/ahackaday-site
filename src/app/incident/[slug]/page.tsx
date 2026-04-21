@@ -82,6 +82,31 @@ export default async function IncidentPage({ params }: IncidentPageProps) {
           </div>
         </div>
 
+        <section className="detail__overview">
+          <h3>overview</h3>
+          <div className="detail__overview-grid">
+            <div>
+              <span className="k">what it is</span>
+              <p className="v">
+                {incident.title}. Severity is marked {incident.severity}, and this incident is tracked as{" "}
+                {incident.category}.
+              </p>
+            </div>
+            <div>
+              <span className="k">how it affects things</span>
+              <p className="v">
+                Primary impact is on {incident.affected}. Current mitigation state is {incident.mitigationStatus}.
+              </p>
+            </div>
+            <div>
+              <span className="k">what to watch next</span>
+              <p className="v">
+                Monitor source updates for changes to exploitation scope, affected systems, and mitigation guidance.
+              </p>
+            </div>
+          </div>
+        </section>
+
         <div className="detail__body">
           <ReactMarkdown remarkPlugins={[remarkGfm]}>{incident.content}</ReactMarkdown>
         </div>
