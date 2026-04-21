@@ -70,6 +70,13 @@ function slugify(value: string): string {
     .slice(0, 80);
 }
 
+function normalizeDisplayText(value: string): string {
+  return value
+    .replace(/\[\s*(?:\.\.\.|…)\s*\]/g, "…")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+}
+
 function buildSlugFromDb(row: SupabaseIncidentRow): string {
   const datePrefix = new Date(row.published_at).toISOString().slice(0, 10);
   const titleSlug = slugify(row.title);
@@ -103,10 +110,12 @@ function inferAffectedFromRow(row: SupabaseIncidentRow, summary: string): string
 }
 
 function mapDbRowToIncident(row: SupabaseIncidentRow): Incident {
-  const summary = row.claude_summary.trim() || row.raw_content.trim() || "No summary available.";
+  const summary = normalizeDisplayText(
+    row.claude_summary.trim() || row.raw_content.trim() || "No summary available.",
+  );
   const content = row.claude_summary.trim()
-    ? row.claude_summary.trim()
-    : `## What happened\n${row.raw_content.trim() || "Awaiting analyst summary."}`;
+    ? normalizeDisplayText(row.claude_summary.trim())
+    : `## What happened\n${normalizeDisplayText(row.raw_content.trim() || "Awaiting analyst summary.")}`;
 
   return {
     slug: buildSlugFromDb(row),
@@ -165,8 +174,9 @@ function getMarkdownIncidentBySlug(slug: string): Incident | null {
   const data = parsed.data as IncidentFrontmatter;
   return {
     ...data,
+    summary: normalizeDisplayText(data.summary),
     slug,
-    content: parsed.content.trim(),
+    content: normalizeDisplayText(parsed.content.trim()),
   };
 }
 
