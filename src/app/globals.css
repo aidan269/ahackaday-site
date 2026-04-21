@@ -331,12 +331,17 @@ main.shell { max-width: 1560px; margin: 0 auto; padding: 48px 40px 160px; positi
     font-size: 12px;
   }
 
-  main.shell { padding: 24px 10px 96px; }
+  main.shell { padding: 22px 10px calc(112px + env(safe-area-inset-bottom)); }
 
   .page-head { grid-template-columns: 1fr; align-items: start; gap: 18px; padding-bottom: 18px; margin-bottom: 18px; }
   .page-title { font-size: clamp(28px, 8vw, 40px); max-width: 100%; }
   .page-sub { margin-top: 10px; max-width: 100%; }
-  .page-head__stats { width: 100%; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .page-head__stats {
+    width: 100%;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    border-radius: 14px;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.05);
+  }
   .stat { min-width: 0; padding: 10px 10px; }
   .stat__v { font-size: 18px; }
 
@@ -357,7 +362,15 @@ main.shell { max-width: 1560px; margin: 0 auto; padding: 48px 40px 160px; positi
     border-radius: 10px;
   }
 
-  .feed-meta { flex-direction: column; align-items: flex-start; gap: 6px; }
+  .feed-meta {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+    padding: 10px 12px;
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+  }
 
   .feed--card {
     gap: 10px;
@@ -372,6 +385,17 @@ main.shell { max-width: 1560px; margin: 0 auto; padding: 48px 40px 160px; positi
     background: #fff;
     box-shadow: 0 8px 20px rgba(0,0,0,0.04);
   }
+  .card:active { transform: translateY(0); }
+  .card__date {
+    font-size: 11px;
+    line-height: 1.35;
+    background: var(--bg-elev-1);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 6px 7px;
+    text-align: center;
+  }
+  .card__date .rel { margin-top: 4px; font-size: 9px; }
   .card::before {
     left: 0;
     top: 12px;
@@ -402,7 +426,14 @@ main.shell { max-width: 1560px; margin: 0 auto; padding: 48px 40px 160px; positi
     padding: 14px;
     border-radius: 12px;
   }
-  .detail__sources a { padding: 10px 0; font-size: 13px; }
+  .detail__sources a {
+    padding: 10px 12px;
+    font-size: 13px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: #fff;
+  }
+  .detail__sources a:active { background: var(--bg-elev-1); }
 
   .cal-wrap { grid-template-columns: 1fr; }
   .cal-side { position: static; }
