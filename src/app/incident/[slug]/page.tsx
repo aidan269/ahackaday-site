@@ -1,8 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
 
 import {
   formatIncidentDate,
@@ -106,10 +104,6 @@ export default async function IncidentPage({ params }: IncidentPageProps) {
             </div>
           </div>
         </section>
-
-        <div className="detail__body">
-          <ReactMarkdown remarkPlugins={[remarkGfm]}>{incident.content}</ReactMarkdown>
-        </div>
 
         <section className="detail__sources">
           <h3>dig in links</h3>

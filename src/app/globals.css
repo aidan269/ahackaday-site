@@ -255,9 +255,9 @@ main.shell { max-width: 1560px; margin: 0 auto; padding: 48px 40px 160px; positi
 .detail__overview h3 { font-size: 10.5px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--fg-3); margin: 0 0 14px; display: flex; align-items: center; gap: 10px; }
 .detail__overview h3::before { content: ""; width: 24px; height: 1px; background: var(--brand-orange); }
 .detail__overview-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
-.detail__overview-grid > div { border: 1px solid var(--border); border-radius: 8px; background: rgba(255,255,255,0.96); padding: 12px 14px; }
-.detail__overview-grid .k { font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--fg-muted); display: block; margin-bottom: 7px; }
-.detail__overview-grid .v { margin: 0; font-size: 12px; color: var(--fg-2); line-height: 1.6; }
+.detail__overview-grid > div { border: 1px solid var(--border); border-radius: 8px; background: rgba(255,255,255,0.96); padding: 16px 18px; min-height: 210px; }
+.detail__overview-grid .k { font-size: 9.5px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--fg-muted); display: block; margin-bottom: 10px; }
+.detail__overview-grid .v { margin: 0; font-size: 13.5px; color: var(--fg-2); line-height: 1.75; }
 
 .detail__body h3 { font-size: 10.5px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--fg-3); margin: 36px 0 14px; display: flex; align-items: center; gap: 10px; }
 .detail__body h3::before { content: ""; width: 24px; height: 1px; background: var(--brand-orange); }
