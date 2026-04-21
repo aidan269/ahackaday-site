@@ -94,7 +94,7 @@ export default async function IncidentPage({ params }: IncidentPageProps) {
         </section>
 
         <section className="detail__sources">
-          <h3>dig in links</h3>
+          <h3>read more</h3>
           <ul>
             {incident.sources.map((sourceUrl) => (
               <li key={sourceUrl}>
