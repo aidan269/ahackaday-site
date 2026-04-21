@@ -42,7 +42,7 @@
 }
 
 * { box-sizing: border-box; }
-html, body { margin: 0; padding: 0; }
+html, body { margin: 0; padding: 0; overflow-x: hidden; }
 
 body {
   font-family: var(--font-mono);
@@ -416,6 +416,7 @@ main.shell { max-width: 1560px; margin: 0 auto; padding: 48px 40px 160px; positi
 }
 
 @media (max-width: 900px) {
+  html, body { overscroll-behavior-x: none; }
   .site-header { display: none; }
   .site-header__inner {
     gap: 10px;
