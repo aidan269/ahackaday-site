@@ -98,13 +98,7 @@ export default async function IncidentPage({ params }: IncidentPageProps) {
           <ul>
             {incident.sources.map((sourceUrl) => (
               <li key={sourceUrl}>
-                <a href={sourceUrl} target="_blank" rel="noreferrer">
-                  <span className="src-link__title">full incident brief and source</span>
-                  <span className="src-link__meta">
-                    affected: {incident.affected} | mitigation: {incident.mitigationStatus}
-                  </span>
-                  <span className="src-link__url">{sourceUrl}</span>
-                </a>
+                <a href={sourceUrl} target="_blank" rel="noreferrer">full incident brief and source</a>
               </li>
             ))}
           </ul>
