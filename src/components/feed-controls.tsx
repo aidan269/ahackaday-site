@@ -1,58 +1,102 @@
 type FeedControlsProps = {
   query: string;
   severity: string;
+  typeValue: string;
   windowValue: string;
+  layout: string;
 };
 
-export function FeedControls({ query, severity, windowValue }: FeedControlsProps) {
+export function FeedControls({ query, severity, typeValue, windowValue, layout }: FeedControlsProps) {
   return (
-    <form className="mb-3 flex flex-col gap-2 rounded-xl border border-zinc-800/90 bg-zinc-900/55 p-2.5 shadow-[0_0_0_1px_rgba(255,255,255,0.02),0_14px_30px_rgba(2,6,23,0.38)] sm:flex-row sm:items-end">
-      <label className="flex flex-1 flex-col gap-1 text-xs text-zinc-400">
-        Search
-        <input
-          type="text"
-          name="q"
-          defaultValue={query}
-          placeholder="Cisco, zero-day, edge firewall..."
-          className="h-8 rounded-md border border-zinc-700 bg-zinc-950 px-2 text-sm text-zinc-100 outline-none transition focus:border-cyan-500/70 focus:shadow-[0_0_0_1px_rgba(34,211,238,0.2),0_0_18px_rgba(34,211,238,0.12)]"
-        />
-      </label>
+    <form className="controls">
+      {/* preserve the layout param across filter submissions */}
+      <input type="hidden" name="layout" value={layout} />
 
-      <label className="flex flex-col gap-1 text-xs text-zinc-400">
-        Severity
-        <select
-          name="severity"
-          defaultValue={severity}
-          className="h-8 rounded-md border border-zinc-700 bg-zinc-950 px-2 text-sm text-zinc-100 outline-none transition focus:border-cyan-500/70 focus:shadow-[0_0_0_1px_rgba(34,211,238,0.2),0_0_18px_rgba(34,211,238,0.12)]"
-        >
-          <option value="all">All</option>
-          <option value="critical">Critical</option>
-          <option value="high">High</option>
-          <option value="medium">Medium</option>
-          <option value="low">Low</option>
-        </select>
-      </label>
+      <div className="ctrl">
+        <label className="sr" htmlFor="f-q">Search</label>
+        <div className="ctrl__box">
+          <span className="prefix">/</span>
+          <input
+            id="f-q"
+            type="text"
+            name="q"
+            defaultValue={query}
+            placeholder="cisco, zero-day, edge firewall…"
+          />
+        </div>
+      </div>
 
-      <label className="flex flex-col gap-1 text-xs text-zinc-400">
-        Window
-        <select
-          name="window"
-          defaultValue={windowValue}
-          className="h-8 rounded-md border border-zinc-700 bg-zinc-950 px-2 text-sm text-zinc-100 outline-none transition focus:border-cyan-500/70 focus:shadow-[0_0_0_1px_rgba(34,211,238,0.2),0_0_18px_rgba(34,211,238,0.12)]"
-        >
-          <option value="7d">7 days</option>
-          <option value="30d">30 days</option>
-          <option value="90d">90 days</option>
-          <option value="all">All time</option>
-        </select>
-      </label>
+      <div className="ctrl">
+        <label className="sr" htmlFor="f-sev">Severity</label>
+        <div className="ctrl__box">
+          <span className="prefix">●</span>
+          <select id="f-sev" name="severity" defaultValue={severity}>
+            <option value="all">all severities</option>
+            <option value="critical">critical</option>
+            <option value="high">high</option>
+            <option value="medium">medium</option>
+            <option value="low">low</option>
+          </select>
+          <span className="chev">▾</span>
+        </div>
+      </div>
 
-      <button
-        type="submit"
-        className="micro-lift glow-focus h-8 rounded-md border border-cyan-500/50 bg-cyan-500/10 px-3 text-xs font-semibold uppercase tracking-wide text-cyan-100 hover:border-cyan-400 hover:bg-cyan-500/20"
-      >
-        Apply
-      </button>
+      <div className="ctrl">
+        <label className="sr" htmlFor="f-win">Window</label>
+        <div className="ctrl__box">
+          <span className="prefix">●</span>
+          <select id="f-win" name="window" defaultValue={windowValue}>
+            <option value="7d">7 days</option>
+            <option value="30d">30 days</option>
+            <option value="90d">90 days</option>
+            <option value="all">all time</option>
+          </select>
+          <span className="chev">▾</span>
+        </div>
+      </div>
+
+      <div className="ctrl">
+        <label className="sr" htmlFor="f-type">Type</label>
+        <div className="ctrl__box">
+          <span className="prefix">●</span>
+          <select id="f-type" name="type" defaultValue={typeValue}>
+            <option value="all">all types</option>
+            <option value="zero-day">zero-day</option>
+            <option value="supply-chain">supply chain</option>
+            <option value="breach">breach</option>
+            <option value="ransomware">ransomware</option>
+            <option value="identity">identity</option>
+            <option value="cloud">cloud</option>
+            <option value="web">web</option>
+            <option value="email">email</option>
+            <option value="critical-infrastructure">critical infra</option>
+            <option value="exploitation">exploitation</option>
+            <option value="consumer-security">consumer</option>
+          </select>
+          <span className="chev">▾</span>
+        </div>
+      </div>
+
+      <div className="layout-toggle">
+        {["card", "row", "timeline"].map((v) => {
+          // preserve other params by letting the apply button submit;
+          // layout links submit form after setting hidden input
+          return (
+            <button
+              key={v}
+              type="submit"
+              name="layout"
+              value={v}
+              className={"nav-link" + (layout === v ? " is-active" : "")}
+              style={{ border: 0, background: "transparent", font: "inherit", cursor: "pointer" }}
+            >
+              {v}
+            </button>
+          );
+        })}
+      </div>
+
+      <button type="submit" className="apply-btn">apply</button>
     </form>
   );
 }

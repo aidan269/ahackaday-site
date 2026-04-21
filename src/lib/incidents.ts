@@ -22,6 +22,24 @@ export type Incident = IncidentFrontmatter & {
   content: string;
 };
 
+export const INCIDENT_TYPE_OPTIONS = [
+  "all",
+  "zero-day",
+  "supply-chain",
+  "breach",
+  "ransomware",
+  "identity",
+  "cloud",
+  "web",
+  "email",
+  "critical-infrastructure",
+  "exploitation",
+  "consumer-security",
+  "other",
+] as const;
+
+export type IncidentType = (typeof INCIDENT_TYPE_OPTIONS)[number];
+
 const CONTENT_DIR = path.join(process.cwd(), "content");
 const DATA_SOURCE = process.env.DATA_SOURCE ?? "markdown";
 
@@ -80,11 +98,36 @@ function mapDbRowToIncident(row: SupabaseIncidentRow): Incident {
     severity: row.severity,
     affected: row.source_name,
     summary,
-    category: "live-feed",
+    category: classifyIncidentType(row),
     mitigationStatus: "Monitoring updates",
     sources: [row.source_url],
     content,
   };
+}
+
+function classifyIncidentType(row: SupabaseIncidentRow): Exclude<IncidentType, "all"> {
+  const text = `${row.title} ${row.raw_content} ${row.source_name}`.toLowerCase();
+  if (text.includes("zero-day") || text.includes("0-day")) return "zero-day";
+  if (text.includes("supply chain") || text.includes("package") || text.includes("dependency")) return "supply-chain";
+  if (text.includes("ransomware")) return "ransomware";
+  if (text.includes("identity") || text.includes("sso") || text.includes("mfa") || text.includes("token")) return "identity";
+  if (text.includes("phishing") || text.includes("mail") || text.includes("email")) return "email";
+  if (text.includes("cloud") || text.includes("aws") || text.includes("azure") || text.includes("gcp")) return "cloud";
+  if (text.includes("web") || text.includes("cdn") || text.includes("browser")) return "web";
+  if (text.includes("ics") || text.includes("utility") || text.includes("telecom") || text.includes("infrastructure")) return "critical-infrastructure";
+  if (text.includes("exploit") || text.includes("botnet") || text.includes("appliance")) return "exploitation";
+  if (text.includes("consumer") || text.includes("extension") || text.includes("app store")) return "consumer-security";
+  if (text.includes("breach") || text.includes("data theft") || text.includes("leak")) return "breach";
+  return "other";
+}
+
+function normalizeIncidentType(value: string): Exclude<IncidentType, "all"> {
+  const normalized = value.trim().toLowerCase();
+  const known = INCIDENT_TYPE_OPTIONS.filter((option) => option !== "all" && option !== "other");
+  if (known.includes(normalized as Exclude<IncidentType, "all" | "other">)) {
+    return normalized as Exclude<IncidentType, "all">;
+  }
+  return "other";
 }
 
 function getMarkdownIncidentSlugs(): string[] {
@@ -167,6 +210,7 @@ export async function getIncidentSlugs(): Promise<string[]> {
 
 type IncidentFilter = {
   severity?: Severity | "all";
+  type?: IncidentType;
   window?: "7d" | "30d" | "90d" | "all";
   query?: string;
 };
@@ -184,6 +228,11 @@ export function filterIncidents(
   return incidents.filter((incident) => {
     if (filter.severity && filter.severity !== "all" && incident.severity !== filter.severity) {
       return false;
+    }
+
+    if (filter.type && filter.type !== "all") {
+      const incidentType = normalizeIncidentType(incident.category);
+      if (incidentType !== filter.type) return false;
     }
 
     if (windowDays !== null) {
