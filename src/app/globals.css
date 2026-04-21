@@ -446,13 +446,16 @@ main.shell { max-width: 1560px; margin: 0 auto; padding: 48px 40px 160px; positi
   .controls {
     grid-template-columns: 1fr;
     gap: 8px;
-    padding: 10px;
-    border-radius: 14px;
-    box-shadow: 0 8px 20px rgba(0,0,0,0.05);
+    padding: 0;
+    border: 0;
+    background: transparent;
+    border-radius: 0;
+    box-shadow: none;
   }
   .ctrl__box {
     height: 42px;
     border-radius: 10px;
+    background: #fff;
   }
   .apply-btn {
     height: 42px;
