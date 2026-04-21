@@ -1,60 +1,143 @@
 import { FeedControls } from "@/components/feed-controls";
-import { IncidentItem } from "@/components/incident-item";
-import { filterIncidents, getAllIncidents, type Severity } from "@/lib/incidents";
+import {
+  IncidentItem,
+  IncidentRow,
+  IncidentTimelineItem,
+} from "@/components/incident-item";
+import {
+  filterIncidents,
+  getAllIncidents,
+  type Incident,
+  type IncidentType,
+  type Severity,
+} from "@/lib/incidents";
 
 type HomeProps = {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 };
 
-function readParam(
-  value: string | string[] | undefined,
-  fallback: string,
-): string {
-  if (typeof value === "string") return value;
-  if (Array.isArray(value) && value.length > 0) return value[0] ?? fallback;
+function readParam(v: string | string[] | undefined, fallback: string): string {
+  if (typeof v === "string") return v;
+  if (Array.isArray(v) && v.length > 0) return v[0] ?? fallback;
   return fallback;
+}
+
+function groupByMonth(list: Incident[]) {
+  const m = new Map<string, Incident[]>();
+  for (const i of list) {
+    const k = i.date.slice(0, 7);
+    const arr = m.get(k) ?? [];
+    arr.push(i);
+    m.set(k, arr);
+  }
+  return Array.from(m.entries());
 }
 
 export default async function Home({ searchParams }: HomeProps) {
   const params = await searchParams;
   const query = readParam(params.q, "");
   const severity = readParam(params.severity, "all");
+  const typeValue = readParam(params.type, "all");
   const windowValue = readParam(params.window, "30d");
+  const layout = readParam(params.layout, "card");
 
-  const allIncidents = await getAllIncidents();
-  const incidents = filterIncidents(allIncidents, {
+  const all = await getAllIncidents();
+  const incidents = filterIncidents(all, {
     query,
     severity: severity as Severity | "all",
+    type: typeValue as IncidentType,
     window: windowValue as "7d" | "30d" | "90d" | "all",
   });
 
+  const critical = incidents.filter((i) => i.severity === "critical").length;
+
   return (
-    <main className="mx-auto w-full max-w-6xl px-4 py-4 sm:px-6">
-      <div className="mb-3 rounded-xl border border-zinc-800/90 bg-zinc-900/55 p-3 shadow-[0_0_0_1px_rgba(255,255,255,0.02),0_16px_40px_rgba(2,6,23,0.4)]">
-        <div className="flex items-baseline justify-between">
-          <h1 className="text-base font-semibold tracking-tight text-zinc-100">
-            Incident Feed
+    <main className="shell">
+      <div className="page-head">
+        <div>
+          <div className="eyebrow">
+            incident feed <span className="slash">/</span> cross-org impact{" "}
+            <span className="slash">/</span> reverse chronological
+          </div>
+          <h1 className="page-title">
+            What&apos;s breaking <span className="dim">this week</span>
+            <span className="accent">.</span>
           </h1>
-          <p className="text-xs text-zinc-500">{incidents.length} matches</p>
+          <p className="page-sub">
+            Major cybersecurity incidents with broad implications. Every entry links a full brief with mitigation and sources.
+          </p>
         </div>
-        <p className="mt-1 text-xs text-zinc-400">
-          Reverse-chronological incidents with cross-org impact. Each entry links to a complete incident brief with mitigation and sources.
-        </p>
+        <div className="page-head__stats">
+          <div className="stat">
+            <span className="stat__k">tracked</span>
+            <span className="stat__v">{incidents.length}</span>
+          </div>
+          <div className="stat">
+            <span className="stat__k">critical</span>
+            <span className="stat__v crit">{critical}</span>
+          </div>
+          <div className="stat">
+            <span className="stat__k">total</span>
+            <span className="stat__v orange">{all.length}</span>
+          </div>
+        </div>
       </div>
 
-      <FeedControls query={query} severity={severity} windowValue={windowValue} />
+      <FeedControls
+        query={query}
+        severity={severity}
+        typeValue={typeValue}
+        windowValue={windowValue}
+        layout={layout}
+      />
 
-      <section className="space-y-1">
-        {incidents.length === 0 ? (
-          <p className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-3 text-sm text-zinc-400">
-            No incidents match your filters.
-          </p>
-        ) : (
-          incidents.map((incident, index) => (
-            <IncidentItem key={incident.slug} incident={incident} index={index} />
-          ))
-        )}
-      </section>
+      <div className="feed-meta">
+        <span>
+          showing <span className="strong">{incidents.length}</span> of {all.length}
+          <span className="dot">·</span> sorted by date desc
+        </span>
+        <span>
+          layout : <span style={{ color: "var(--brand-orange)" }}>{layout}</span>
+        </span>
+      </div>
+
+      {incidents.length === 0 ? (
+        <div className="empty">no incidents match the active filters.</div>
+      ) : layout === "row" ? (
+        <div className="feed--row">
+          <div className="row-head">
+            <div>date</div>
+            <div>severity</div>
+            <div>type</div>
+            <div>incident</div>
+            <div>affected</div>
+            <div></div>
+          </div>
+          {incidents.map((i) => <IncidentRow key={i.slug} incident={i} />)}
+        </div>
+      ) : layout === "timeline" ? (
+        <div className="feed--timeline">
+          {groupByMonth(incidents).map(([k, list]) => {
+            const [y, m] = k.split("-").map(Number);
+            const label = new Date(y, m - 1, 1)
+              .toLocaleDateString("en-US", { month: "long", year: "numeric" })
+              .toLowerCase();
+            return (
+              <div key={k} className="tl-group">
+                <div className="tl-group__date">
+                  {label}{" "}
+                  <span className="muted">— {list.length} incident{list.length === 1 ? "" : "s"}</span>
+                </div>
+                {list.map((i) => <IncidentTimelineItem key={i.slug} incident={i} />)}
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        <div className="feed--card">
+          {incidents.map((i, idx) => <IncidentItem key={i.slug} incident={i} index={idx} />)}
+        </div>
+      )}
     </main>
   );
 }

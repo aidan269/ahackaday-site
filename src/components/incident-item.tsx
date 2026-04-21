@@ -1,64 +1,93 @@
 import Link from "next/link";
-
 import {
   formatIncidentDate,
-  getSeverityTone,
   type Incident,
+  type Severity,
 } from "@/lib/incidents";
 
-type IncidentItemProps = {
-  incident: Incident;
-  index: number;
+const SEV_COLOR: Record<Severity, string> = {
+  critical: "var(--sev-critical)",
+  high: "var(--sev-high)",
+  medium: "var(--sev-medium)",
+  low: "var(--sev-low)",
 };
 
-export function IncidentItem({ incident, index }: IncidentItemProps) {
-  const delayMs = Math.min(index * 24, 280);
+function fmtShort(iso: string) {
+  const [y, m, d] = iso.slice(0, 10).split("-").map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString("en-US", { month: "short", day: "2-digit" });
+}
+
+function rel(iso: string) {
+  const [y, m, d] = iso.slice(0, 10).split("-").map(Number);
+  const then = new Date(y, m - 1, d);
+  const now = new Date();
+  const days = Math.round((now.getTime() - then.getTime()) / 86400000);
+  if (days <= 0) return "today";
+  if (days === 1) return "1d ago";
+  if (days < 30) return `${days}d ago`;
+  return `${Math.round(days / 30)}mo ago`;
+}
+
+type Props = { incident: Incident; index?: number };
+
+export function IncidentItem({ incident }: Props) {
+  const sev = SEV_COLOR[incident.severity];
+  const style = { ["--sev" as string]: sev } as React.CSSProperties;
 
   return (
-    <article
-      className="feed-item-enter micro-lift group relative mb-1 overflow-hidden rounded-lg border border-zinc-800/90 bg-zinc-900/35 p-2.5 shadow-[0_0_0_1px_rgba(255,255,255,0.015)] hover:border-zinc-700 hover:bg-zinc-900/60 hover:shadow-[0_0_0_1px_rgba(34,211,238,0.2),0_14px_28px_rgba(2,6,23,0.45)]"
-      style={{ animationDelay: `${delayMs}ms` }}
-    >
-      <div className="pointer-events-none absolute inset-0 opacity-0 transition duration-300 group-hover:opacity-100">
-        <div className="absolute -right-12 -top-12 h-32 w-32 rounded-full bg-cyan-500/12 blur-3xl" />
-        <div className="absolute -left-16 bottom-0 h-24 w-24 rounded-full bg-blue-500/8 blur-2xl" />
+    <Link href={`/incident/${incident.slug}`} className="card" style={style}>
+      <div className="card__date">
+        {fmtShort(incident.date)}
+        <span className="rel">{rel(incident.date)}</span>
       </div>
-      <div className="mb-1 flex flex-wrap items-center gap-2 text-xs">
-        <time className="text-zinc-400">{formatIncidentDate(incident.date)}</time>
-        <span
-          className={`rounded border px-1.5 py-0.5 uppercase tracking-wide ${getSeverityTone(incident.severity)}`}
-        >
-          {incident.severity}
-        </span>
-        <span className="text-zinc-500">{incident.category}</span>
+      <div className="card__main">
+        <div className="card__tagline">
+          <span className="sev-chip" style={style}>{incident.severity}</span>
+          <span className="cat-chip">{incident.category}</span>
+        </div>
+        <h2 className="card__title">{incident.title}</h2>
+        <p className="card__sum">{incident.summary}</p>
+        <div className="card__affected">
+          <span className="k">affected</span>
+          <span>{incident.affected}</span>
+        </div>
       </div>
+      <div className="card__arrow">→</div>
+    </Link>
+  );
+}
 
-      <h2 className="text-sm font-semibold leading-tight text-zinc-100">
-        <Link
-          href={`/incident/${incident.slug}`}
-          className="transition-colors duration-150 hover:text-cyan-300"
-        >
-          {incident.title}
-        </Link>
-      </h2>
+/* Row variant */
+export function IncidentRow({ incident }: Props) {
+  const sev = SEV_COLOR[incident.severity];
+  const style = { ["--sev" as string]: sev } as React.CSSProperties;
 
-      <p className="mt-0.5 text-sm leading-snug text-zinc-300">{incident.summary}</p>
-      <p className="mt-0.5 text-xs text-zinc-400">
-        <span className="text-zinc-500">Affected:</span> {incident.affected}
-      </p>
+  return (
+    <Link href={`/incident/${incident.slug}`} className="row" style={style}>
+      <div className="row__date">{fmtShort(incident.date)}</div>
+      <div className="row__sev">{incident.severity}</div>
+      <div className="row__cat">{incident.category}</div>
+      <div className="row__title">{incident.title}</div>
+      <div className="row__affected">{incident.affected}</div>
+      <div className="row__arrow">›</div>
+    </Link>
+  );
+}
 
-      <div className="mt-2 flex items-center justify-between border-t border-zinc-800 pt-1.5">
-        <span className="text-[11px] uppercase tracking-[0.08em] text-zinc-500">
-          Full write-up available
-        </span>
-        <Link
-          href={`/incident/${incident.slug}`}
-          className="micro-lift glow-focus inline-flex items-center gap-1 rounded-md border border-cyan-500/45 bg-cyan-500/10 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-cyan-200 hover:border-cyan-400 hover:bg-cyan-500/20"
-        >
-          View details
-          <span aria-hidden>→</span>
-        </Link>
+/* Timeline variant */
+export function IncidentTimelineItem({ incident }: Props) {
+  const sev = SEV_COLOR[incident.severity];
+  const style = { ["--sev" as string]: sev } as React.CSSProperties;
+
+  return (
+    <Link href={`/incident/${incident.slug}`} className="tl-item" style={style}>
+      <div className="tl-item__head">
+        <span>{formatIncidentDate(incident.date)}</span>
+        <span style={{ color: sev }}>■ {incident.severity}</span>
+        <span>{incident.category}</span>
       </div>
-    </article>
+      <h3 className="tl-item__title">{incident.title}</h3>
+      <p className="tl-item__sum">{incident.summary}</p>
+    </Link>
   );
 }

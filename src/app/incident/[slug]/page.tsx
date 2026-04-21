@@ -8,7 +8,6 @@ import {
   formatIncidentDate,
   getAllIncidents,
   getIncidentBySlug,
-  getSeverityTone,
 } from "@/lib/incidents";
 
 type IncidentPageProps = {
@@ -23,72 +22,78 @@ export async function generateStaticParams() {
 export async function generateMetadata({ params }: IncidentPageProps): Promise<Metadata> {
   const { slug } = await params;
   const incident = await getIncidentBySlug(slug);
-  if (!incident) {
-    return { title: "Incident Not Found" };
-  }
-
+  if (!incident) return { title: "Incident Not Found" };
   return {
     title: `${incident.title} | AHackaday`,
     description: incident.summary,
   };
 }
 
+const SEV_COLOR = {
+  critical: "var(--sev-critical)",
+  high: "var(--sev-high)",
+  medium: "var(--sev-medium)",
+  low: "var(--sev-low)",
+} as const;
+
 export default async function IncidentPage({ params }: IncidentPageProps) {
   const { slug } = await params;
   const incident = await getIncidentBySlug(slug);
   if (!incident) notFound();
 
-  return (
-    <main className="mx-auto w-full max-w-4xl px-4 py-4 sm:px-6">
-      <Link href="/" className="text-xs text-zinc-500 hover:text-zinc-100">
-        ← Back to feed
-      </Link>
+  const sev = SEV_COLOR[incident.severity];
 
-      <article className="mt-2 border border-zinc-800 bg-zinc-900/30 p-3.5 sm:p-5">
-        <div className="mb-2 flex flex-wrap items-center gap-2 text-xs">
-          <time className="text-zinc-400">{formatIncidentDate(incident.date)}</time>
-          <span className={`border px-1.5 py-0.5 uppercase ${getSeverityTone(incident.severity)}`}>
-            {incident.severity}
-          </span>
-          <span className="text-zinc-500">{incident.category}</span>
+  return (
+    <main className="shell">
+      <div className="detail">
+        <Link href="/" className="back-link">back to feed</Link>
+
+        <div className="detail__head">
+          <div className="detail__tags">
+            <span>{formatIncidentDate(incident.date)}</span>
+            <span className="sev-chip" style={{ ["--sev" as string]: sev } as React.CSSProperties}>
+              {incident.severity}
+            </span>
+            <span>{incident.category}</span>
+          </div>
+          <h1 className="detail__title">{incident.title}</h1>
+          <p className="detail__lead">{incident.summary}</p>
         </div>
 
-        <h1 className="text-xl font-semibold leading-tight text-zinc-100">{incident.title}</h1>
-        <p className="mt-1.5 text-sm leading-relaxed text-zinc-300">{incident.summary}</p>
-
-        <dl className="mt-3 grid gap-2 border-y border-zinc-800 py-2 text-sm sm:grid-cols-2">
+        <div className="detail__meta">
           <div>
-            <dt className="text-xs uppercase tracking-wide text-zinc-500">What&apos;s Affected</dt>
-            <dd className="text-zinc-200">{incident.affected}</dd>
+            <span className="k">what&apos;s affected</span>
+            <span className="v">{incident.affected}</span>
           </div>
           <div>
-            <dt className="text-xs uppercase tracking-wide text-zinc-500">Mitigation Status</dt>
-            <dd className="text-zinc-200">{incident.mitigationStatus}</dd>
+            <span className="k">mitigation status</span>
+            <span className="v">{incident.mitigationStatus}</span>
           </div>
-        </dl>
+          <div>
+            <span className="k">category</span>
+            <span className="v">{incident.category}</span>
+          </div>
+          <div>
+            <span className="k">first reported</span>
+            <span className="v">{formatIncidentDate(incident.date)}</span>
+          </div>
+        </div>
 
-        <div className="prose prose-invert prose-sm mt-4 max-w-none prose-p:leading-relaxed prose-headings:text-zinc-100 prose-a:text-cyan-300">
+        <div className="detail__body">
           <ReactMarkdown remarkPlugins={[remarkGfm]}>{incident.content}</ReactMarkdown>
         </div>
 
-        <section className="mt-4">
-          <h2 className="mb-1.5 text-sm font-semibold text-zinc-100">Sources</h2>
-          <ul className="space-y-1 text-sm text-zinc-300">
-            {incident.sources.map((source) => (
-              <li key={source}>
-                <a
-                  href={source}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="text-cyan-300 hover:text-cyan-200"
-                >
-                  {source}
-                </a>
+        <section className="detail__sources">
+          <h3>sources</h3>
+          <ul>
+            {incident.sources.map((s) => (
+              <li key={s}>
+                <a href={s} target="_blank" rel="noreferrer">{s}</a>
               </li>
             ))}
           </ul>
         </section>
-      </article>
+      </div>
     </main>
   );
 }
