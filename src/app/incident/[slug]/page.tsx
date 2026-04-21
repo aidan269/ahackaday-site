@@ -67,10 +67,6 @@ export default async function IncidentPage({ params }: IncidentPageProps) {
             <span className="v">{incident.affected}</span>
           </div>
           <div>
-            <span className="k">mitigation status</span>
-            <span className="v">{incident.mitigationStatus}</span>
-          </div>
-          <div>
             <span className="k">category</span>
             <span className="v">{incident.category}</span>
           </div>
@@ -83,11 +79,8 @@ export default async function IncidentPage({ params }: IncidentPageProps) {
         <section className="detail__remediation">
           <h3>remediation</h3>
           <div className="detail__remediation-box">
-            <p className="lead">
-              Current status: <strong>{incident.mitigationStatus}</strong>
-            </p>
             <p>
-              Prioritize containment and patching for affected systems ({incident.affected}), then verify controls
+              Prioritize containment and patching for affected systems ({incident.affected}), verify controls,
               and monitor source guidance for additional mitigation updates.
             </p>
           </div>

@@ -244,10 +244,10 @@ main.shell { max-width: 1560px; margin: 0 auto; padding: 48px 40px 160px; positi
 .detail__title { font-size: clamp(28px, 4vw, 44px); line-height: 1.05; font-weight: 500; letter-spacing: -0.035em; color: var(--fg); margin: 0 0 16px; max-width: 22ch; text-wrap: balance; }
 .detail__lead { font-size: 15px; line-height: 1.65; color: var(--fg-2); max-width: 64ch; margin: 0; }
 
-.detail__meta { display: grid; grid-template-columns: 1fr 1fr; border: 1px solid var(--border); border-radius: 10px; background: rgba(255,255,255,0.96); margin-bottom: 36px; overflow: hidden; }
+.detail__meta { display: grid; grid-template-columns: repeat(3, 1fr); border: 1px solid var(--border); border-radius: 10px; background: rgba(255,255,255,0.96); margin-bottom: 36px; overflow: hidden; }
 .detail__meta > div { padding: 16px 20px; border-right: 1px solid var(--border); border-bottom: 1px solid var(--border); }
-.detail__meta > div:nth-child(2n) { border-right: 0; }
-.detail__meta > div:nth-last-child(-n+2) { border-bottom: 0; }
+.detail__meta > div:nth-child(3n) { border-right: 0; }
+.detail__meta > div:nth-last-child(-n+3) { border-bottom: 0; }
 .detail__meta .k { font-size: 9.5px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--fg-muted); display: block; margin-bottom: 6px; }
 .detail__meta .v { font-size: 13px; color: var(--fg); line-height: 1.5; }
 
