@@ -19,7 +19,7 @@ export function FeedControls({ query, severity, typeValue, windowValue }: FeedCo
             type="text"
             name="q"
             defaultValue={query}
-            placeholder="cisco, zero-day, edge firewall…"
+            placeholder="search incidents, CVEs, vendors..."
           />
         </div>
       </div>

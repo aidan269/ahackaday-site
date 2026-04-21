@@ -33,6 +33,7 @@ type Props = { incident: Incident; index?: number };
 export function IncidentItem({ incident }: Props) {
   const sev = SEV_COLOR[incident.severity];
   const style = { ["--sev" as string]: sev } as React.CSSProperties;
+  const isExploited = /exploit/i.test(incident.summary) || incident.category === "exploitation";
 
   return (
     <Link href={`/incident/${incident.slug}`} className="card" style={style}>
@@ -44,9 +45,15 @@ export function IncidentItem({ incident }: Props) {
         <div className="card__tagline">
           <span className={`sev-chip sev-${incident.severity}`} style={style}>{incident.severity}</span>
           <span className="cat-chip">{incident.category}</span>
+          <span className="card__time">{rel(incident.date)}</span>
         </div>
         <h2 className="card__title">{incident.title}</h2>
         <p className="card__sum">{incident.summary}</p>
+        {isExploited && (
+          <div className="card__badges">
+            <span className="exploit-badge">exploited</span>
+          </div>
+        )}
         <div className="card__affected">
           <span className="k">affected</span>
           <span>{incident.affected}</span>

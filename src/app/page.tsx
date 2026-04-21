@@ -40,11 +40,11 @@ export default async function Home({ searchParams }: HomeProps) {
   const today = new Date();
   const monthShort = today.toLocaleDateString("en-US", { month: "short" }).toLowerCase();
 
-  const mkHref = (nextSeverity: string) => {
+  const mkHref = (nextSeverity: string, nextType = typeValue) => {
     const next = new URLSearchParams();
     if (query) next.set("q", query);
     if (nextSeverity && nextSeverity !== "all") next.set("severity", nextSeverity);
-    if (typeValue !== "all") next.set("type", typeValue);
+    if (nextType !== "all") next.set("type", nextType);
     if (windowValue !== "30d") next.set("window", windowValue);
     next.set("layout", "card");
     const qs = next.toString();
@@ -70,7 +70,7 @@ export default async function Home({ searchParams }: HomeProps) {
         </div>
         <div className="page-head__stats">
           <div className="stat">
-            <span className="stat__k">tracked</span>
+            <span className="stat__k">total</span>
             <span className="stat__v">{incidents.length}</span>
           </div>
           <div className="stat">
@@ -95,7 +95,7 @@ export default async function Home({ searchParams }: HomeProps) {
         <Link href={mkHref("critical")} className={`pill ${severity === "critical" ? "is-active" : ""}`}>critical</Link>
         <Link href={mkHref("high")} className={`pill ${severity === "high" ? "is-active" : ""}`}>high</Link>
         <Link href={mkHref("medium")} className={`pill ${severity === "medium" ? "is-active" : ""}`}>medium</Link>
-        <Link href={mkHref("low")} className={`pill ${severity === "low" ? "is-active" : ""}`}>low</Link>
+        <Link href={mkHref("all", "exploitation")} className={`pill ${typeValue === "exploitation" ? "is-active" : ""}`}>exploited</Link>
       </div>
 
       <div className="feed-meta">
