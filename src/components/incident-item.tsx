@@ -42,7 +42,7 @@ export function IncidentItem({ incident }: Props) {
       </div>
       <div className="card__main">
         <div className="card__tagline">
-          <span className="sev-chip" style={style}>{incident.severity}</span>
+          <span className={`sev-chip sev-${incident.severity}`} style={style}>{incident.severity}</span>
           <span className="cat-chip">{incident.category}</span>
         </div>
         <h2 className="card__title">{incident.title}</h2>
@@ -65,7 +65,7 @@ export function IncidentRow({ incident }: Props) {
   return (
     <Link href={`/incident/${incident.slug}`} className="row" style={style}>
       <div className="row__date">{fmtShort(incident.date)}</div>
-      <div className="row__sev">{incident.severity}</div>
+      <div className={`row__sev sev-${incident.severity}`}>{incident.severity}</div>
       <div className="row__cat">{incident.category}</div>
       <div className="row__title">{incident.title}</div>
       <div className="row__affected">{incident.affected}</div>

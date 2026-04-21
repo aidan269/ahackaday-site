@@ -51,7 +51,10 @@ export default async function IncidentPage({ params }: IncidentPageProps) {
         <div className="detail__head">
           <div className="detail__tags">
             <span>{formatIncidentDate(incident.date)}</span>
-            <span className="sev-chip" style={{ ["--sev" as string]: sev } as React.CSSProperties}>
+            <span
+              className={`sev-chip sev-${incident.severity}`}
+              style={{ ["--sev" as string]: sev } as React.CSSProperties}
+            >
               {incident.severity}
             </span>
             <span>{incident.category}</span>

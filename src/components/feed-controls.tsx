@@ -3,14 +3,12 @@ type FeedControlsProps = {
   severity: string;
   typeValue: string;
   windowValue: string;
-  layout: string;
 };
 
-export function FeedControls({ query, severity, typeValue, windowValue, layout }: FeedControlsProps) {
+export function FeedControls({ query, severity, typeValue, windowValue }: FeedControlsProps) {
   return (
     <form className="controls">
-      {/* preserve the layout param across filter submissions */}
-      <input type="hidden" name="layout" value={layout} />
+      <input type="hidden" name="layout" value="card" />
 
       <div className="ctrl">
         <label className="sr" htmlFor="f-q">Search</label>
@@ -77,26 +75,8 @@ export function FeedControls({ query, severity, typeValue, windowValue, layout }
         </div>
       </div>
 
-      <div className="layout-toggle">
-        {["card", "row", "timeline"].map((v) => {
-          // preserve other params by letting the apply button submit;
-          // layout links submit form after setting hidden input
-          return (
-            <button
-              key={v}
-              type="submit"
-              name="layout"
-              value={v}
-              className={"nav-link" + (layout === v ? " is-active" : "")}
-              style={{ border: 0, background: "transparent", font: "inherit", cursor: "pointer" }}
-            >
-              {v}
-            </button>
-          );
-        })}
-      </div>
-
       <button type="submit" className="apply-btn">apply</button>
+
     </form>
   );
 }
