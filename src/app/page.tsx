@@ -28,6 +28,10 @@ export default async function Home({ searchParams }: HomeProps) {
   const windowValue = readParam(params.window, "30d");
 
   const all = await getAllIncidents();
+  const today = new Date();
+  const todayIso = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(
+    today.getDate(),
+  ).padStart(2, "0")}`;
   const incidents = filterIncidents(all, {
     query,
     severity: severity as Severity | "all",
@@ -37,10 +41,10 @@ export default async function Home({ searchParams }: HomeProps) {
 
   const critical = incidents.filter((i) => i.severity === "critical").length;
   const exploited = incidents.filter((i) => i.category === "exploitation").length;
-  const todayTop = incidents
+  const todayTop = all
+    .filter((i) => i.date.slice(0, 10) === todayIso)
     .filter((i) => i.severity === "critical" || i.severity === "high")
     .slice(0, 3);
-  const today = new Date();
   const monthShort = today.toLocaleDateString("en-US", { month: "short" }).toLowerCase();
 
   const mkHref = (nextSeverity: string, nextType = typeValue) => {

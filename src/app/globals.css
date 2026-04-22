@@ -527,7 +527,13 @@ main.shell { max-width: 1560px; margin: 0 auto; padding: 48px 40px 160px; positi
   main.shell { padding: 12px 10px calc(112px + env(safe-area-inset-bottom)); }
 
   .page-head { grid-template-columns: 1fr; align-items: start; gap: 18px; padding-bottom: 18px; margin-bottom: 18px; }
-  .page-title { font-size: clamp(28px, 8vw, 40px); max-width: 100%; }
+  .page-title {
+    font-size: clamp(36px, 10.2vw, 54px);
+    max-width: 100%;
+    line-height: 0.95;
+    letter-spacing: -0.045em;
+    text-wrap: pretty;
+  }
   .page-sub { display: none; }
   .mobile-kicker { display: inline-flex; }
   .page-head__stats {
@@ -614,8 +620,19 @@ main.shell { max-width: 1560px; margin: 0 auto; padding: 48px 40px 160px; positi
     padding-left: 12px;
     transform: translateY(-1px);
   }
-  .card__title { font-size: 15.5px; }
-  .card__sum { font-size: 12.5px; }
+  .card__title {
+    font-size: 18px;
+    line-height: 1.02;
+    letter-spacing: -0.035em;
+    margin-bottom: 7px;
+  }
+  .card__sum {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    font-size: 16px;
+    line-height: 1.5;
+    letter-spacing: -0.014em;
+    color: var(--fg-2);
+  }
   .card__context {
     grid-template-columns: 1fr;
     gap: 7px;
