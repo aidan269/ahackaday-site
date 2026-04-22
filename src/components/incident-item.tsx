@@ -31,10 +31,10 @@ function rel(iso: string) {
 type Props = { incident: Incident; index?: number };
 
 function nextActionForSeverity(severity: Severity): string {
-  if (severity === "critical") return "contain now and start emergency patching";
-  if (severity === "high") return "prioritize mitigation this cycle";
-  if (severity === "medium") return "validate exposure and queue remediation";
-  return "monitor updates and harden controls";
+  if (severity === "critical") return "patch today — we'll tell you how";
+  if (severity === "high") return "review this week and assign an owner";
+  if (severity === "medium") return "validate exposure and schedule remediation";
+  return "fyi: monitor only, no immediate action needed";
 }
 
 export function IncidentItem({ incident }: Props) {
@@ -44,7 +44,7 @@ export function IncidentItem({ incident }: Props) {
   const nextAction = nextActionForSeverity(incident.severity);
 
   return (
-    <Link href={`/incident/${incident.slug}`} className="card" style={style}>
+    <Link href={`/incident/${incident.slug}`} className={`card card--${incident.severity}`} style={style}>
       <div className="card__date">
         {fmtShort(incident.date)}
         <span className="rel">{rel(incident.date)}</span>

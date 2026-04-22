@@ -37,6 +37,9 @@ export default async function Home({ searchParams }: HomeProps) {
 
   const critical = incidents.filter((i) => i.severity === "critical").length;
   const exploited = incidents.filter((i) => i.category === "exploitation").length;
+  const todayTop = incidents
+    .filter((i) => i.severity === "critical" || i.severity === "high")
+    .slice(0, 3);
   const today = new Date();
   const monthShort = today.toLocaleDateString("en-US", { month: "short" }).toLowerCase();
 
@@ -58,7 +61,7 @@ export default async function Home({ searchParams }: HomeProps) {
           <div className="mobile-kicker">
             <span className="live-dot" />
             <span>live</span>
-            <span className="mobile-kicker-sep">{monthShort} {today.getDate()}</span>
+            <span className="mobile-kicker-sep">updated {monthShort} {today.getDate()}</span>
           </div>
           <h1 className="page-title">
             This week <span className="dim">in</span> <span className="accent">security</span>
@@ -90,6 +93,23 @@ export default async function Home({ searchParams }: HomeProps) {
         typeValue={typeValue}
         windowValue={windowValue}
       />
+      <section className="daily-digest">
+        <h2>today&apos;s 3 things</h2>
+        {todayTop.length === 0 ? (
+          <p>quiet queue right now. no critical or high incidents at the moment.</p>
+        ) : (
+          <ul>
+            {todayTop.map((incident) => (
+              <li key={incident.slug}>
+                <Link href={`/incident/${incident.slug}`}>
+                  <span className={`digest-sev digest-sev--${incident.severity}`}>{incident.severity}</span>
+                  <span>{incident.title}</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
       <div className="mobile-severity-pills">
         <Link href={mkHref("all")} className={`pill ${severity === "all" ? "is-active" : ""}`}>all</Link>
         <Link href={mkHref("critical")} className={`pill ${severity === "critical" ? "is-active" : ""}`}>critical</Link>
