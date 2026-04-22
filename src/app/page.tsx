@@ -65,7 +65,7 @@ export default async function Home({ searchParams }: HomeProps) {
             <span className="accent">.</span>
           </h1>
           <p className="page-sub">
-            Major cybersecurity incidents with broad implications.
+            Clear, human-first incident intelligence so teams can respond with confidence.
           </p>
         </div>
         <div className="page-head__stats">
@@ -100,7 +100,7 @@ export default async function Home({ searchParams }: HomeProps) {
 
       <div className="feed-meta">
         <span>
-          showing <span className="strong">{incidents.length}</span> of {all.length} sorted by date desc
+          showing <span className="strong">{incidents.length}</span> of {all.length} highest-signal incidents first
         </span>
       </div>
 

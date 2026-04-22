@@ -30,10 +30,18 @@ function rel(iso: string) {
 
 type Props = { incident: Incident; index?: number };
 
+function nextActionForSeverity(severity: Severity): string {
+  if (severity === "critical") return "contain now and start emergency patching";
+  if (severity === "high") return "prioritize mitigation this cycle";
+  if (severity === "medium") return "validate exposure and queue remediation";
+  return "monitor updates and harden controls";
+}
+
 export function IncidentItem({ incident }: Props) {
   const sev = SEV_COLOR[incident.severity];
   const style = { ["--sev" as string]: sev } as React.CSSProperties;
   const isExploited = /exploit/i.test(incident.summary) || incident.category === "exploitation";
+  const nextAction = nextActionForSeverity(incident.severity);
 
   return (
     <Link href={`/incident/${incident.slug}`} className="card" style={style}>
@@ -54,6 +62,16 @@ export function IncidentItem({ incident }: Props) {
             <span className="exploit-badge">exploited</span>
           </div>
         )}
+        <div className="card__context">
+          <div className="card__context-item">
+            <span className="k">impact</span>
+            <span>{incident.affected}</span>
+          </div>
+          <div className="card__context-item">
+            <span className="k">next step</span>
+            <span>{nextAction}</span>
+          </div>
+        </div>
         <div className="card__affected">
           <span className="k">affected</span>
           <span>{incident.affected}</span>
