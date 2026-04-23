@@ -21,9 +21,37 @@ export async function generateMetadata({ params }: IncidentPageProps): Promise<M
   const { slug } = await params;
   const incident = await getIncidentBySlug(slug);
   if (!incident) return { title: "Incident Not Found" };
+  const title = `${incident.title} | AHackaday`;
+  const description = incident.summary;
+  const url = `/incident/${incident.slug}`;
+  const image = `/incident/${incident.slug}/opengraph-image`;
+
   return {
-    title: `${incident.title} | AHackaday`,
-    description: incident.summary,
+    title,
+    description,
+    alternates: {
+      canonical: url,
+    },
+    openGraph: {
+      title,
+      description,
+      url,
+      type: "article",
+      images: [
+        {
+          url: image,
+          width: 1200,
+          height: 630,
+          alt: incident.title,
+        },
+      ],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+      images: [image],
+    },
   };
 }
 

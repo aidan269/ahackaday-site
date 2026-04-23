@@ -9,9 +9,23 @@ const mono = JetBrains_Mono({
   subsets: ["latin"],
 });
 
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://ahackaday-site.vercel.app";
+
 export const metadata: Metadata = {
+  metadataBase: new URL(siteUrl),
   title: "AHackaday",
   description: "Major cybersecurity incidents with broad implications.",
+  openGraph: {
+    title: "AHackaday",
+    description: "Major cybersecurity incidents with broad implications.",
+    type: "website",
+    url: "/",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "AHackaday",
+    description: "Major cybersecurity incidents with broad implications.",
+  },
 };
 
 export default function RootLayout({
