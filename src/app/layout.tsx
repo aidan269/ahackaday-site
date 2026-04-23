@@ -15,16 +15,29 @@ export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: "AHackaday",
   description: "Major cybersecurity incidents with broad implications.",
+  alternates: {
+    canonical: "/",
+  },
   openGraph: {
     title: "AHackaday",
     description: "Major cybersecurity incidents with broad implications.",
+    siteName: "AHackaday",
     type: "website",
     url: "/",
+    images: [
+      {
+        url: "/opengraph-image",
+        width: 1200,
+        height: 630,
+        alt: "AHackaday incident intelligence",
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",
     title: "AHackaday",
     description: "Major cybersecurity incidents with broad implications.",
+    images: ["/twitter-image"],
   },
 };
 

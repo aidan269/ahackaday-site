@@ -21,21 +21,25 @@ export async function generateMetadata({ params }: IncidentPageProps): Promise<M
   const { slug } = await params;
   const incident = await getIncidentBySlug(slug);
   if (!incident) return { title: "Incident Not Found" };
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://ahackaday-site.vercel.app";
   const title = `${incident.title} | AHackaday`;
   const description = incident.summary;
   const url = `/incident/${incident.slug}`;
-  const image = `/incident/${incident.slug}/opengraph-image`;
+  const canonical = new URL(url, siteUrl).toString();
+  const image = new URL(`/incident/${incident.slug}/opengraph-image`, siteUrl).toString();
+  const twitterImage = new URL(`/incident/${incident.slug}/twitter-image`, siteUrl).toString();
 
   return {
     title,
     description,
     alternates: {
-      canonical: url,
+      canonical,
     },
     openGraph: {
       title,
       description,
-      url,
+      url: canonical,
+      siteName: "AHackaday",
       type: "article",
       images: [
         {
@@ -50,7 +54,7 @@ export async function generateMetadata({ params }: IncidentPageProps): Promise<M
       card: "summary_large_image",
       title,
       description,
-      images: [image],
+      images: [twitterImage],
     },
   };
 }
