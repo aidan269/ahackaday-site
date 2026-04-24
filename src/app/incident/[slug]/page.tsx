@@ -66,17 +66,17 @@ const SEV_COLOR = {
   low: "var(--sev-low)",
 } as const;
 
-function remediationForSeverity(severity: keyof typeof SEV_COLOR, affected: string): string {
+function implicationsForSeverity(severity: keyof typeof SEV_COLOR, affected: string): string {
   if (severity === "critical") {
-    return `Patch or contain affected systems (${affected}) today, verify exploit blocking controls, and rotate exposed credentials as needed.`;
+    return `This can cause immediate operational or security disruption for ${affected}, with active attacker interest likely and little response time once exploitation starts.`;
   }
   if (severity === "high") {
-    return `Prioritize remediation this week for affected systems (${affected}), validate detection coverage, and confirm rollback options before patching.`;
+    return `This can create material business risk for ${affected} if left open, including service interruption, credential abuse, or downstream partner impact over days rather than weeks.`;
   }
   if (severity === "medium") {
-    return `Validate whether systems in scope (${affected}) are exposed, schedule patching in the next maintenance cycle, and monitor vendor updates.`;
+    return `This is less likely to trigger immediate incident response, but still increases exposure for ${affected} and can become high impact if chained with other weaknesses.`;
   }
-  return `Track the issue across affected scope (${affected}), apply hardening where practical, and defer full remediation to routine maintenance.`;
+  return `This is primarily a monitoring-level risk for ${affected}, but it can still add background operational drag and security debt if ignored over time.`;
 }
 
 export default async function IncidentPage({ params }: IncidentPageProps) {
@@ -122,10 +122,10 @@ export default async function IncidentPage({ params }: IncidentPageProps) {
         </div>
 
         <section className="detail__remediation">
-          <h3>remediation</h3>
+          <h3>real-world impact</h3>
           <div className="detail__remediation-box">
             <p>
-              {remediationForSeverity(incident.severity, incident.affected)}
+              {implicationsForSeverity(incident.severity, incident.affected)}
             </p>
           </div>
         </section>
