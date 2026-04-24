@@ -134,7 +134,12 @@ function mapDbRowToIncident(row: SupabaseIncidentRow): Incident {
 
 function classifyIncidentType(row: SupabaseIncidentRow): Exclude<IncidentType, "all"> {
   const text = `${row.title} ${row.raw_content} ${row.source_name}`.toLowerCase();
-  if (text.includes("zero-day") || text.includes("0-day")) return "zero-day";
+  const hasZeroDayToken = text.includes("zero-day") || text.includes("0-day");
+  const hasActiveExploitSignal =
+    text.includes("actively exploited") ||
+    text.includes("under active exploitation") ||
+    text.includes("in the wild");
+  if (hasZeroDayToken && hasActiveExploitSignal) return "zero-day";
   if (text.includes("supply chain") || text.includes("package") || text.includes("dependency")) return "supply-chain";
   if (text.includes("ransomware")) return "ransomware";
   if (text.includes("identity") || text.includes("sso") || text.includes("mfa") || text.includes("token")) return "identity";
@@ -207,7 +212,14 @@ async function getAllSupabaseIncidents(): Promise<Incident[]> {
     return [];
   }
 
-  return (data as SupabaseIncidentRow[]).map(mapDbRowToIncident).sort((a, b) => {
+  const deduped = new Map<string, Incident>();
+  for (const incident of (data as SupabaseIncidentRow[]).map(mapDbRowToIncident)) {
+    const normalizedTitle = incident.title.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+    const key = `${incident.date.slice(0, 10)}::${normalizedTitle}`;
+    if (!deduped.has(key)) deduped.set(key, incident);
+  }
+
+  return Array.from(deduped.values()).sort((a, b) => {
     const dateDiff = new Date(b.date).getTime() - new Date(a.date).getTime();
     if (dateDiff !== 0) return dateDiff;
     return severityRank[b.severity] - severityRank[a.severity];

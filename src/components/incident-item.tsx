@@ -40,7 +40,9 @@ function nextActionForSeverity(severity: Severity): string {
 export function IncidentItem({ incident }: Props) {
   const sev = SEV_COLOR[incident.severity];
   const style = { ["--sev" as string]: sev } as React.CSSProperties;
-  const isExploited = /exploit/i.test(incident.summary) || incident.category === "exploitation";
+  const isExploited = /(actively )?exploited( in the wild)?|under active exploitation|zero-day attacks/i.test(
+    `${incident.title} ${incident.summary} ${incident.content}`,
+  );
   const nextAction = nextActionForSeverity(incident.severity);
 
   return (
@@ -64,17 +66,13 @@ export function IncidentItem({ incident }: Props) {
         )}
         <div className="card__context">
           <div className="card__context-item">
-            <span className="k">impact</span>
+            <span className="k">affected scope</span>
             <span>{incident.affected}</span>
           </div>
           <div className="card__context-item">
             <span className="k">next step</span>
             <span>{nextAction}</span>
           </div>
-        </div>
-        <div className="card__affected">
-          <span className="k">affected</span>
-          <span>{incident.affected}</span>
         </div>
       </div>
       <div className="card__arrow">→</div>

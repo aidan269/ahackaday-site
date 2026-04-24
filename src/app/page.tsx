@@ -6,6 +6,7 @@ import {
 import {
   filterIncidents,
   getAllIncidents,
+  type Incident,
   type IncidentType,
   type Severity,
 } from "@/lib/incidents";
@@ -20,6 +21,11 @@ function readParam(v: string | string[] | undefined, fallback: string): string {
   return fallback;
 }
 
+function isActivelyExploited(incident: Incident): boolean {
+  const text = `${incident.title} ${incident.summary} ${incident.content}`.toLowerCase();
+  return /(actively )?exploited( in the wild)?|under active exploitation|zero-day attacks/.test(text);
+}
+
 export default async function Home({ searchParams }: HomeProps) {
   const params = await searchParams;
   const query = readParam(params.q, "");
@@ -29,9 +35,6 @@ export default async function Home({ searchParams }: HomeProps) {
 
   const all = await getAllIncidents();
   const today = new Date();
-  const todayIso = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(
-    today.getDate(),
-  ).padStart(2, "0")}`;
   const incidents = filterIncidents(all, {
     query,
     severity: severity as Severity | "all",
@@ -40,11 +43,7 @@ export default async function Home({ searchParams }: HomeProps) {
   });
 
   const critical = incidents.filter((i) => i.severity === "critical").length;
-  const exploited = incidents.filter((i) => i.category === "exploitation").length;
-  const todayTop = all
-    .filter((i) => i.date.slice(0, 10) === todayIso)
-    .filter((i) => i.severity === "critical" || i.severity === "high")
-    .slice(0, 3);
+  const exploited = incidents.filter(isActivelyExploited).length;
   const monthShort = today.toLocaleDateString("en-US", { month: "short" }).toLowerCase();
 
   const mkHref = (nextSeverity: string, nextType = typeValue) => {
@@ -77,7 +76,7 @@ export default async function Home({ searchParams }: HomeProps) {
         </div>
         <div className="page-head__stats">
           <div className="stat">
-            <span className="stat__k">total</span>
+            <span className="stat__k">in view</span>
             <span className="stat__v">{incidents.length}</span>
           </div>
           <div className="stat">
@@ -85,10 +84,11 @@ export default async function Home({ searchParams }: HomeProps) {
             <span className="stat__v crit">{critical}</span>
           </div>
           <div className="stat">
-            <span className="stat__k">exploited</span>
+            <span className="stat__k">actively exploited</span>
             <span className="stat__v orange">{exploited}</span>
           </div>
         </div>
+        <p className="stats-note">counts reflect current filters and visible time window</p>
       </div>
 
       <FeedControls
@@ -97,29 +97,12 @@ export default async function Home({ searchParams }: HomeProps) {
         typeValue={typeValue}
         windowValue={windowValue}
       />
-      <section className="daily-digest">
-        <h2>today&apos;s 3 things</h2>
-        {todayTop.length === 0 ? (
-          <p>quiet queue right now. no critical or high incidents at the moment.</p>
-        ) : (
-          <ul>
-            {todayTop.map((incident) => (
-              <li key={incident.slug}>
-                <Link href={`/incident/${incident.slug}`}>
-                  <span className={`digest-sev digest-sev--${incident.severity}`}>{incident.severity}</span>
-                  <span>{incident.title}</span>
-                </Link>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
       <div className="mobile-severity-pills">
         <Link href={mkHref("all")} className={`pill ${severity === "all" ? "is-active" : ""}`}>all</Link>
         <Link href={mkHref("critical")} className={`pill ${severity === "critical" ? "is-active" : ""}`}>critical</Link>
         <Link href={mkHref("high")} className={`pill ${severity === "high" ? "is-active" : ""}`}>high</Link>
         <Link href={mkHref("medium")} className={`pill ${severity === "medium" ? "is-active" : ""}`}>medium</Link>
-        <Link href={mkHref("all", "exploitation")} className={`pill ${typeValue === "exploitation" ? "is-active" : ""}`}>exploited</Link>
+        <Link href={mkHref("low")} className={`pill ${severity === "low" ? "is-active" : ""}`}>low</Link>
       </div>
 
       <div className="feed-meta">

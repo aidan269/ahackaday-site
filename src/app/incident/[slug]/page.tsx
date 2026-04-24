@@ -66,6 +66,19 @@ const SEV_COLOR = {
   low: "var(--sev-low)",
 } as const;
 
+function remediationForSeverity(severity: keyof typeof SEV_COLOR, affected: string): string {
+  if (severity === "critical") {
+    return `Patch or contain affected systems (${affected}) today, verify exploit blocking controls, and rotate exposed credentials as needed.`;
+  }
+  if (severity === "high") {
+    return `Prioritize remediation this week for affected systems (${affected}), validate detection coverage, and confirm rollback options before patching.`;
+  }
+  if (severity === "medium") {
+    return `Validate whether systems in scope (${affected}) are exposed, schedule patching in the next maintenance cycle, and monitor vendor updates.`;
+  }
+  return `Track the issue across affected scope (${affected}), apply hardening where practical, and defer full remediation to routine maintenance.`;
+}
+
 export default async function IncidentPage({ params }: IncidentPageProps) {
   const { slug } = await params;
   const incident = await getIncidentBySlug(slug);
@@ -112,8 +125,7 @@ export default async function IncidentPage({ params }: IncidentPageProps) {
           <h3>remediation</h3>
           <div className="detail__remediation-box">
             <p>
-              Prioritize containment and patching for affected systems ({incident.affected}), verify controls,
-              and monitor source guidance for additional mitigation updates.
+              {remediationForSeverity(incident.severity, incident.affected)}
             </p>
           </div>
         </section>
