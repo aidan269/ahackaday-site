@@ -68,15 +68,15 @@ const SEV_COLOR = {
 
 function implicationsForSeverity(severity: keyof typeof SEV_COLOR, affected: string): string {
   if (severity === "critical") {
-    return `Why you should care: this can become a real outage or breach fast for ${affected}. If this touches your stack, treat it as urgent today, not a “later this week” task.`;
+    return `Why you should care: this can become a real outage or breach fast for ${affected}. If this touches your stack, treat it as urgent today, not a “later this week” task. Editorial take: teams that move first here usually avoid the public postmortem later.`;
   }
   if (severity === "high") {
-    return `Why you should care: this is the kind of issue that quietly turns into customer pain, security incidents, or fire-drills for ${affected} if nobody owns it this week.`;
+    return `Why you should care: this is the kind of issue that quietly turns into customer pain, security incidents, or fire-drills for ${affected} if nobody owns it this week. Editorial take: this is exactly the “not urgent until it suddenly is” class of risk.`;
   }
   if (severity === "medium") {
-    return `Why you should care: this is not panic-level, but it still raises risk for ${affected}. If it combines with another weak spot, impact can jump quickly.`;
+    return `Why you should care: this is not panic-level, but it still raises risk for ${affected}. If it combines with another weak spot, impact can jump quickly. Editorial take: medium findings are often the building blocks behind bigger incidents.`;
   }
-  return `Why you should care: low severity does not mean no severity. For ${affected}, this is mostly a hygiene issue now, but ignoring these is how future incidents get easier.`;
+  return `Why you should care: low severity does not mean no severity. For ${affected}, this is mostly a hygiene issue now, but ignoring these is how future incidents get easier. Editorial take: boring fixes are usually what keep headline incidents from happening later.`;
 }
 
 export default async function IncidentPage({ params }: IncidentPageProps) {
