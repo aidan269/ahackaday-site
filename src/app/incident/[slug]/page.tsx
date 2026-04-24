@@ -68,15 +68,15 @@ const SEV_COLOR = {
 
 function implicationsForSeverity(severity: keyof typeof SEV_COLOR, affected: string): string {
   if (severity === "critical") {
-    return `This can cause immediate operational or security disruption for ${affected}, with active attacker interest likely and little response time once exploitation starts.`;
+    return `Why you should care: this can become a real outage or breach fast for ${affected}. If this touches your stack, treat it as urgent today, not a “later this week” task.`;
   }
   if (severity === "high") {
-    return `This can create material business risk for ${affected} if left open, including service interruption, credential abuse, or downstream partner impact over days rather than weeks.`;
+    return `Why you should care: this is the kind of issue that quietly turns into customer pain, security incidents, or fire-drills for ${affected} if nobody owns it this week.`;
   }
   if (severity === "medium") {
-    return `This is less likely to trigger immediate incident response, but still increases exposure for ${affected} and can become high impact if chained with other weaknesses.`;
+    return `Why you should care: this is not panic-level, but it still raises risk for ${affected}. If it combines with another weak spot, impact can jump quickly.`;
   }
-  return `This is primarily a monitoring-level risk for ${affected}, but it can still add background operational drag and security debt if ignored over time.`;
+  return `Why you should care: low severity does not mean no severity. For ${affected}, this is mostly a hygiene issue now, but ignoring these is how future incidents get easier.`;
 }
 
 export default async function IncidentPage({ params }: IncidentPageProps) {
