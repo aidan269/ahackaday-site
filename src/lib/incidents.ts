@@ -155,8 +155,11 @@ function inferAffectedFromRow(row: SupabaseIncidentRow, summary: string): string
       // Reject low-signal fragments that read like sentence tails.
       if (
         candidate.length < 8 ||
+        candidate.length > 90 ||
+        candidate.includes(",") ||
         /^(or|and|to|for|with)\b/i.test(candidate) ||
-        /(in any way|compromised in any way)/i.test(candidate)
+        /^(a|an|the)\s+/i.test(candidate) ||
+        /(in any way|compromised in any way|common complaint|unexpected updates)/i.test(candidate)
       ) {
         continue;
       }
@@ -192,6 +195,32 @@ function dedupeBodyAgainstSummary(title: string, summary: string, body: string):
   return normalizeDisplayText(cleaned);
 }
 
+function sanitizeArticleBody(body: string): string {
+  let cleaned = normalizeDisplayText(body);
+  const cutMarkers = [
+    /\b\d{1,3}% of .*? still unpatched\b/i,
+    /\bAt the Autonomous Validation Summit\b/i,
+    /\bA wave of new exploits is coming\b/i,
+    /\bRelated articles?:\b/i,
+    /\bRecently leaked\b/i,
+  ];
+  for (const marker of cutMarkers) {
+    const idx = cleaned.search(marker);
+    if (idx > 120) {
+      cleaned = cleaned.slice(0, idx).trim();
+      break;
+    }
+  }
+
+  const sentences = cleaned
+    .split(/(?<=[.!?])\s+/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+
+  const compact = sentences.slice(0, 6).join(" ");
+  return compact.length > 950 ? `${compact.slice(0, 950).trim()}…` : compact;
+}
+
 function mapDbRowToIncident(row: SupabaseIncidentRow): Incident {
   const rawSummaryFallback = normalizeDisplayText(
     row.claude_summary.trim() || row.raw_content.trim() || "No summary available.",
@@ -210,10 +239,12 @@ function mapDbRowToIncident(row: SupabaseIncidentRow): Incident {
   ];
   const content = parsedBriefing
     ? normalizeDisplayText(parsedBriefing.realWorldImpact)
-    : dedupeBodyAgainstSummary(
-        row.title,
-        summary,
-        row.raw_content.trim() || row.claude_summary.trim() || "Awaiting analyst summary.",
+    : sanitizeArticleBody(
+        dedupeBodyAgainstSummary(
+          row.title,
+          summary,
+          row.raw_content.trim() || row.claude_summary.trim() || "Awaiting analyst summary.",
+        ),
       );
 
   return {

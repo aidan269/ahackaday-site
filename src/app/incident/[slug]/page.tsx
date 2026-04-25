@@ -117,6 +117,20 @@ function parseContentSections(raw: unknown): Array<{ h: string; p: string }> {
     currentParagraph.push(line);
   }
   flush();
+  if (sections.length === 0 && text.length > 0) {
+    const sentences = text
+      .split(/(?<=[.!?])\s+/)
+      .map((s) => s.trim())
+      .filter(Boolean);
+    if (sentences.length > 0) {
+      const s1 = sentences.slice(0, 2).join(" ");
+      const s2 = sentences.slice(2, 4).join(" ");
+      const s3 = sentences.slice(4, 6).join(" ");
+      if (s1) sections.push({ h: "What Happened", p: s1 });
+      if (s2) sections.push({ h: "Why This Matters", p: s2 });
+      if (s3) sections.push({ h: "Technical Notes", p: s3 });
+    }
+  }
   return sections;
 }
 
