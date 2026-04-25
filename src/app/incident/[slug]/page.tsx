@@ -76,6 +76,18 @@ export default async function IncidentPage({ params }: IncidentPageProps) {
   if (!incident) notFound();
 
   const sev = SEV_COLOR[incident.severity];
+  const trackingId = incident.evidence.cves[0] ?? /CVE-\d{4}-\d+/i.exec(incident.title)?.[0] ?? "n/a";
+  const rawContent = incident.content as unknown;
+  const contentSections = Array.isArray(rawContent)
+    ? rawContent
+        .map((sec) => {
+          if (!sec || typeof sec !== "object") return null;
+          const h = "h" in sec && typeof sec.h === "string" ? sec.h.trim() : "";
+          const p = "p" in sec && typeof sec.p === "string" ? sec.p.trim() : "";
+          return h && p ? { h, p } : null;
+        })
+        .filter((sec): sec is { h: string; p: string } => sec !== null)
+    : [];
 
   return (
     <main className="shell">
@@ -105,8 +117,12 @@ export default async function IncidentPage({ params }: IncidentPageProps) {
             <span className="v">{incident.affected}</span>
           </div>
           <div>
-            <span className="k">category</span>
-            <span className="v">{incident.category}</span>
+            <span className="k">mitigation status</span>
+            <span className="v">{incident.mitigationStatus}</span>
+          </div>
+          <div>
+            <span className="k">tracking id</span>
+            <span className="v">{trackingId}</span>
           </div>
           <div>
             <span className="k">first reported</span>
@@ -114,60 +130,25 @@ export default async function IncidentPage({ params }: IncidentPageProps) {
           </div>
         </div>
 
-        <section className="detail__brief-section">
-          <h3>tldr</h3>
-          <p>{incident.tldr}</p>
-        </section>
-
-        <section className="detail__brief-section">
-          <h3>real-world impact</h3>
-          <p>{incident.realWorldImpact}</p>
-        </section>
-
-        <section className="detail__brief-section">
-          <h3>why you should care</h3>
-          <p>{incident.whyCare}</p>
-        </section>
-
-        <section className="detail__sources">
-          <h3>action items</h3>
-          <ul className="detail__list">
-            {incident.actionItems.map((action) => (
-              <li key={action}>{action}</li>
-            ))}
-          </ul>
-        </section>
-
-        <section className="detail__sources">
-          <h3>iocs</h3>
-          {incident.iocs.length === 0 ? (
-            <p style={{ margin: 0, color: "var(--fg-3)" }}>none reported in source.</p>
+        <div className="detail__body">
+          {contentSections.length > 0 ? (
+            contentSections.map((sec, idx) => (
+              <div key={`${sec.h}-${idx}`}>
+                <h3>{sec.h}</h3>
+                <p>{sec.p}</p>
+              </div>
+            ))
           ) : (
-            <ul className="detail__list">
-              {incident.iocs.map((ioc) => (
-                <li key={ioc}>{ioc}</li>
-              ))}
-            </ul>
+            <p>{incident.content}</p>
           )}
-        </section>
-
-        {incident.ambiguities.length > 0 && (
-          <section className="detail__sources">
-            <h3>ambiguities</h3>
-            <ul className="detail__list">
-              {incident.ambiguities.map((ambiguity) => (
-                <li key={ambiguity}>{ambiguity}</li>
-              ))}
-            </ul>
-          </section>
-        )}
+        </div>
 
         <section className="detail__sources">
-          <h3>read more</h3>
+          <h3>sources</h3>
           <ul>
             {incident.sources.map((sourceUrl) => (
               <li key={sourceUrl}>
-                <a href={sourceUrl} target="_blank" rel="noreferrer">full incident brief and source</a>
+                <a href={sourceUrl} target="_blank" rel="noreferrer">{sourceUrl}</a>
               </li>
             ))}
           </ul>

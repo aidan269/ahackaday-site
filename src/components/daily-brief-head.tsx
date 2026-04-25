@@ -13,8 +13,8 @@ export function DailyBriefHead({ dateStr, filteredLen, allLen, todayCrit, actCou
   return (
     <>
       <div className={`dailybrief${hot ? " is-hot" : ""}`}>
-        <span className="dailybrief__pulse" aria-hidden />
-        <span className="dailybrief__date">your security situation · {dateStr}</span>
+        <span className="pulse" aria-hidden />
+        <span className="date">your security situation · {dateStr}</span>
       </div>
       <h1 className="page-title">
         {hot ? (
@@ -30,23 +30,9 @@ export function DailyBriefHead({ dateStr, filteredLen, allLen, todayCrit, actCou
       <p className="todays-line">
         {hot ? (
           <>
-            {todayCrit > 0 ? (
-              <>
-                <span className="accent">{todayCrit}</span> critical
-              </>
-            ) : null}
-            {todayCrit > 0 && actCount > 0 ? " · " : ""}
-            {actCount > 0 ? (
-              <>
-                <span className="accent">{actCount}</span> actively exploited
-              </>
-            ) : null}
-            {(todayCrit > 0 || actCount > 0) && (
-              <>
-                {" · "}
-                {skim} to skim · {actCount > 0 ? "watch for follow-on" : "nothing on fire"}
-              </>
-            )}
+            <span className="accent">{todayCrit || actCount}</span>{" "}
+            {todayCrit ? "critical " : "actively exploited "}· {skim} to skim ·{" "}
+            {actCount ? "1 to act on" : "nothing on fire"}
           </>
         ) : (
           <>{allLen} scanned. Nothing on fire. Read at your own pace.</>

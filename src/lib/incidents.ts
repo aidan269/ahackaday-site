@@ -151,11 +151,20 @@ function inferAffectedFromRow(row: SupabaseIncidentRow, summary: string): string
   for (const matcher of matchers) {
     const hit = text.match(matcher);
     if (hit?.[1]) {
-      return hit[1].replace(/\s+/g, " ").trim();
+      const candidate = hit[1].replace(/\s+/g, " ").trim();
+      // Reject low-signal fragments that read like sentence tails.
+      if (
+        candidate.length < 8 ||
+        /^(or|and|to|for|with)\b/i.test(candidate) ||
+        /(in any way|compromised in any way)/i.test(candidate)
+      ) {
+        continue;
+      }
+      return candidate;
     }
   }
 
-  return row.title;
+  return row.source_name || row.title;
 }
 
 function mapDbRowToIncident(row: SupabaseIncidentRow): Incident {
