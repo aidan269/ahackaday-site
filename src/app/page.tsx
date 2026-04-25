@@ -71,9 +71,6 @@ export default async function Home({ searchParams }: HomeProps) {
             todayCrit={todayCrit}
             actCount={actCount}
           />
-          <p className="page-sub" style={{ marginTop: 12 }}>
-            Clear, human-first incident intelligence so teams can respond with confidence.
-          </p>
         </div>
         <div className="page-head__stats">
           <div className="stat">
@@ -89,7 +86,6 @@ export default async function Home({ searchParams }: HomeProps) {
             <span className="stat__v orange">{exploited}</span>
           </div>
         </div>
-        <p className="stats-note">counts reflect current filters and visible time window</p>
       </div>
 
       <FeedControls
@@ -106,12 +102,6 @@ export default async function Home({ searchParams }: HomeProps) {
         <Link href={mkHref("high")} className={`pill ${severity === "high" ? "is-active" : ""}`}>high</Link>
         <Link href={mkHref("medium")} className={`pill ${severity === "medium" ? "is-active" : ""}`}>medium</Link>
         <Link href={mkHref("low")} className={`pill ${severity === "low" ? "is-active" : ""}`}>low</Link>
-      </div>
-
-      <div className="feed-meta">
-        <span>
-          showing <span className="strong">{incidents.length}</span> of {all.length} highest-signal incidents first
-        </span>
       </div>
 
       {incidents.length === 0 ? (

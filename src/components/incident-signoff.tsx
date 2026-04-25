@@ -6,9 +6,9 @@ export function IncidentSignoff({ incident }: { incident: Incident }) {
     <div className="signoff">
       <em>
         Curated {formatIncidentDate(incident.date)} by the ahackaday team.
-        <span className="signoff__sep">/</span>
+        <span className="sep">/</span>
         Sources verified.
-        <span className="signoff__sep">/</span>
+        <span className="sep">/</span>
         Brief grounded in {incident.sources.length} source{incident.sources.length === 1 ? "" : "s"}.
       </em>
     </div>

@@ -114,27 +114,19 @@ export default async function IncidentPage({ params }: IncidentPageProps) {
           </div>
         </div>
 
-        <section className="detail__remediation">
+        <section className="detail__brief-section">
           <h3>tldr</h3>
-          <div className="detail__remediation-box">
-            <p>{incident.tldr}</p>
-          </div>
+          <p>{incident.tldr}</p>
         </section>
 
-        <section className="detail__remediation">
+        <section className="detail__brief-section">
           <h3>real-world impact</h3>
-          <div className="detail__remediation-box">
-            <p>{incident.realWorldImpact}</p>
-          </div>
+          <p>{incident.realWorldImpact}</p>
         </section>
 
-        <section className="detail__remediation">
+        <section className="detail__brief-section">
           <h3>why you should care</h3>
-          <div className="detail__remediation-box">
-            <p>
-              {incident.whyCare}
-            </p>
-          </div>
+          <p>{incident.whyCare}</p>
         </section>
 
         <section className="detail__sources">
