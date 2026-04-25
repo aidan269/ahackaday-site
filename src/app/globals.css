@@ -655,8 +655,11 @@ body.has-sidebar .site-header {
   display: none;
 }
 body.has-sidebar main.shell {
-  max-width: 1320px;
+  max-width: none;
+  width: calc(100vw - var(--sidebar-w));
+  margin: 0;
   padding-top: 36px;
+  padding-right: 24px;
 }
 
 .view-fade {

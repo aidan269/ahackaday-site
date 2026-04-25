@@ -70,6 +70,56 @@ const SEV_COLOR = {
   low: "var(--sev-low)",
 } as const;
 
+function toTitleCaseHeading(value: string): string {
+  const cleaned = value.replace(/[#*_`]/g, "").trim();
+  if (!cleaned) return "";
+  return cleaned
+    .toLowerCase()
+    .replace(/\b[a-z]/g, (c) => c.toUpperCase());
+}
+
+function parseContentSections(raw: unknown): Array<{ h: string; p: string }> {
+  if (Array.isArray(raw)) {
+    return raw
+      .map((sec) => {
+        if (!sec || typeof sec !== "object") return null;
+        const h = "h" in sec && typeof sec.h === "string" ? sec.h.trim() : "";
+        const p = "p" in sec && typeof sec.p === "string" ? sec.p.trim() : "";
+        return h && p ? { h, p } : null;
+      })
+      .filter((sec): sec is { h: string; p: string } => sec !== null);
+  }
+  if (typeof raw !== "string") return [];
+
+  const text = raw.trim();
+  if (!text) return [];
+  const lines = text.split("\n").map((line) => line.trim()).filter(Boolean);
+  const sections: Array<{ h: string; p: string }> = [];
+  let currentHeading = "";
+  let currentParagraph: string[] = [];
+
+  const flush = () => {
+    if (!currentHeading || currentParagraph.length === 0) return;
+    sections.push({ h: currentHeading, p: currentParagraph.join(" ").replace(/\s+/g, " ").trim() });
+    currentParagraph = [];
+  };
+
+  for (const line of lines) {
+    const headingMatch = /^#{1,3}\s+(.+)$/.exec(line);
+    if (headingMatch?.[1]) {
+      flush();
+      currentHeading = toTitleCaseHeading(headingMatch[1]);
+      continue;
+    }
+    if (!currentHeading && line.length > 0) {
+      currentHeading = "What Happened";
+    }
+    currentParagraph.push(line);
+  }
+  flush();
+  return sections;
+}
+
 export default async function IncidentPage({ params }: IncidentPageProps) {
   const { slug } = await params;
   const incident = await getIncidentBySlug(slug);
@@ -78,16 +128,17 @@ export default async function IncidentPage({ params }: IncidentPageProps) {
   const sev = SEV_COLOR[incident.severity];
   const trackingId = incident.evidence.cves[0] ?? /CVE-\d{4}-\d+/i.exec(incident.title)?.[0] ?? "n/a";
   const rawContent = incident.content as unknown;
-  const contentSections = Array.isArray(rawContent)
-    ? rawContent
-        .map((sec) => {
-          if (!sec || typeof sec !== "object") return null;
-          const h = "h" in sec && typeof sec.h === "string" ? sec.h.trim() : "";
-          const p = "p" in sec && typeof sec.p === "string" ? sec.p.trim() : "";
-          return h && p ? { h, p } : null;
-        })
-        .filter((sec): sec is { h: string; p: string } => sec !== null)
-    : [];
+  const contentSections = parseContentSections(rawContent);
+  const plainBody =
+    typeof rawContent === "string" ? rawContent.trim() : "";
+  const summaryLower = incident.summary.trim().toLowerCase();
+  const titleLower = incident.title.trim().toLowerCase();
+  const plainBodyLower = plainBody.toLowerCase();
+  const showPlainBody =
+    plainBody.length > 0 &&
+    plainBodyLower !== summaryLower &&
+    plainBodyLower !== titleLower &&
+    plainBodyLower !== `${incident.title} ${incident.summary}`.trim().toLowerCase();
 
   return (
     <main className="shell">
@@ -138,8 +189,10 @@ export default async function IncidentPage({ params }: IncidentPageProps) {
                 <p>{sec.p}</p>
               </div>
             ))
-          ) : (
+          ) : showPlainBody ? (
             <p>{incident.content}</p>
+          ) : (
+            <p style={{ color: "var(--fg-muted)" }}>source did not provide sectioned body content.</p>
           )}
         </div>
 

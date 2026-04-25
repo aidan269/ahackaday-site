@@ -167,13 +167,38 @@ function inferAffectedFromRow(row: SupabaseIncidentRow, summary: string): string
   return row.source_name || row.title;
 }
 
+function dedupeSummaryAgainstTitle(title: string, summary: string): string {
+  const normalizedTitle = normalizeDisplayText(title).toLowerCase();
+  let cleaned = normalizeDisplayText(summary);
+  const lower = cleaned.toLowerCase();
+  if (lower.startsWith(normalizedTitle)) {
+    cleaned = cleaned.slice(title.length).trim().replace(/^[-:.\s]+/, "");
+  }
+  return cleaned || normalizeDisplayText(summary);
+}
+
+function dedupeBodyAgainstSummary(title: string, summary: string, body: string): string {
+  let cleaned = normalizeDisplayText(body);
+  const lower = cleaned.toLowerCase();
+  const titleLower = normalizeDisplayText(title).toLowerCase();
+  const summaryLower = normalizeDisplayText(summary).toLowerCase();
+
+  if (lower.startsWith(titleLower)) {
+    cleaned = cleaned.slice(title.length).trim().replace(/^[-:.\s]+/, "");
+  }
+  if (cleaned.toLowerCase().startsWith(summaryLower)) {
+    cleaned = cleaned.slice(summary.length).trim().replace(/^[-:.\s]+/, "");
+  }
+  return normalizeDisplayText(cleaned);
+}
+
 function mapDbRowToIncident(row: SupabaseIncidentRow): Incident {
-  const summaryFallback = normalizeDisplayText(
+  const rawSummaryFallback = normalizeDisplayText(
     row.claude_summary.trim() || row.raw_content.trim() || "No summary available.",
   );
   const parsedBriefing = parseStructuredBriefing(row.claude_summary.trim());
-  const summary = parsedBriefing?.tldr || summaryFallback;
-  const impacted = inferAffectedFromRow(row, summary);
+  const summary = dedupeSummaryAgainstTitle(row.title, parsedBriefing?.tldr || rawSummaryFallback);
+  const impacted = parsedBriefing?.evidence.systems[0] || inferAffectedFromRow(row, summary);
   const inferredExploited = inferExploitedSignal(`${row.title} ${summary} ${row.raw_content}`);
   const defaultWhyCare =
     "Why this matters: if this affects your stack, treat it as operational risk and assign an owner.";
@@ -183,9 +208,13 @@ function mapDbRowToIncident(row: SupabaseIncidentRow): Incident {
     "Apply vendor guidance or compensating controls in priority order.",
     "Track follow-up updates from primary sources and adjust response.",
   ];
-  const content = row.claude_summary.trim()
-    ? normalizeDisplayText(parsedBriefing?.realWorldImpact || row.claude_summary.trim())
-    : `## What happened\n${normalizeDisplayText(row.raw_content.trim() || "Awaiting analyst summary.")}`;
+  const content = parsedBriefing
+    ? normalizeDisplayText(parsedBriefing.realWorldImpact)
+    : dedupeBodyAgainstSummary(
+        row.title,
+        summary,
+        row.raw_content.trim() || row.claude_summary.trim() || "Awaiting analyst summary.",
+      );
 
   return {
     slug: buildSlugFromDb(row),
@@ -273,7 +302,7 @@ function getMarkdownIncidentBySlug(slug: string): Incident | null {
     ...data,
     summary: tldr,
     slug,
-    content: normalizeDisplayText(parsed.content.trim()),
+    content: parsed.content.trim(),
     tldr,
     realWorldImpact,
     whyCare,
