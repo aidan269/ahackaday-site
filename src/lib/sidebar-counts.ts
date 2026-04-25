@@ -1,4 +1,4 @@
-import type { Incident } from "@/lib/incidents";
+import { mitigationStatusLooksMitigated, type Incident } from "@/lib/incidents";
 
 export type SidebarCounts = {
   all: number;
@@ -12,10 +12,6 @@ export type SidebarCounts = {
 };
 
 const MS_7D = 7 * 24 * 60 * 60 * 1000;
-
-function isMitigatedLabel(status: string): boolean {
-  return /mitigat|patch|fixed|resolved|remediat|vendor update|update available/i.test(status);
-}
 
 export function computeSidebarCounts(all: Incident[]): SidebarCounts {
   const c: SidebarCounts = {
@@ -34,7 +30,7 @@ export function computeSidebarCounts(all: Incident[]): SidebarCounts {
     if (i.exploited) c.exploited += 1;
     const t = new Date(i.date).getTime();
     if (!Number.isNaN(t) && now - t <= MS_7D) c.last7d += 1;
-    if (isMitigatedLabel(i.mitigationStatus)) c.mitigated += 1;
+    if (mitigationStatusLooksMitigated(i.mitigationStatus)) c.mitigated += 1;
   }
   return c;
 }

@@ -442,7 +442,16 @@ type IncidentFilter = {
   type?: IncidentType;
   window?: "7d" | "30d" | "90d" | "all";
   query?: string;
+  /** When true, only incidents flagged as actively exploited. */
+  onlyExploited?: boolean;
+  /** When true, only incidents whose mitigation label looks resolved/patched. */
+  onlyMitigated?: boolean;
 };
+
+/** Shared with sidebar counts: “mitigated” filter bucket. */
+export function mitigationStatusLooksMitigated(status: string): boolean {
+  return /mitigat|patch|fixed|resolved|remediat|vendor update|update available/i.test(status);
+}
 
 export function filterIncidents(
   incidents: Incident[],
@@ -456,6 +465,14 @@ export function filterIncidents(
 
   return incidents.filter((incident) => {
     if (filter.severity && filter.severity !== "all" && incident.severity !== filter.severity) {
+      return false;
+    }
+
+    if (filter.onlyExploited && !incident.exploited) {
+      return false;
+    }
+
+    if (filter.onlyMitigated && !mitigationStatusLooksMitigated(incident.mitigationStatus)) {
       return false;
     }
 

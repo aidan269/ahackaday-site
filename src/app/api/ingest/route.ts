@@ -1,6 +1,8 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { createClient } from "@supabase/supabase-js";
 
+import { getAnthropicModel } from "@/lib/anthropic-model";
+
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
@@ -43,13 +45,6 @@ const FEEDS = [
   { url: "https://krebsonsecurity.com/feed/", source: "KrebsOnSecurity" },
   { url: "https://www.bleepingcomputer.com/feed/", source: "BleepingComputer" },
 ];
-
-function getAnthropicModel(): string {
-  return (
-    process.env.ANTHROPIC_MODEL?.trim() ||
-    "claude-3-5-sonnet-20241022"
-  );
-}
 
 function fallbackFromItem(item: IngestItem): ClaudeIncidentOutput {
   const tldr =

@@ -1,18 +1,21 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { NextResponse } from "next/server";
 
+import { getAnthropicModel } from "@/lib/anthropic-model";
+
 export const runtime = "nodejs";
 
-function getAnthropicModel(): string {
-  return process.env.ANTHROPIC_MODEL?.trim() || "claude-3-5-sonnet-20241022";
-}
+const MAX_PROMPT_CHARS = 200_000;
 
 export async function POST(request: Request) {
   try {
     const body = (await request.json()) as { prompt?: string };
-    const prompt = typeof body.prompt === "string" ? body.prompt.trim() : "";
+    let prompt = typeof body.prompt === "string" ? body.prompt.trim() : "";
     if (!prompt) {
       return NextResponse.json({ error: "Missing prompt" }, { status: 400 });
+    }
+    if (prompt.length > MAX_PROMPT_CHARS) {
+      prompt = `${prompt.slice(0, MAX_PROMPT_CHARS)}\n[… truncated …]`;
     }
 
     const apiKey = process.env.ANTHROPIC_API_KEY;

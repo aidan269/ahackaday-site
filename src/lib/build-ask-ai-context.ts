@@ -1,5 +1,7 @@
 import type { Incident } from "@/lib/incidents";
 
+const MAX_EXTRA_CONTENT_CHARS = 14_000;
+
 /** Plain-text sections from structured incident fields for Ask AI grounding (after Summary line). */
 export function buildIncidentBriefLines(incident: Incident): string[] {
   const lines: string[] = [];
@@ -22,7 +24,11 @@ export function buildIncidentBriefLines(incident: Incident): string[] {
   }
   const body = incident.content?.trim();
   if (body) {
-    lines.push("Additional brief / notes:", body);
+    const clipped =
+      body.length > MAX_EXTRA_CONTENT_CHARS
+        ? `${body.slice(0, MAX_EXTRA_CONTENT_CHARS)}\n[… truncated for model context …]`
+        : body;
+    lines.push("Additional brief / notes:", clipped);
   }
   return lines;
 }

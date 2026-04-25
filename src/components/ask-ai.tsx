@@ -56,8 +56,14 @@ async function completeWithApi(fullPrompt: string): Promise<string> {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ prompt: fullPrompt }),
+      credentials: "same-origin",
     });
-    const data = (await res.json()) as { text?: string; error?: string };
+    let data: { text?: string; error?: string } = {};
+    try {
+      data = (await res.json()) as { text?: string; error?: string };
+    } catch {
+      return `(Error reaching Claude: HTTP ${res.status} — invalid response)`;
+    }
     if (!res.ok) {
       return data.error ?? `(Error reaching Claude: HTTP ${res.status})`;
     }
@@ -69,16 +75,17 @@ async function completeWithApi(fullPrompt: string): Promise<string> {
   }
 }
 
+/** Prefer hosted `/api/ask-ai` (server key). Optional embed: `window.claude.complete` when present. */
 async function completePrompt(fullPrompt: string): Promise<string> {
   if (typeof window !== "undefined") {
     const w = window as unknown as { claude?: { complete: (p: string) => Promise<string> } };
     if (w.claude?.complete) {
       try {
         const text = await w.claude.complete(fullPrompt);
-        return text?.trim() || "(Ask AI returned an empty response.)";
-      } catch (e) {
-        const message = e instanceof Error ? e.message : String(e);
-        return `(Error reaching Claude: ${message})`;
+        const trimmed = text?.trim();
+        if (trimmed) return trimmed;
+      } catch {
+        /* fall through to API */
       }
     }
   }
@@ -112,11 +119,14 @@ export function AskAI({ incident }: Props) {
   const runQuestion = async (question: string, userDisplay: string) => {
     setLoading(true);
     setMessages((prev) => [...prev, { role: "user", text: userDisplay }]);
-    const preamble = buildAnalystPreamble(incident);
-    const fullPrompt = `${preamble}\nQuestion: ${question}`;
-    const reply = await completePrompt(fullPrompt);
-    setMessages((prev) => [...prev, { role: "ai", text: reply }]);
-    setLoading(false);
+    try {
+      const preamble = buildAnalystPreamble(incident);
+      const fullPrompt = `${preamble}\nQuestion: ${question}`;
+      const reply = await completePrompt(fullPrompt);
+      setMessages((prev) => [...prev, { role: "ai", text: reply }]);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const onTopic = async (id: TopicId) => {

@@ -3,12 +3,23 @@ type FeedControlsProps = {
   severity: string;
   typeValue: string;
   windowValue: string;
+  onlyExploited?: boolean;
+  onlyMitigated?: boolean;
 };
 
-export function FeedControls({ query, severity, typeValue, windowValue }: FeedControlsProps) {
+export function FeedControls({
+  query,
+  severity,
+  typeValue,
+  windowValue,
+  onlyExploited,
+  onlyMitigated,
+}: FeedControlsProps) {
   return (
     <form className="controls">
       <input type="hidden" name="layout" value="card" />
+      {onlyExploited ? <input type="hidden" name="exploited" value="1" /> : null}
+      {onlyMitigated ? <input type="hidden" name="mitigated" value="1" /> : null}
 
       <div className="ctrl">
         <label className="sr" htmlFor="f-q">Search</label>

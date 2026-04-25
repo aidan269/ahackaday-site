@@ -7,16 +7,15 @@ export function MobileDock() {
   const pathname = usePathname();
 
   const isFeed = pathname === "/";
-  const isLive = false;
   const isCalendar = pathname === "/calendar";
-  const isRss = pathname === "/feed.xml";
+  const isSaved = pathname === "/saved";
 
   return (
     <nav className="mobile-dock" aria-label="Mobile app navigation">
       <Link href="/" className={`mobile-dock__item ${isFeed ? "is-active" : ""}`}>feed</Link>
-      <Link href="/?severity=critical" className={`mobile-dock__item ${isLive ? "is-active" : ""}`}>live</Link>
+      <Link href="/?exploited=1&layout=card" className="mobile-dock__item">live</Link>
       <Link href="/calendar" className={`mobile-dock__item ${isCalendar ? "is-active" : ""}`}>calendar</Link>
-      <Link href="/feed.xml" className={`mobile-dock__item ${isRss ? "is-active" : ""}`}>saved</Link>
+      <Link href="/saved" className={`mobile-dock__item ${isSaved ? "is-active" : ""}`}>saved</Link>
     </nav>
   );
 }

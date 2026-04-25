@@ -3,6 +3,7 @@ import Link from "next/link";
 import {
   IncidentItem,
 } from "@/components/incident-item";
+import { buildFeedHref } from "@/lib/feed-nav";
 import { filterIncidents, getAllIncidents, type IncidentType, type Severity } from "@/lib/incidents";
 
 type HomeProps = {
@@ -21,6 +22,10 @@ export default async function Home({ searchParams }: HomeProps) {
   const severity = readParam(params.severity, "all");
   const typeValue = readParam(params.type, "all");
   const windowValue = readParam(params.window, "30d");
+  const exploitedRaw = readParam(params.exploited, "");
+  const mitigatedRaw = readParam(params.mitigated, "");
+  const onlyExploited = exploitedRaw === "1" || exploitedRaw.toLowerCase() === "true";
+  const onlyMitigated = mitigatedRaw === "1" || mitigatedRaw.toLowerCase() === "true";
 
   const all = await getAllIncidents();
   const today = new Date();
@@ -29,22 +34,23 @@ export default async function Home({ searchParams }: HomeProps) {
     severity: severity as Severity | "all",
     type: typeValue as IncidentType,
     window: windowValue as "7d" | "30d" | "90d" | "all",
+    onlyExploited,
+    onlyMitigated,
   });
 
   const critical = incidents.filter((i) => i.severity === "critical").length;
   const exploited = incidents.filter((i) => i.exploited).length;
   const monthShort = today.toLocaleDateString("en-US", { month: "short" }).toLowerCase();
 
-  const mkHref = (nextSeverity: string, nextType = typeValue) => {
-    const next = new URLSearchParams();
-    if (query) next.set("q", query);
-    if (nextSeverity && nextSeverity !== "all") next.set("severity", nextSeverity);
-    if (nextType !== "all") next.set("type", nextType);
-    if (windowValue !== "30d") next.set("window", windowValue);
-    next.set("layout", "card");
-    const qs = next.toString();
-    return qs ? `/?${qs}` : "/";
-  };
+  const mkHref = (nextSeverity: string, nextType = typeValue) =>
+    buildFeedHref({
+      q: query,
+      severity: nextSeverity,
+      type: nextType,
+      window: windowValue,
+      exploited: onlyExploited,
+      mitigated: onlyMitigated,
+    });
 
   return (
     <main className="shell">
@@ -85,6 +91,8 @@ export default async function Home({ searchParams }: HomeProps) {
         severity={severity}
         typeValue={typeValue}
         windowValue={windowValue}
+        onlyExploited={onlyExploited}
+        onlyMitigated={onlyMitigated}
       />
       <div className="mobile-severity-pills">
         <Link href={mkHref("all")} className={`pill ${severity === "all" ? "is-active" : ""}`}>all</Link>

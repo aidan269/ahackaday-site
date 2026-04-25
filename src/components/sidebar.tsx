@@ -1,13 +1,39 @@
 "use client";
 
 import type { CSSProperties } from "react";
+import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { usePathname, useSearchParams } from "next/navigation";
 
+import { buildFeedHref } from "@/lib/feed-nav";
 import type { SidebarCounts } from "@/lib/sidebar-counts";
 
 type Props = { counts: SidebarCounts };
+
+type UrlFilters = {
+  severity: string;
+  exploited: boolean;
+  mitigated: boolean;
+  window: string;
+};
+
+const DEFAULT_FILTERS: UrlFilters = {
+  severity: "all",
+  exploited: false,
+  mitigated: false,
+  window: "30d",
+};
+
+function readFilters(search: URLSearchParams): UrlFilters {
+  const ex = search.get("exploited");
+  const mit = search.get("mitigated");
+  return {
+    severity: search.get("severity") ?? "all",
+    exploited: ex === "1" || ex?.toLowerCase() === "true",
+    mitigated: mit === "1" || mit?.toLowerCase() === "true",
+    window: search.get("window") ?? "30d",
+  };
+}
 
 function IconFeed() {
   return (
@@ -85,7 +111,7 @@ function utcTimeLabel(d: Date): string {
   return `${hh}:${mm}`;
 }
 
-export function Sidebar({ counts }: Props) {
+function SidebarBody({ counts, filters }: Props & { filters: UrlFilters }) {
   const pathname = usePathname();
   const [utcClock, setUtcClock] = useState(() => utcTimeLabel(new Date()));
 
@@ -97,10 +123,17 @@ export function Sidebar({ counts }: Props) {
   const isFeed = pathname === "/";
   const isCalendar = pathname.startsWith("/calendar");
   const isRss = pathname === "/feed.xml";
+  const isSaved = pathname === "/saved";
+
+  const feedHomeHref = buildFeedHref({});
+  const sevActive = (sev: string) => isFeed && filters.severity === sev && !filters.exploited && !filters.mitigated;
+  const exploitedActive = isFeed && filters.exploited;
+  const last7Active = isFeed && filters.window === "7d" && !filters.exploited && !filters.mitigated;
+  const mitigatedActive = isFeed && filters.mitigated;
 
   return (
     <aside className="sidebar" aria-label="Primary navigation">
-      <Link href="/" className="sidebar__brand">
+      <Link href={feedHomeHref} className="sidebar__brand">
         <span className="sidebar__brand-badge" aria-hidden />
         <span className="sidebar__brand-wordmark">
           <span className="sidebar__brand-strong">ahackaday</span>
@@ -111,7 +144,7 @@ export function Sidebar({ counts }: Props) {
 
       <div className="sidebar__section-label">workspace</div>
       <nav className="sidebar__nav" aria-label="Workspace">
-        <Link href="/" className={`sidebar__item${isFeed ? " is-active" : ""}`}>
+        <Link href={feedHomeHref} className={`sidebar__item${isFeed ? " is-active" : ""}`}>
           <span className="sidebar__icon" aria-hidden>
             <IconFeed />
           </span>
@@ -130,62 +163,65 @@ export function Sidebar({ counts }: Props) {
           </span>
           <span>rss</span>
         </Link>
-        <span className="sidebar__item sidebar__item--stub" title="Coming soon">
+        <Link href="/saved" className={`sidebar__item${isSaved ? " is-active" : ""}`}>
           <span className="sidebar__icon" aria-hidden>
             <IconSaved />
           </span>
           <span>saved</span>
-        </span>
+        </Link>
       </nav>
 
       <div className="sidebar__section-label">severity</div>
-      <div className="sidebar__nav" role="list">
-        <div className="sidebar__row sidebar__row--stub" role="listitem">
+      <nav className="sidebar__nav" aria-label="Severity shortcuts">
+        <Link
+          href={buildFeedHref({ severity: "critical" })}
+          className={`sidebar__item${sevActive("critical") ? " is-active" : ""}`}
+        >
           <span className="sidebar__sev-dot" style={{ ["--sev" as string]: "var(--sev-critical)" } as CSSProperties} />
           <span>critical</span>
           <span className="sidebar__count">{counts.critical}</span>
-        </div>
-        <div className="sidebar__row sidebar__row--stub" role="listitem">
+        </Link>
+        <Link href={buildFeedHref({ severity: "high" })} className={`sidebar__item${sevActive("high") ? " is-active" : ""}`}>
           <span className="sidebar__sev-dot" style={{ ["--sev" as string]: "var(--sev-high)" } as CSSProperties} />
           <span>high</span>
           <span className="sidebar__count">{counts.high}</span>
-        </div>
-        <div className="sidebar__row sidebar__row--stub" role="listitem">
+        </Link>
+        <Link href={buildFeedHref({ severity: "medium" })} className={`sidebar__item${sevActive("medium") ? " is-active" : ""}`}>
           <span className="sidebar__sev-dot" style={{ ["--sev" as string]: "var(--sev-medium)" } as CSSProperties} />
           <span>medium</span>
           <span className="sidebar__count">{counts.medium}</span>
-        </div>
-        <div className="sidebar__row sidebar__row--stub" role="listitem">
+        </Link>
+        <Link href={buildFeedHref({ severity: "low" })} className={`sidebar__item${sevActive("low") ? " is-active" : ""}`}>
           <span className="sidebar__sev-dot" style={{ ["--sev" as string]: "var(--sev-low)" } as CSSProperties} />
           <span>low</span>
           <span className="sidebar__count">{counts.low}</span>
-        </div>
-      </div>
+        </Link>
+      </nav>
 
       <div className="sidebar__section-label">filters</div>
-      <div className="sidebar__nav">
-        <div className="sidebar__row sidebar__row--stub">
+      <nav className="sidebar__nav" aria-label="Feed filters">
+        <Link href={buildFeedHref({ exploited: true })} className={`sidebar__item${exploitedActive ? " is-active" : ""}`}>
           <span className="sidebar__icon" aria-hidden>
             <IconExploited />
           </span>
           <span>exploited</span>
           <span className="sidebar__count">{counts.exploited}</span>
-        </div>
-        <div className="sidebar__row sidebar__row--stub">
+        </Link>
+        <Link href={buildFeedHref({ window: "7d" })} className={`sidebar__item${last7Active ? " is-active" : ""}`}>
           <span className="sidebar__icon" aria-hidden>
             <IconClock />
           </span>
           <span>last 7 days</span>
           <span className="sidebar__count">{counts.last7d}</span>
-        </div>
-        <div className="sidebar__row sidebar__row--stub">
+        </Link>
+        <Link href={buildFeedHref({ mitigated: true })} className={`sidebar__item${mitigatedActive ? " is-active" : ""}`}>
           <span className="sidebar__icon" aria-hidden>
             <IconMitigated />
           </span>
           <span>mitigated</span>
           <span className="sidebar__count">{counts.mitigated}</span>
-        </div>
-      </div>
+        </Link>
+      </nav>
 
       <div className="sidebar__status">
         <span className="sidebar__status-dot" aria-hidden />
@@ -194,5 +230,19 @@ export function Sidebar({ counts }: Props) {
         </span>
       </div>
     </aside>
+  );
+}
+
+function SidebarWithSearchParams({ counts }: Props) {
+  const search = useSearchParams();
+  const filters = readFilters(search);
+  return <SidebarBody counts={counts} filters={filters} />;
+}
+
+export function Sidebar({ counts }: Props) {
+  return (
+    <Suspense fallback={<SidebarBody counts={counts} filters={DEFAULT_FILTERS} />}>
+      <SidebarWithSearchParams counts={counts} />
+    </Suspense>
   );
 }
