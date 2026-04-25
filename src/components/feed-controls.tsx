@@ -3,6 +3,7 @@ type FeedControlsProps = {
   severity: string;
   typeValue: string;
   windowValue: string;
+  layout: "card" | "row" | "timeline";
   onlyExploited?: boolean;
   onlyMitigated?: boolean;
 };
@@ -12,6 +13,7 @@ export function FeedControls({
   severity,
   typeValue,
   windowValue,
+  layout,
   onlyExploited,
   onlyMitigated,
 }: FeedControlsProps) {
@@ -87,6 +89,15 @@ export function FeedControls({
       </div>
 
       <button type="submit" className="apply-btn">apply</button>
+
+      <div className="layout-toggle" role="group" aria-label="Layout">
+        <input className="layout-toggle__input" type="radio" id="layout-card" name="layout" value="card" defaultChecked={layout === "card"} />
+        <label htmlFor="layout-card" className="layout-toggle__btn">card</label>
+        <input className="layout-toggle__input" type="radio" id="layout-row" name="layout" value="row" defaultChecked={layout === "row"} />
+        <label htmlFor="layout-row" className="layout-toggle__btn">row</label>
+        <input className="layout-toggle__input" type="radio" id="layout-timeline" name="layout" value="timeline" defaultChecked={layout === "timeline"} />
+        <label htmlFor="layout-timeline" className="layout-toggle__btn">timeline</label>
+      </div>
 
     </form>
   );

@@ -32,13 +32,6 @@ function rel(iso: string) {
 
 type Props = { incident: Incident; index?: number };
 
-function nextActionForSeverity(severity: Severity): string {
-  if (severity === "critical") return "patch today — we'll tell you how";
-  if (severity === "high") return "review this week and assign an owner";
-  if (severity === "medium") return "validate exposure and schedule remediation";
-  return "fyi: monitor only, no immediate action needed";
-}
-
 export function IncidentItem({ incident }: Props) {
   const { toggleSaved, isSaved, isRead } = useEmotionalPreferences();
   const sev = SEV_COLOR[incident.severity];
@@ -46,13 +39,7 @@ export function IncidentItem({ incident }: Props) {
   const isExploited = /(actively )?exploited( in the wild)?|under active exploitation|zero-day attacks/i.test(
     `${incident.title} ${incident.summary} ${incident.content}`,
   );
-  const nextAction = nextActionForSeverity(incident.severity);
-  const hasEvidence =
-    incident.evidence.cves.length > 0 ||
-    incident.evidence.packages.length > 0 ||
-    incident.evidence.systems.length > 0 ||
-    incident.iocs.length > 0 ||
-    incident.confidenceScore >= 0.65;
+  const cve = incident.evidence.cves[0] ?? /CVE-\d{4}-\d+/i.exec(incident.title)?.[0];
 
   const saved = isSaved(incident.slug);
   const read = isRead(incident.slug);
@@ -82,31 +69,15 @@ export function IncidentItem({ incident }: Props) {
           <div className="card__tagline">
             <span className={`sev-chip sev-${incident.severity}`} style={style}>{incident.severity}</span>
             <span className="cat-chip">{incident.category}</span>
-            <span className="card__time">{rel(incident.date)}</span>
+            {isExploited && <span className="card__flag">exploited in the wild</span>}
             {read && <span className="read-check">✓ read</span>}
           </div>
           <h2 className="card__title">{incident.title}</h2>
           <p className="card__sum">{incident.summary}</p>
-          {isExploited && (
-            <div className="card__badges">
-              <span className="exploit-badge">exploited</span>
-            </div>
-          )}
-          <div className="card__context">
-            <div className="card__context-item">
-              <span className="k">affected scope</span>
-              <span>{incident.affected}</span>
-            </div>
-            {hasEvidence && (
-              <div className="card__context-item">
-                <span className="k">why care</span>
-                <span>{incident.whyCare}</span>
-              </div>
-            )}
-            <div className="card__context-item">
-              <span className="k">next step</span>
-              <span>{nextAction}</span>
-            </div>
+          <div className="card__line">
+            <span className="k">affected</span>
+            <span>{incident.affected}</span>
+            {cve && <span className="card__cve">{cve}</span>}
           </div>
         </div>
         <div className="card__arrow">→</div>

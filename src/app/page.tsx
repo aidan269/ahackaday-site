@@ -1,6 +1,6 @@
 import { DailyBriefHead } from "@/components/daily-brief-head";
 import { FeedControls } from "@/components/feed-controls";
-import { IncidentItem } from "@/components/incident-item";
+import { IncidentItem, IncidentRow, IncidentTimelineItem } from "@/components/incident-item";
 import { QuietDayEmpty } from "@/components/quiet-day-empty";
 import Link from "next/link";
 import { buildFeedHref } from "@/lib/feed-nav";
@@ -22,6 +22,7 @@ export default async function Home({ searchParams }: HomeProps) {
   const severity = readParam(params.severity, "all");
   const typeValue = readParam(params.type, "all");
   const windowValue = readParam(params.window, "30d");
+  const layout = readParam(params.layout, "card") as "card" | "row" | "timeline";
   const exploitedRaw = readParam(params.exploited, "");
   const mitigatedRaw = readParam(params.mitigated, "");
   const onlyExploited = exploitedRaw === "1" || exploitedRaw.toLowerCase() === "true";
@@ -58,7 +59,15 @@ export default async function Home({ searchParams }: HomeProps) {
       window: windowValue,
       exploited: onlyExploited,
       mitigated: onlyMitigated,
+      layout,
     });
+
+  const groupedByDate = incidents.reduce<Record<string, typeof incidents>>((acc, incident) => {
+    const key = incident.date.slice(0, 10);
+    if (!acc[key]) acc[key] = [];
+    acc[key].push(incident);
+    return acc;
+  }, {});
 
   return (
     <main className="shell">
@@ -93,6 +102,7 @@ export default async function Home({ searchParams }: HomeProps) {
         severity={severity}
         typeValue={typeValue}
         windowValue={windowValue}
+        layout={layout}
         onlyExploited={onlyExploited}
         onlyMitigated={onlyMitigated}
       />
@@ -107,9 +117,38 @@ export default async function Home({ searchParams }: HomeProps) {
       {incidents.length === 0 ? (
         <QuietDayEmpty allLen={all.length} scanUtc={scanUtc} />
       ) : (
-        <div className="feed--card">
-          {incidents.map((i, idx) => <IncidentItem key={i.slug} incident={i} index={idx} />)}
-        </div>
+        <>
+          <div className="feed-meta">
+            <span>showing {incidents.length} of {all.length} · sorted by date desc</span>
+            <span>layout · {layout}</span>
+          </div>
+          {layout === "row" ? (
+            <div className="feed--row">
+              <div className="row-head">
+                <span>date</span>
+                <span>severity</span>
+                <span>type</span>
+                <span>title</span>
+                <span>affected</span>
+                <span />
+              </div>
+              {incidents.map((i) => <IncidentRow key={i.slug} incident={i} />)}
+            </div>
+          ) : layout === "timeline" ? (
+            <div className="feed--timeline">
+              {Object.entries(groupedByDate).map(([date, items]) => (
+                <div key={date} className="tl-group">
+                  <h3 className="tl-group__date">{new Date(date).toLocaleDateString("en-US", { month: "short", day: "2-digit" })}</h3>
+                  {items.map((i) => <IncidentTimelineItem key={i.slug} incident={i} />)}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="feed--card">
+              {incidents.map((i, idx) => <IncidentItem key={i.slug} incident={i} index={idx} />)}
+            </div>
+          )}
+        </>
       )}
     </main>
   );
