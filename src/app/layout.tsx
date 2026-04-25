@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import { JetBrains_Mono } from "next/font/google";
 import { MobileDock } from "@/components/mobile-dock";
-import { SiteHeader } from "@/components/site-header";
+import { SidebarShell } from "@/components/sidebar-shell";
+import { computeSidebarCounts } from "@/lib/sidebar-counts";
+import { getAllIncidents } from "@/lib/incidents";
 import "./globals.css";
 
 const mono = JetBrains_Mono({
@@ -41,15 +43,18 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const all = await getAllIncidents();
+  const counts = computeSidebarCounts(all);
+
   return (
     <html lang="en" className={`${mono.variable} h-full antialiased`}>
       <body className="min-h-full">
-        <SiteHeader />
+        <SidebarShell counts={counts} />
         {children}
         <MobileDock />
       </body>

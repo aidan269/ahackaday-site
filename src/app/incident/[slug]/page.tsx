@@ -1,7 +1,9 @@
+import type { CSSProperties } from "react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { AskAI } from "@/components/ask-ai";
 import {
   formatIncidentDate,
   getAllIncidents,
@@ -75,7 +77,8 @@ export default async function IncidentPage({ params }: IncidentPageProps) {
 
   return (
     <main className="shell">
-      <div className="detail">
+      <div className="detail-with-ai view-fade">
+        <div className="detail">
         <Link href="/" className="back-link">back to feed</Link>
 
         <div className="detail__head">
@@ -83,7 +86,7 @@ export default async function IncidentPage({ params }: IncidentPageProps) {
             <span>{formatIncidentDate(incident.date)}</span>
             <span
               className={`sev-chip sev-${incident.severity}`}
-              style={{ ["--sev" as string]: sev } as React.CSSProperties}
+              style={{ ["--sev" as string]: sev } as CSSProperties}
             >
               {incident.severity}
             </span>
@@ -174,6 +177,8 @@ export default async function IncidentPage({ params }: IncidentPageProps) {
             ))}
           </ul>
         </section>
+        </div>
+        <AskAI incident={incident} />
       </div>
     </main>
   );
