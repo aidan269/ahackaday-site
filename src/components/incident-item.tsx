@@ -44,6 +44,12 @@ export function IncidentItem({ incident }: Props) {
     `${incident.title} ${incident.summary} ${incident.content}`,
   );
   const nextAction = nextActionForSeverity(incident.severity);
+  const hasEvidence =
+    incident.evidence.cves.length > 0 ||
+    incident.evidence.packages.length > 0 ||
+    incident.evidence.systems.length > 0 ||
+    incident.iocs.length > 0 ||
+    incident.confidenceScore >= 0.65;
 
   return (
     <Link href={`/incident/${incident.slug}`} className={`card card--${incident.severity}`} style={style}>
@@ -69,6 +75,12 @@ export function IncidentItem({ incident }: Props) {
             <span className="k">affected scope</span>
             <span>{incident.affected}</span>
           </div>
+          {hasEvidence && (
+            <div className="card__context-item">
+              <span className="k">why care</span>
+              <span>{incident.whyCare}</span>
+            </div>
+          )}
           <div className="card__context-item">
             <span className="k">next step</span>
             <span>{nextAction}</span>

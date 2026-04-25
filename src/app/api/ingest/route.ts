@@ -17,7 +17,21 @@ type IngestItem = FeedItem & {
 };
 
 type ClaudeIncidentOutput = {
-  summary: string;
+  tldr: string;
+  realWorldImpact: string;
+  whyCare: string;
+  actionItems: string[];
+  iocs: string[];
+  evidence: {
+    packages: string[];
+    versions: string[];
+    cves: string[];
+    dates: string[];
+    systems: string[];
+  };
+  ambiguities: string[];
+  confidenceScore: number;
+  exploited: boolean;
   severity: "critical" | "high" | "medium" | "low";
 };
 
@@ -38,9 +52,23 @@ function getAnthropicModel(): string {
 }
 
 function fallbackFromItem(item: IngestItem): ClaudeIncidentOutput {
-  const summary =
+  const tldr =
     item.fullText.slice(0, 280) || item.description.slice(0, 280) || "Ingested from source feed (no description).";
-  return { summary, severity: "medium" };
+  return {
+    tldr,
+    realWorldImpact: `The incident may affect systems related to ${item.title}. Source details are limited.`,
+    whyCare: "Why this matters: validate whether this touches your environment before deprioritizing it.",
+    actionItems: [
+      "Check if affected software or systems exist in your stack.",
+      "Review source advisory details and patch guidance.",
+    ],
+    iocs: [],
+    evidence: { packages: [], versions: [], cves: [], dates: [], systems: [] },
+    ambiguities: ["Source did not provide enough concrete technical detail for full extraction."],
+    confidenceScore: 0.45,
+    exploited: false,
+    severity: "medium",
+  };
 }
 
 function readTag(block: string, tag: string): string {
@@ -161,9 +189,27 @@ async function summarizeWithClaude(
     return fallbackFromItem(item);
   }
 
-  const prompt = `You are a cybersecurity analyst producing concise incident feed entries.
-Return JSON only:
-{"summary":"1-2 plain-English sentences without hype","severity":"critical|high|medium|low"}
+  const prompt = `Read the full page and return JSON only.
+No markdown. No prose outside JSON.
+Use this exact schema:
+{
+  "tldr":"1-2 sentences on what happened",
+  "realWorldImpact":"what it does, who is affected, blast radius, speed",
+  "whyCare":"developer/defender stakes in plain language",
+  "actionItems":["priority ordered concrete actions"],
+  "iocs":["cves, hashes, domains, package names, versions, indicators"],
+  "evidence":{"packages":[],"versions":[],"cves":[],"dates":[],"systems":[]},
+  "ambiguities":["what is uncertain or unconfirmed"],
+  "confidenceScore":0.0,
+  "exploited":false,
+  "severity":"critical|high|medium|low"
+}
+Rules:
+- Dense and skimmable, no fluff.
+- If detail is missing, say so in ambiguities.
+- Keep realWorldImpact and whyCare semantically distinct.
+- For high/critical, actionItems must be non-empty.
+- confidenceScore must be 0-1.
 
 Incident:
 Title: ${item.title}
@@ -191,14 +237,77 @@ ${item.fullText.slice(0, 12000)}`;
     if (fence?.[1]) text = fence[1].trim();
 
     const parsed = JSON.parse(text) as ClaudeIncidentOutput;
-    if (!parsed.summary || !parsed.severity) {
+    if (!parsed.tldr || !parsed.realWorldImpact || !parsed.whyCare || !parsed.severity) {
       return fallbackFromItem(item);
     }
 
-    return parsed;
+    return validateStructuredOutput(parsed);
   } catch {
     return fallbackFromItem(item);
   }
+}
+
+function normalizeStringArray(input: unknown): string[] {
+  if (!Array.isArray(input)) return [];
+  return input
+    .map((value) => (typeof value === "string" ? value.replace(/\s+/g, " ").trim() : ""))
+    .filter(Boolean);
+}
+
+function validateStructuredOutput(output: ClaudeIncidentOutput): ClaudeIncidentOutput {
+  const actionItems = normalizeStringArray(output.actionItems);
+  const iocs = normalizeStringArray(output.iocs);
+  const ambiguities = normalizeStringArray(output.ambiguities);
+  const evidence = output.evidence ?? {
+    packages: [],
+    versions: [],
+    cves: [],
+    dates: [],
+    systems: [],
+  };
+  const normalized = {
+    ...output,
+    tldr: output.tldr.replace(/\s+/g, " ").trim(),
+    realWorldImpact: output.realWorldImpact.replace(/\s+/g, " ").trim(),
+    whyCare: output.whyCare.replace(/\s+/g, " ").trim(),
+    actionItems,
+    iocs,
+    ambiguities,
+    evidence: {
+      packages: normalizeStringArray(evidence.packages),
+      versions: normalizeStringArray(evidence.versions),
+      cves: normalizeStringArray(evidence.cves),
+      dates: normalizeStringArray(evidence.dates),
+      systems: normalizeStringArray(evidence.systems),
+    },
+    confidenceScore: Math.min(1, Math.max(0, Number(output.confidenceScore ?? 0.55))),
+  };
+
+  const impactLower = normalized.realWorldImpact.toLowerCase();
+  const whyCareLower = normalized.whyCare.toLowerCase();
+  const exploitSignal = /(actively )?exploited|in the wild|under active exploitation/.test(
+    `${normalized.tldr} ${normalized.realWorldImpact}`.toLowerCase(),
+  );
+  const zeroDaySignal = /zero-day|0-day/.test(`${normalized.tldr} ${normalized.realWorldImpact}`.toLowerCase());
+
+  if ((normalized.severity === "high" || normalized.severity === "critical") && normalized.actionItems.length === 0) {
+    normalized.actionItems = [
+      "Confirm affected systems in your environment immediately.",
+      "Apply vendor mitigation guidance and monitor active exploitation updates.",
+    ];
+  }
+  if (impactLower === whyCareLower || impactLower.includes(whyCareLower) || whyCareLower.includes(impactLower)) {
+    normalized.ambiguities.push("Impact and why-care content were highly similar and may need editorial review.");
+  }
+  if (zeroDaySignal && !exploitSignal) {
+    normalized.severity = normalized.severity === "critical" ? "high" : normalized.severity;
+    normalized.ambiguities.push("Zero-day wording found without explicit exploitation evidence.");
+  }
+  if (normalized.exploited && !exploitSignal) {
+    normalized.exploited = false;
+    normalized.ambiguities.push("Exploited flag removed due to missing explicit exploitation signal.");
+  }
+  return normalized;
 }
 
 async function fetchFeed(url: string, sourceName: string): Promise<FeedItem[]> {
@@ -274,7 +383,7 @@ async function runIngest(request: Request) {
               source_url: item.link,
               source_name: item.sourceName,
               raw_content: ingestItem.fullText,
-              claude_summary: ai.summary,
+              claude_summary: JSON.stringify(ai),
               severity: ai.severity,
               published_at: item.pubDate ? new Date(item.pubDate).toISOString() : new Date().toISOString(),
             },

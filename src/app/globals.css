@@ -400,6 +400,16 @@ main.shell { max-width: 1560px; margin: 0 auto; padding: 48px 40px 160px; positi
 .detail__sources a { color: var(--fg-2); font-size: 12.5px; display: inline-flex; align-items: center; gap: 8px; padding: 8px 0; border-bottom: 1px solid transparent; transition: color 180ms, border-color 180ms; }
 .detail__sources a::before { content: "↗"; color: var(--brand-orange); font-size: 11px; }
 .detail__sources a:hover { color: var(--fg); border-color: var(--border-strong); }
+.detail__list {
+  list-style: disc;
+  padding-left: 18px;
+  margin: 0;
+}
+.detail__list li {
+  margin-bottom: 8px;
+  color: var(--fg-2);
+  line-height: 1.55;
+}
 
 /* ===== CALENDAR ===== */
 .cal-wrap { display: grid; grid-template-columns: 1fr 360px; gap: 24px; }

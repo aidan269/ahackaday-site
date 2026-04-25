@@ -3,13 +3,7 @@ import Link from "next/link";
 import {
   IncidentItem,
 } from "@/components/incident-item";
-import {
-  filterIncidents,
-  getAllIncidents,
-  type Incident,
-  type IncidentType,
-  type Severity,
-} from "@/lib/incidents";
+import { filterIncidents, getAllIncidents, type IncidentType, type Severity } from "@/lib/incidents";
 
 type HomeProps = {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
@@ -19,11 +13,6 @@ function readParam(v: string | string[] | undefined, fallback: string): string {
   if (typeof v === "string") return v;
   if (Array.isArray(v) && v.length > 0) return v[0] ?? fallback;
   return fallback;
-}
-
-function isActivelyExploited(incident: Incident): boolean {
-  const text = `${incident.title} ${incident.summary} ${incident.content}`.toLowerCase();
-  return /(actively )?exploited( in the wild)?|under active exploitation|zero-day attacks/.test(text);
 }
 
 export default async function Home({ searchParams }: HomeProps) {
@@ -43,7 +32,7 @@ export default async function Home({ searchParams }: HomeProps) {
   });
 
   const critical = incidents.filter((i) => i.severity === "critical").length;
-  const exploited = incidents.filter(isActivelyExploited).length;
+  const exploited = incidents.filter((i) => i.exploited).length;
   const monthShort = today.toLocaleDateString("en-US", { month: "short" }).toLowerCase();
 
   const mkHref = (nextSeverity: string, nextType = typeValue) => {

@@ -66,19 +66,6 @@ const SEV_COLOR = {
   low: "var(--sev-low)",
 } as const;
 
-function implicationsForSeverity(severity: keyof typeof SEV_COLOR, affected: string): string {
-  if (severity === "critical") {
-    return `Why you should care: this can become a real outage or breach fast for ${affected}. If this touches your stack, treat it as urgent today, not a “later this week” task, because teams that move first here usually avoid the public postmortem later.`;
-  }
-  if (severity === "high") {
-    return `Why you should care: this is the kind of issue that quietly turns into customer pain, security incidents, or fire-drills for ${affected} if nobody owns it this week, and it often sits in that “not urgent until it suddenly is” class of risk.`;
-  }
-  if (severity === "medium") {
-    return `Why you should care: this is not panic-level, but it still raises risk for ${affected}. If it combines with another weak spot, impact can jump quickly, and medium findings are often the building blocks behind bigger incidents.`;
-  }
-  return `Why you should care: low severity does not mean no severity. For ${affected}, this is mostly a hygiene issue now, but ignoring these is how future incidents get easier, and boring fixes are usually what keep headline incidents from happening later.`;
-}
-
 export default async function IncidentPage({ params }: IncidentPageProps) {
   const { slug } = await params;
   const incident = await getIncidentBySlug(slug);
@@ -122,13 +109,60 @@ export default async function IncidentPage({ params }: IncidentPageProps) {
         </div>
 
         <section className="detail__remediation">
+          <h3>tldr</h3>
+          <div className="detail__remediation-box">
+            <p>{incident.tldr}</p>
+          </div>
+        </section>
+
+        <section className="detail__remediation">
           <h3>real-world impact</h3>
           <div className="detail__remediation-box">
+            <p>{incident.realWorldImpact}</p>
+          </div>
+        </section>
+
+        <section className="detail__remediation">
+          <h3>why you should care</h3>
+          <div className="detail__remediation-box">
             <p>
-              {implicationsForSeverity(incident.severity, incident.affected)}
+              {incident.whyCare}
             </p>
           </div>
         </section>
+
+        <section className="detail__sources">
+          <h3>action items</h3>
+          <ul className="detail__list">
+            {incident.actionItems.map((action) => (
+              <li key={action}>{action}</li>
+            ))}
+          </ul>
+        </section>
+
+        <section className="detail__sources">
+          <h3>iocs</h3>
+          {incident.iocs.length === 0 ? (
+            <p style={{ margin: 0, color: "var(--fg-3)" }}>none reported in source.</p>
+          ) : (
+            <ul className="detail__list">
+              {incident.iocs.map((ioc) => (
+                <li key={ioc}>{ioc}</li>
+              ))}
+            </ul>
+          )}
+        </section>
+
+        {incident.ambiguities.length > 0 && (
+          <section className="detail__sources">
+            <h3>ambiguities</h3>
+            <ul className="detail__list">
+              {incident.ambiguities.map((ambiguity) => (
+                <li key={ambiguity}>{ambiguity}</li>
+              ))}
+            </ul>
+          </section>
+        )}
 
         <section className="detail__sources">
           <h3>read more</h3>
