@@ -1,8 +1,8 @@
+import { DailyBriefHead } from "@/components/daily-brief-head";
 import { FeedControls } from "@/components/feed-controls";
+import { IncidentItem } from "@/components/incident-item";
+import { QuietDayEmpty } from "@/components/quiet-day-empty";
 import Link from "next/link";
-import {
-  IncidentItem,
-} from "@/components/incident-item";
 import { buildFeedHref } from "@/lib/feed-nav";
 import { filterIncidents, getAllIncidents, type IncidentType, type Severity } from "@/lib/incidents";
 
@@ -40,7 +40,15 @@ export default async function Home({ searchParams }: HomeProps) {
 
   const critical = incidents.filter((i) => i.severity === "critical").length;
   const exploited = incidents.filter((i) => i.exploited).length;
-  const monthShort = today.toLocaleDateString("en-US", { month: "short" }).toLowerCase();
+  const todayCrit = critical;
+  const actCount = exploited;
+  const dateStr = today.toLocaleDateString("en-GB", { day: "2-digit", month: "short" }).toLowerCase();
+  const scanUtc = new Intl.DateTimeFormat("en-GB", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+    timeZone: "UTC",
+  }).format(today);
 
   const mkHref = (nextSeverity: string, nextType = typeValue) =>
     buildFeedHref({
@@ -56,16 +64,14 @@ export default async function Home({ searchParams }: HomeProps) {
     <main className="shell">
       <div className="page-head">
         <div>
-          <div className="mobile-kicker">
-            <span className="live-dot" />
-            <span>live</span>
-            <span className="mobile-kicker-sep">updated {monthShort} {today.getDate()}</span>
-          </div>
-          <h1 className="page-title">
-            This week <span className="dim">in</span> <span className="accent">security</span>
-            <span className="accent">.</span>
-          </h1>
-          <p className="page-sub">
+          <DailyBriefHead
+            dateStr={dateStr}
+            filteredLen={incidents.length}
+            allLen={all.length}
+            todayCrit={todayCrit}
+            actCount={actCount}
+          />
+          <p className="page-sub" style={{ marginTop: 12 }}>
             Clear, human-first incident intelligence so teams can respond with confidence.
           </p>
         </div>
@@ -109,7 +115,7 @@ export default async function Home({ searchParams }: HomeProps) {
       </div>
 
       {incidents.length === 0 ? (
-        <div className="empty">no incidents match the active filters.</div>
+        <QuietDayEmpty allLen={all.length} scanUtc={scanUtc} />
       ) : (
         <div className="feed--card">
           {incidents.map((i, idx) => <IncidentItem key={i.slug} incident={i} index={idx} />)}

@@ -4,65 +4,18 @@ import path from "node:path";
 import matter from "gray-matter";
 import { createClient } from "@supabase/supabase-js";
 
-export type Severity = "critical" | "high" | "medium" | "low";
+import type {
+  Incident,
+  IncidentEvidence,
+  IncidentFrontmatter,
+  IncidentType,
+  Severity,
+} from "./incident-types";
+import { INCIDENT_TYPE_OPTIONS } from "./incident-types";
 
-export type IncidentFrontmatter = {
-  title: string;
-  date: string;
-  severity: Severity;
-  affected: string;
-  summary: string;
-  category: string;
-  mitigationStatus: string;
-  sources: string[];
-  tldr?: string;
-  realWorldImpact?: string;
-  whyCare?: string;
-  actionItems?: string[];
-  iocs?: string[];
-  ambiguities?: string[];
-  confidenceScore?: number;
-};
-
-export type IncidentEvidence = {
-  packages: string[];
-  versions: string[];
-  cves: string[];
-  dates: string[];
-  systems: string[];
-};
-
-export type Incident = IncidentFrontmatter & {
-  slug: string;
-  content: string;
-  tldr: string;
-  realWorldImpact: string;
-  whyCare: string;
-  actionItems: string[];
-  iocs: string[];
-  ambiguities: string[];
-  confidenceScore: number;
-  evidence: IncidentEvidence;
-  exploited: boolean;
-};
-
-export const INCIDENT_TYPE_OPTIONS = [
-  "all",
-  "zero-day",
-  "supply-chain",
-  "breach",
-  "ransomware",
-  "identity",
-  "cloud",
-  "web",
-  "email",
-  "critical-infrastructure",
-  "exploitation",
-  "consumer-security",
-  "other",
-] as const;
-
-export type IncidentType = (typeof INCIDENT_TYPE_OPTIONS)[number];
+export type { Incident, IncidentEvidence, IncidentFrontmatter, IncidentType, Severity };
+export { INCIDENT_TYPE_OPTIONS };
+export { formatIncidentDate } from "./format-incident-date";
 
 const CONTENT_DIR = path.join(process.cwd(), "content");
 const DATA_SOURCE = process.env.DATA_SOURCE ?? "markdown";
@@ -518,10 +471,3 @@ export function getSeverityTone(severity: Severity): string {
   }
 }
 
-export function formatIncidentDate(date: string): string {
-  return new Intl.DateTimeFormat("en-US", {
-    month: "short",
-    day: "2-digit",
-    year: "numeric",
-  }).format(new Date(date));
-}

@@ -1,9 +1,11 @@
+"use client";
+
 import Link from "next/link";
-import {
-  formatIncidentDate,
-  type Incident,
-  type Severity,
-} from "@/lib/incidents";
+import { useCallback, useState, type CSSProperties, type MouseEvent } from "react";
+
+import { useEmotionalPreferences } from "@/components/emotional-preferences-provider";
+import { formatIncidentDate } from "@/lib/format-incident-date";
+import type { Incident, Severity } from "@/lib/incident-types";
 
 const SEV_COLOR: Record<Severity, string> = {
   critical: "var(--sev-critical)",
@@ -38,8 +40,9 @@ function nextActionForSeverity(severity: Severity): string {
 }
 
 export function IncidentItem({ incident }: Props) {
+  const { toggleSaved, isSaved, isRead } = useEmotionalPreferences();
   const sev = SEV_COLOR[incident.severity];
-  const style = { ["--sev" as string]: sev } as React.CSSProperties;
+  const style = { ["--sev" as string]: sev } as CSSProperties;
   const isExploited = /(actively )?exploited( in the wild)?|under active exploitation|zero-day attacks/i.test(
     `${incident.title} ${incident.summary} ${incident.content}`,
   );
@@ -51,51 +54,87 @@ export function IncidentItem({ incident }: Props) {
     incident.iocs.length > 0 ||
     incident.confidenceScore >= 0.65;
 
+  const saved = isSaved(incident.slug);
+  const read = isRead(incident.slug);
+  const [bloomKey, setBloomKey] = useState(0);
+
+  const onStar = useCallback(
+    (e: MouseEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (!saved) setBloomKey((k) => k + 1);
+      toggleSaved(incident.slug);
+    },
+    [incident.slug, saved, toggleSaved],
+  );
+
   return (
-    <Link href={`/incident/${incident.slug}`} className={`card card--${incident.severity}`} style={style}>
-      <div className="card__date">
-        {fmtShort(incident.date)}
-        <span className="rel">{rel(incident.date)}</span>
-      </div>
-      <div className="card__main">
-        <div className="card__tagline">
-          <span className={`sev-chip sev-${incident.severity}`} style={style}>{incident.severity}</span>
-          <span className="cat-chip">{incident.category}</span>
-          <span className="card__time">{rel(incident.date)}</span>
+    <div
+      className={`card card--${incident.severity}${read ? " is-read" : ""}`}
+      style={style}
+    >
+      <Link href={`/incident/${incident.slug}`} className="card__link" prefetch style={{ display: "contents" }}>
+        <div className="card__date">
+          {fmtShort(incident.date)}
+          <span className="rel">{rel(incident.date)}</span>
         </div>
-        <h2 className="card__title">{incident.title}</h2>
-        <p className="card__sum">{incident.summary}</p>
-        {isExploited && (
-          <div className="card__badges">
-            <span className="exploit-badge">exploited</span>
+        <div className="card__main">
+          <div className="card__tagline">
+            <span className={`sev-chip sev-${incident.severity}`} style={style}>{incident.severity}</span>
+            <span className="cat-chip">{incident.category}</span>
+            <span className="card__time">{rel(incident.date)}</span>
+            {read && <span className="read-check">✓ read</span>}
           </div>
-        )}
-        <div className="card__context">
-          <div className="card__context-item">
-            <span className="k">affected scope</span>
-            <span>{incident.affected}</span>
-          </div>
-          {hasEvidence && (
-            <div className="card__context-item">
-              <span className="k">why care</span>
-              <span>{incident.whyCare}</span>
+          <h2 className="card__title">{incident.title}</h2>
+          <p className="card__sum">{incident.summary}</p>
+          {isExploited && (
+            <div className="card__badges">
+              <span className="exploit-badge">exploited</span>
             </div>
           )}
-          <div className="card__context-item">
-            <span className="k">next step</span>
-            <span>{nextAction}</span>
+          <div className="card__context">
+            <div className="card__context-item">
+              <span className="k">affected scope</span>
+              <span>{incident.affected}</span>
+            </div>
+            {hasEvidence && (
+              <div className="card__context-item">
+                <span className="k">why care</span>
+                <span>{incident.whyCare}</span>
+              </div>
+            )}
+            <div className="card__context-item">
+              <span className="k">next step</span>
+              <span>{nextAction}</span>
+            </div>
           </div>
         </div>
-      </div>
-      <div className="card__arrow">→</div>
-    </Link>
+        <div className="card__arrow">→</div>
+      </Link>
+      <button
+        type="button"
+        className={`card__star${saved ? " is-on" : ""}`}
+        onClick={onStar}
+        aria-label={saved ? "unsave" : "save"}
+      >
+        {saved && <span className="card__star-bloom" key={bloomKey} />}
+        <svg width="13" height="13" viewBox="0 0 14 14" fill={saved ? "currentColor" : "none"} aria-hidden>
+          <path
+            d="M7 1.7l1.6 3.4 3.7.5-2.7 2.6.7 3.7L7 10l-3.3 1.9.7-3.7L1.7 5.6l3.7-.5z"
+            stroke="currentColor"
+            strokeWidth="1.2"
+            strokeLinejoin="round"
+          />
+        </svg>
+      </button>
+    </div>
   );
 }
 
 /* Row variant */
 export function IncidentRow({ incident }: Props) {
   const sev = SEV_COLOR[incident.severity];
-  const style = { ["--sev" as string]: sev } as React.CSSProperties;
+  const style = { ["--sev" as string]: sev } as CSSProperties;
 
   return (
     <Link href={`/incident/${incident.slug}`} className="row" style={style}>
@@ -112,7 +151,7 @@ export function IncidentRow({ incident }: Props) {
 /* Timeline variant */
 export function IncidentTimelineItem({ incident }: Props) {
   const sev = SEV_COLOR[incident.severity];
-  const style = { ["--sev" as string]: sev } as React.CSSProperties;
+  const style = { ["--sev" as string]: sev } as CSSProperties;
 
   return (
     <Link href={`/incident/${incident.slug}`} className="tl-item" style={style}>

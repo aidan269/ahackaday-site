@@ -1,4 +1,4 @@
-import type { Incident } from "@/lib/incidents";
+import type { Incident } from "@/lib/incident-types";
 
 const MAX_EXTRA_CONTENT_CHARS = 14_000;
 

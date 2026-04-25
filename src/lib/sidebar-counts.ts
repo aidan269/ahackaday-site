@@ -1,4 +1,5 @@
-import { mitigationStatusLooksMitigated, type Incident } from "@/lib/incidents";
+import { mitigationStatusLooksMitigated } from "@/lib/incidents";
+import type { Incident } from "@/lib/incident-types";
 
 export type SidebarCounts = {
   all: number;

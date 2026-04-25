@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { JetBrains_Mono } from "next/font/google";
+import { EmotionalPreferencesProvider } from "@/components/emotional-preferences-provider";
 import { MobileDock } from "@/components/mobile-dock";
 import { SidebarShell } from "@/components/sidebar-shell";
 import { computeSidebarCounts } from "@/lib/sidebar-counts";
@@ -54,9 +55,11 @@ export default async function RootLayout({
   return (
     <html lang="en" className={`${mono.variable} h-full antialiased`}>
       <body className="min-h-full">
-        <SidebarShell counts={counts} />
-        {children}
-        <MobileDock />
+        <EmotionalPreferencesProvider>
+          <SidebarShell counts={counts} />
+          {children}
+          <MobileDock />
+        </EmotionalPreferencesProvider>
       </body>
     </html>
   );

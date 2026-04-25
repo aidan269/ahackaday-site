@@ -5,6 +5,7 @@ import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 
+import { useEmotionalPreferences } from "@/components/emotional-preferences-provider";
 import { buildFeedHref } from "@/lib/feed-nav";
 import type { SidebarCounts } from "@/lib/sidebar-counts";
 
@@ -113,11 +114,18 @@ function utcTimeLabel(d: Date): string {
 
 function SidebarBody({ counts, filters }: Props & { filters: UrlFilters }) {
   const pathname = usePathname();
+  const { reviewCount, savedCount } = useEmotionalPreferences();
   const [utcClock, setUtcClock] = useState(() => utcTimeLabel(new Date()));
+  const [brandFresh, setBrandFresh] = useState(true);
 
   useEffect(() => {
     const id = setInterval(() => setUtcClock(utcTimeLabel(new Date())), 30_000);
     return () => clearInterval(id);
+  }, []);
+
+  useEffect(() => {
+    const t = setTimeout(() => setBrandFresh(false), 1500);
+    return () => clearTimeout(t);
   }, []);
 
   const isFeed = pathname === "/";
@@ -134,7 +142,7 @@ function SidebarBody({ counts, filters }: Props & { filters: UrlFilters }) {
   return (
     <aside className="sidebar" aria-label="Primary navigation">
       <Link href={feedHomeHref} className="sidebar__brand">
-        <span className="sidebar__brand-badge" aria-hidden />
+        <span className={`sidebar__brand-badge brand__mark${brandFresh ? " is-fresh" : ""}`} aria-hidden />
         <span className="sidebar__brand-wordmark">
           <span className="sidebar__brand-strong">ahackaday</span>
           <span className="sidebar__brand-dot">.</span>
@@ -168,6 +176,7 @@ function SidebarBody({ counts, filters }: Props & { filters: UrlFilters }) {
             <IconSaved />
           </span>
           <span>saved</span>
+          <span className="sidebar__count">{savedCount}</span>
         </Link>
       </nav>
 
@@ -222,6 +231,12 @@ function SidebarBody({ counts, filters }: Props & { filters: UrlFilters }) {
           <span className="sidebar__count">{counts.mitigated}</span>
         </Link>
       </nav>
+
+      <div className="sidebar__section-label sidebar__section-label--receipts">your work</div>
+      <div className="sidebar__receipts">
+        You&apos;ve reviewed <span className="sidebar__receipts-num">{reviewCount}</span> incidents this month.{" "}
+        <strong>Tight ship.</strong>
+      </div>
 
       <div className="sidebar__status">
         <span className="sidebar__status-dot" aria-hidden />

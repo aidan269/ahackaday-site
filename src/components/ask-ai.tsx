@@ -3,26 +3,38 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 
 import { buildIncidentBriefLines, primaryTrackingId } from "@/lib/build-ask-ai-context";
-import type { Incident } from "@/lib/incidents";
+import type { Incident } from "@/lib/incident-types";
 
 export const ASK_PROMPTS = {
   tldr: "Give me a tight TL;DR of this incident in 3 short bullets. No fluff. Plain text, dashes for bullets.",
   impact:
     "Explain the real-world impact of this incident: who is affected, in what concrete ways, and over what timeframe. 4-6 sentences, plain text.",
-  why: "Tell me why a security or platform engineer should care about this incident — the stakes if they ignore it, what could go wrong for their org, and what bar to clear before they can stop worrying. 4-6 sentences, plain text.",
+  why: "Should this team care? Tell me the stakes if they ignore it, what could go wrong for their org, and what bar to clear before they can stop worrying. Address the reader as 'you' and 'your team'. 4-6 sentences, plain text.",
 } as const;
 
 export const ASK_TOPICS = [
-  { id: "tldr" as const, label: "TL;DR", hint: "60-second read" },
-  { id: "impact" as const, label: "Real-world impact", hint: "who's affected & how" },
-  { id: "why" as const, label: "Why you should care", hint: "stakes for your team" },
+  { id: "tldr" as const, label: "TL;DR", hint: "60s read" },
+  { id: "impact" as const, label: "Real-world impact", hint: "~2min · who & how" },
+  { id: "why" as const, label: "Should my team care?", hint: "~2min · stakes" },
+];
+
+const TICKER_STAGES = [
+  "reading the brief…",
+  "cross-referencing sources…",
+  "checking severity context…",
+  "drafting answer…",
 ];
 
 type TopicId = (typeof ASK_TOPICS)[number]["id"];
 
-type ChatMessage = { role: "user" | "ai"; text: string };
+type ChatMessage = { id: string; role: "user" | "ai"; text: string };
 
 type Props = { incident: Incident };
+
+function newId(): string {
+  if (typeof crypto !== "undefined" && "randomUUID" in crypto) return crypto.randomUUID();
+  return `m-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
 
 function buildAnalystPreamble(incident: Incident): string {
   const tracking = primaryTrackingId(incident);
@@ -75,7 +87,6 @@ async function completeWithApi(fullPrompt: string): Promise<string> {
   }
 }
 
-/** Prefer hosted `/api/ask-ai` (server key). Optional embed: `window.claude.complete` when present. */
 async function completePrompt(fullPrompt: string): Promise<string> {
   if (typeof window !== "undefined") {
     const w = window as unknown as { claude?: { complete: (p: string) => Promise<string> } };
@@ -92,19 +103,45 @@ async function completePrompt(fullPrompt: string): Promise<string> {
   return completeWithApi(fullPrompt);
 }
 
+function buildShareMarkdown(incident: Incident, text: string): string {
+  return `**${incident.title}**
+_severity: ${incident.severity} · ${incident.category}_
+
+${text}
+
+— shared by you via ahackaday`;
+}
+
 export function AskAI({ incident }: Props) {
   const [topic, setTopic] = useState<TopicId | null>(null);
+  const [pressed, setPressed] = useState<TopicId | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [tickerIdx, setTickerIdx] = useState(0);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
   const streamRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setTopic(null);
+    setPressed(null);
     setMessages([]);
     setInput("");
     setLoading(false);
+    setTickerIdx(0);
+    setCopiedId(null);
   }, [incident.slug]);
+
+  useEffect(() => {
+    if (!loading) {
+      setTickerIdx(0);
+      return;
+    }
+    const id = setInterval(() => {
+      setTickerIdx((i) => Math.min(i + 1, TICKER_STAGES.length - 1));
+    }, 900);
+    return () => clearInterval(id);
+  }, [loading]);
 
   const scrollToBottom = useCallback(() => {
     const el = streamRef.current;
@@ -116,14 +153,28 @@ export function AskAI({ incident }: Props) {
     scrollToBottom();
   }, [messages, loading, scrollToBottom]);
 
+  const share = useCallback(
+    (msgId: string, text: string) => {
+      const md = buildShareMarkdown(incident, text);
+      try {
+        void navigator.clipboard.writeText(md);
+      } catch {
+        /* ignore */
+      }
+      setCopiedId(msgId);
+      setTimeout(() => setCopiedId(null), 1600);
+    },
+    [incident],
+  );
+
   const runQuestion = async (question: string, userDisplay: string) => {
     setLoading(true);
-    setMessages((prev) => [...prev, { role: "user", text: userDisplay }]);
+    setMessages((prev) => [...prev, { id: newId(), role: "user", text: userDisplay }]);
     try {
       const preamble = buildAnalystPreamble(incident);
       const fullPrompt = `${preamble}\nQuestion: ${question}`;
       const reply = await completePrompt(fullPrompt);
-      setMessages((prev) => [...prev, { role: "ai", text: reply }]);
+      setMessages((prev) => [...prev, { id: newId(), role: "ai", text: reply }]);
     } finally {
       setLoading(false);
     }
@@ -133,6 +184,8 @@ export function AskAI({ incident }: Props) {
     if (loading) return;
     const meta = ASK_TOPICS.find((t) => t.id === id);
     if (!meta) return;
+    setPressed(id);
+    setTimeout(() => setPressed(null), 360);
     setTopic(id);
     await runQuestion(ASK_PROMPTS[id], meta.label);
   };
@@ -148,6 +201,7 @@ export function AskAI({ incident }: Props) {
   const onClear = () => {
     setMessages([]);
     setTopic(null);
+    setCopiedId(null);
   };
 
   return (
@@ -179,10 +233,11 @@ export function AskAI({ incident }: Props) {
           <button
             key={t.id}
             type="button"
-            className={`askai__chip${topic === t.id ? " is-active" : ""}`}
+            className={`askai__chip${topic === t.id ? " is-active" : ""}${pressed === t.id ? " is-pressed" : ""}`}
             disabled={loading}
             onClick={() => void onTopic(t.id)}
           >
+            {pressed === t.id && <span className="askai__chip-pop" />}
             <span className="askai__chip-label">{t.label}</span>
             <span className="askai__chip-hint">{t.hint}</span>
           </button>
@@ -195,23 +250,48 @@ export function AskAI({ incident }: Props) {
             Pick a topic above, or ask anything about {incident.title}. Answers are grounded in this brief only.
           </p>
         )}
-        {messages.map((m, i) => (
-          <div key={`${m.role}-${i}-${m.text.slice(0, 24)}`} className="askai__msg">
+        {messages.map((m) => (
+          <div key={m.id} className="askai__msg">
             <div className={`askai__who${m.role === "ai" ? " askai__who--ai" : ""}`}>{m.role === "user" ? "you" : "ai"}</div>
             {m.role === "user" ? (
               <div className="askai__bubble askai__bubble--user">{m.text}</div>
             ) : (
-              <div className="askai__bubble askai__bubble--ai">{m.text}</div>
+              <>
+                <div className="askai__bubble askai__bubble--ai">{m.text}</div>
+                <div className="askai__msg-foot">
+                  <span className="askai__grounding">
+                    <svg className="askai__grounding-check" width="14" height="14" viewBox="0 0 14 14" aria-hidden>
+                      <path
+                        d="M3 7.2l2.8 2.8L11 4.8"
+                        stroke="#47C26A"
+                        strokeWidth="1.4"
+                        fill="none"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                    based on {incident.sources.length} source{incident.sources.length === 1 ? "" : "s"} · 0 outside guesses
+                    <button
+                      type="button"
+                      className={`askai__share${copiedId === m.id ? " is-copied" : ""}`}
+                      onClick={() => share(m.id, m.text)}
+                    >
+                      {copiedId === m.id ? "copied ✓" : "send to team"}
+                    </button>
+                  </span>
+                </div>
+              </>
             )}
           </div>
         ))}
         {loading && (
           <div className="askai__msg">
             <div className="askai__who askai__who--ai">ai</div>
-            <div className="askai__dots" aria-live="polite" aria-busy>
-              <span />
-              <span />
-              <span />
+            <div className="askai__ticker" aria-live="polite" aria-busy>
+              <span className="askai__ticker-caret" />
+              <span className="askai__ticker-text" key={tickerIdx}>
+                {TICKER_STAGES[tickerIdx]}
+              </span>
             </div>
           </div>
         )}

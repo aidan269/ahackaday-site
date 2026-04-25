@@ -4,6 +4,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { AskAI } from "@/components/ask-ai";
+import { IncidentSignoff } from "@/components/incident-signoff";
+import { MarkReadOnMount } from "@/components/mark-read-on-mount";
 import {
   formatIncidentDate,
   getAllIncidents,
@@ -78,14 +80,15 @@ export default async function IncidentPage({ params }: IncidentPageProps) {
   return (
     <main className="shell">
       <div className="detail-with-ai view-fade">
-        <div className="detail">
+        <div className={`detail${incident.severity === "critical" ? " is-critical" : ""}`}>
+        <MarkReadOnMount slug={incident.slug} />
         <Link href="/" className="back-link">back to feed</Link>
 
         <div className="detail__head">
           <div className="detail__tags">
             <span>{formatIncidentDate(incident.date)}</span>
             <span
-              className={`sev-chip sev-${incident.severity}`}
+              className={`sev-chip sev-${incident.severity}${incident.severity === "critical" ? " sev-chip--pulse" : ""}`}
               style={{ ["--sev" as string]: sev } as CSSProperties}
             >
               {incident.severity}
@@ -177,6 +180,8 @@ export default async function IncidentPage({ params }: IncidentPageProps) {
             ))}
           </ul>
         </section>
+
+        <IncidentSignoff incident={incident} />
         </div>
         <AskAI incident={incident} />
       </div>
