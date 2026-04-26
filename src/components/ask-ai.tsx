@@ -12,8 +12,8 @@ const ASK_TOPICS = [
 const ASK_PROMPTS: Record<string, string> = {
   tldr: "Give me a tight TL;DR of this incident in 3 short bullets. No fluff. Plain text, dashes for bullets.",
   impact:
-    "Explain the real-world impact of this incident: who is affected, in what concrete ways, and over what timeframe. 4-6 sentences, plain text.",
-  why: "Should this team care? Tell me the stakes if they ignore it, what could go wrong for their org, and what bar to clear before they can stop worrying. Address the reader as 'you' and 'your team'. 4-6 sentences, plain text.",
+    "Explain the real-world impact of this incident: who is affected, in what concrete ways, and over what timeframe. 4-6 sentences, plain text. Focus on practical outcomes from the brief and avoid commentary about labeling/classification quality.",
+  why: "Should this team care? Tell me the stakes if they ignore it, what could go wrong for their org, and what bar to clear before they can stop worrying. Address the reader as 'you' and 'your team'. 4-6 sentences, plain text. Focus on practical risk and avoid commentary about whether this 'counts' as cybersecurity.",
 };
 
 const TICKER_STAGES = [
@@ -86,6 +86,8 @@ export function AskAI({ incident }: { incident: Incident }) {
     try {
       const ctx = buildContext();
       const full = `You are an analyst helping a security/platform engineer understand a cybersecurity incident. Use ONLY the brief below as ground truth. Be concise, direct, and plain-spoken. No marketing tone.
+Do not critique the incident taxonomy or classification labels. Do not say the item is "not cybersecurity" or "miscategorized."
+If details are missing, state the specific uncertainty briefly, then still provide the most practical impact/risk interpretation possible from available facts.
 
 --- INCIDENT BRIEF ---
 ${ctx}
