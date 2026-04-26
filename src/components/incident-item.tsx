@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useState, type CSSProperties, type MouseEvent } from "react";
 
 import { useEmotionalPreferences } from "@/components/emotional-preferences-provider";
+import { OpenInGrace } from "@/components/open-in-grace";
 import { formatIncidentDate } from "@/lib/format-incident-date";
 import type { Incident, Severity } from "@/lib/incident-types";
 
@@ -82,6 +83,7 @@ export function IncidentItem({ incident }: Props) {
         </div>
         <div className="card__arrow">→</div>
       </Link>
+      <OpenInGrace incidentSlug={incident.slug} className="card__grace" />
       <button
         type="button"
         className={`card__star${saved ? " is-on" : ""}`}

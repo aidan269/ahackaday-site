@@ -4,6 +4,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { AskAI } from "@/components/ask-ai";
+import { OpenInGrace } from "@/components/open-in-grace";
 import {
   formatIncidentDate,
   getAllIncidents,
@@ -81,7 +82,10 @@ export default async function IncidentPage({ params }: IncidentPageProps) {
     <main className="shell">
       <div className="detail-with-ai view-fade">
         <article className={`detail ${incident.severity === "critical" ? "is-critical" : ""}`}>
-          <Link href="/" className="back-link">back to feed</Link>
+          <div className="detail__bar">
+            <Link href="/" className="back-link">back to feed</Link>
+            <OpenInGrace incidentSlug={incident.slug} className="detail__grace" />
+          </div>
 
           <div className="detail__head">
             <div className="detail__tags">

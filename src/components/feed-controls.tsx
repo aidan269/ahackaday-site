@@ -1,3 +1,5 @@
+import { ToolkitDrawer } from "@/components/toolkit-drawer";
+
 type FeedControlsProps = {
   query: string;
   severity: string;
@@ -92,6 +94,8 @@ export function FeedControls({
           timeline
         </button>
       </div>
+
+      <ToolkitDrawer />
 
       <button type="submit" className="apply-btn">apply</button>
     </form>
