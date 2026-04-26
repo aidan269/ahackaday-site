@@ -22,7 +22,12 @@ export function buildIncidentBriefLines(incident: Incident): string[] {
     for (const a of incident.ambiguities) lines.push(`- ${a}`);
     lines.push("");
   }
-  const body = incident.content?.trim();
+  const body = Array.isArray(incident.content)
+    ? incident.content
+        .map((s) => `${s.h}: ${s.p}`)
+        .join("\n\n")
+        .trim()
+    : incident.content?.trim();
   if (body) {
     const clipped =
       body.length > MAX_EXTRA_CONTENT_CHARS

@@ -167,7 +167,11 @@ function inferAffectedFromRow(row: SupabaseIncidentRow, summary: string): string
     }
   }
 
-  return row.source_name || row.title;
+  const subjectFromTitle = row.title
+    .split(/(?:\s+confirms?\b|\s+gets\b|\s+reports?\b|\s+warns?\b|\s+hit\b|:)/i)[0]
+    ?.trim();
+  if (subjectFromTitle && subjectFromTitle.length >= 3) return subjectFromTitle;
+  return row.title;
 }
 
 function dedupeSummaryAgainstTitle(title: string, summary: string): string {
@@ -190,9 +194,17 @@ function dedupeBodyAgainstSummary(title: string, summary: string, body: string):
     cleaned = cleaned.slice(title.length).trim().replace(/^[-:.\s]+/, "");
   }
   if (cleaned.toLowerCase().startsWith(summaryLower)) {
-    cleaned = cleaned.slice(summary.length).trim().replace(/^[-:.\s]+/, "");
+    const trimmed = cleaned.slice(summary.length).trim().replace(/^[-:.\s]+/, "");
+    // Guard against accidental mid-sentence truncation.
+    if (/^[A-Z0-9"']/.test(trimmed)) {
+      cleaned = trimmed;
+    }
   }
-  return normalizeDisplayText(cleaned);
+  const normalized = normalizeDisplayText(cleaned);
+  if (/^[a-z]/.test(normalized)) {
+    return normalizeDisplayText(body);
+  }
+  return normalized;
 }
 
 function sanitizeArticleBody(body: string): string {
@@ -264,6 +276,7 @@ function mapDbRowToIncident(row: SupabaseIncidentRow): Incident {
     evidence: parsedBriefing?.evidence || createEmptyEvidence(),
     exploited: parsedBriefing?.exploited ?? inferredExploited,
     category: classifyIncidentType(row),
+    cve: parsedBriefing?.evidence.cves[0] ?? /CVE-\d{4}-\d+/i.exec(row.title)?.[0],
     mitigationStatus: "Monitoring updates",
     sources: [row.source_url],
     content,

@@ -2,10 +2,8 @@ type FeedControlsProps = {
   query: string;
   severity: string;
   typeValue: string;
-  windowValue: string;
+  windowValue: "7" | "30d" | "90d" | "all";
   layout: "card" | "row" | "timeline";
-  onlyExploited?: boolean;
-  onlyMitigated?: boolean;
 };
 
 export function FeedControls({
@@ -14,19 +12,12 @@ export function FeedControls({
   typeValue,
   windowValue,
   layout,
-  onlyExploited,
-  onlyMitigated,
 }: FeedControlsProps) {
   return (
     <form className="controls">
-      <input type="hidden" name="layout" value="card" />
-      {onlyExploited ? <input type="hidden" name="exploited" value="1" /> : null}
-      {onlyMitigated ? <input type="hidden" name="mitigated" value="1" /> : null}
-
       <div className="ctrl">
-        <label className="sr" htmlFor="f-q">Search</label>
+        <label htmlFor="f-q">Search</label>
         <div className="ctrl__box">
-          <span className="prefix">/</span>
           <input
             id="f-q"
             type="text"
@@ -38,9 +29,8 @@ export function FeedControls({
       </div>
 
       <div className="ctrl">
-        <label className="sr" htmlFor="f-sev">Severity</label>
+        <label htmlFor="f-sev">Severity</label>
         <div className="ctrl__box">
-          <span className="prefix">●</span>
           <select id="f-sev" name="severity" defaultValue={severity}>
             <option value="all">all severities</option>
             <option value="critical">critical</option>
@@ -53,11 +43,10 @@ export function FeedControls({
       </div>
 
       <div className="ctrl">
-        <label className="sr" htmlFor="f-win">Window</label>
+        <label htmlFor="f-win">Window</label>
         <div className="ctrl__box">
-          <span className="prefix">●</span>
           <select id="f-win" name="window" defaultValue={windowValue}>
-            <option value="7d">7 days</option>
+            <option value="7">7 days</option>
             <option value="30d">30 days</option>
             <option value="90d">90 days</option>
             <option value="all">all time</option>
@@ -67,9 +56,8 @@ export function FeedControls({
       </div>
 
       <div className="ctrl">
-        <label className="sr" htmlFor="f-type">Type</label>
+        <label htmlFor="f-type">Type</label>
         <div className="ctrl__box">
-          <span className="prefix">●</span>
           <select id="f-type" name="type" defaultValue={typeValue}>
             <option value="all">all types</option>
             <option value="zero-day">zero-day</option>
@@ -88,17 +76,24 @@ export function FeedControls({
         </div>
       </div>
 
-      <button type="submit" className="apply-btn">apply</button>
-
       <div className="layout-toggle" role="group" aria-label="Layout">
-        <input className="layout-toggle__input" type="radio" id="layout-card" name="layout" value="card" defaultChecked={layout === "card"} />
-        <label htmlFor="layout-card" className="layout-toggle__btn">card</label>
-        <input className="layout-toggle__input" type="radio" id="layout-row" name="layout" value="row" defaultChecked={layout === "row"} />
-        <label htmlFor="layout-row" className="layout-toggle__btn">row</label>
-        <input className="layout-toggle__input" type="radio" id="layout-timeline" name="layout" value="timeline" defaultChecked={layout === "timeline"} />
-        <label htmlFor="layout-timeline" className="layout-toggle__btn">timeline</label>
+        <button type="submit" name="layout" value="card" className={`layout-toggle__btn${layout === "card" ? " is-active" : ""}`}>
+          card
+        </button>
+        <button type="submit" name="layout" value="row" className={`layout-toggle__btn${layout === "row" ? " is-active" : ""}`}>
+          row
+        </button>
+        <button
+          type="submit"
+          name="layout"
+          value="timeline"
+          className={`layout-toggle__btn${layout === "timeline" ? " is-active" : ""}`}
+        >
+          timeline
+        </button>
       </div>
 
+      <button type="submit" className="apply-btn">apply</button>
     </form>
   );
 }

@@ -9,6 +9,7 @@ export type IncidentFrontmatter = {
   category: string;
   mitigationStatus: string;
   sources: string[];
+  cve?: string;
   tldr?: string;
   realWorldImpact?: string;
   whyCare?: string;
@@ -28,7 +29,7 @@ export type IncidentEvidence = {
 
 export type Incident = IncidentFrontmatter & {
   slug: string;
-  content: string;
+  content: string | Array<{ h: string; p: string }>;
   tldr: string;
   realWorldImpact: string;
   whyCare: string;

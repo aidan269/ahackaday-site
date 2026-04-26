@@ -4,8 +4,6 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { AskAI } from "@/components/ask-ai";
-import { IncidentSignoff } from "@/components/incident-signoff";
-import { MarkReadOnMount } from "@/components/mark-read-on-mount";
 import {
   formatIncidentDate,
   getAllIncidents,
@@ -70,159 +68,85 @@ const SEV_COLOR = {
   low: "var(--sev-low)",
 } as const;
 
-function toTitleCaseHeading(value: string): string {
-  const cleaned = value.replace(/[#*_`]/g, "").trim();
-  if (!cleaned) return "";
-  return cleaned
-    .toLowerCase()
-    .replace(/\b[a-z]/g, (c) => c.toUpperCase());
-}
-
-function parseContentSections(raw: unknown): Array<{ h: string; p: string }> {
-  if (Array.isArray(raw)) {
-    return raw
-      .map((sec) => {
-        if (!sec || typeof sec !== "object") return null;
-        const h = "h" in sec && typeof sec.h === "string" ? sec.h.trim() : "";
-        const p = "p" in sec && typeof sec.p === "string" ? sec.p.trim() : "";
-        return h && p ? { h, p } : null;
-      })
-      .filter((sec): sec is { h: string; p: string } => sec !== null);
-  }
-  if (typeof raw !== "string") return [];
-
-  const text = raw.trim();
-  if (!text) return [];
-  const lines = text.split("\n").map((line) => line.trim()).filter(Boolean);
-  const sections: Array<{ h: string; p: string }> = [];
-  let currentHeading = "";
-  let currentParagraph: string[] = [];
-
-  const flush = () => {
-    if (!currentHeading || currentParagraph.length === 0) return;
-    sections.push({ h: currentHeading, p: currentParagraph.join(" ").replace(/\s+/g, " ").trim() });
-    currentParagraph = [];
-  };
-
-  for (const line of lines) {
-    const headingMatch = /^#{1,3}\s+(.+)$/.exec(line);
-    if (headingMatch?.[1]) {
-      flush();
-      currentHeading = toTitleCaseHeading(headingMatch[1]);
-      continue;
-    }
-    if (!currentHeading && line.length > 0) {
-      currentHeading = "What Happened";
-    }
-    currentParagraph.push(line);
-  }
-  flush();
-  if (sections.length === 0 && text.length > 0) {
-    const sentences = text
-      .split(/(?<=[.!?])\s+/)
-      .map((s) => s.trim())
-      .filter(Boolean);
-    if (sentences.length > 0) {
-      const s1 = sentences.slice(0, 2).join(" ");
-      const s2 = sentences.slice(2, 4).join(" ");
-      const s3 = sentences.slice(4, 6).join(" ");
-      if (s1) sections.push({ h: "What Happened", p: s1 });
-      if (s2) sections.push({ h: "Why This Matters", p: s2 });
-      if (s3) sections.push({ h: "Technical Notes", p: s3 });
-    }
-  }
-  return sections;
-}
-
 export default async function IncidentPage({ params }: IncidentPageProps) {
   const { slug } = await params;
   const incident = await getIncidentBySlug(slug);
   if (!incident) notFound();
 
   const sev = SEV_COLOR[incident.severity];
-  const trackingId = incident.evidence.cves[0] ?? /CVE-\d{4}-\d+/i.exec(incident.title)?.[0] ?? "n/a";
-  const rawContent = incident.content as unknown;
-  const contentSections = parseContentSections(rawContent);
-  const plainBody =
-    typeof rawContent === "string" ? rawContent.trim() : "";
-  const summaryLower = incident.summary.trim().toLowerCase();
-  const titleLower = incident.title.trim().toLowerCase();
-  const plainBodyLower = plainBody.toLowerCase();
-  const showPlainBody =
-    plainBody.length > 0 &&
-    plainBodyLower !== summaryLower &&
-    plainBodyLower !== titleLower &&
-    plainBodyLower !== `${incident.title} ${incident.summary}`.trim().toLowerCase();
+  const trackingId = incident.cve || incident.evidence.cves[0] || null;
+  const sections = Array.isArray(incident.content) ? incident.content : [];
 
   return (
     <main className="shell">
       <div className="detail-with-ai view-fade">
-        <div className={`detail${incident.severity === "critical" ? " is-critical" : ""}`}>
-        <MarkReadOnMount slug={incident.slug} />
-        <Link href="/" className="back-link">back to feed</Link>
+        <article className={`detail ${incident.severity === "critical" ? "is-critical" : ""}`}>
+          <Link href="/" className="back-link">back to feed</Link>
 
-        <div className="detail__head">
-          <div className="detail__tags">
-            <span>{formatIncidentDate(incident.date)}</span>
-            <span
-              className={`sev-chip sev-${incident.severity}${incident.severity === "critical" ? " sev-chip--pulse" : ""}`}
-              style={{ ["--sev" as string]: sev } as CSSProperties}
-            >
-              {incident.severity}
-            </span>
-            <span>{incident.category}</span>
+          <div className="detail__head">
+            <div className="detail__tags">
+              <span style={{ color: "var(--fg-2)" }}>{formatIncidentDate(incident.date)}</span>
+              <span className="sev-chip" style={{ ["--sev" as string]: sev } as CSSProperties}>
+                {incident.severity}
+              </span>
+              <span>{incident.category}</span>
+              {incident.exploited && <span className="exploited-chip">exploited in the wild</span>}
+            </div>
+            <h1 className="detail__title">{incident.title}</h1>
+            <p className="detail__lead">{incident.summary}</p>
           </div>
-          <h1 className="detail__title">{incident.title}</h1>
-          <p className="detail__lead">{incident.summary}</p>
-        </div>
 
-        <div className="detail__meta">
-          <div>
-            <span className="k">what&apos;s affected</span>
-            <span className="v">{incident.affected}</span>
+          <div className="detail__meta">
+            <div>
+              <span className="k">what&apos;s affected</span>
+              <span className="v">{incident.affected}</span>
+            </div>
+            <div>
+              <span className="k">mitigation status</span>
+              <span className="v">{incident.mitigationStatus}</span>
+            </div>
+            {trackingId && (
+              <div>
+                <span className="k">tracking id</span>
+                <span className="v" style={{ color: "var(--brand-orange)" }}>{trackingId}</span>
+              </div>
+            )}
+            <div>
+              <span className="k">first reported</span>
+              <span className="v">{formatIncidentDate(incident.date)}</span>
+            </div>
           </div>
-          <div>
-            <span className="k">mitigation status</span>
-            <span className="v">{incident.mitigationStatus}</span>
-          </div>
-          <div>
-            <span className="k">tracking id</span>
-            <span className="v">{trackingId}</span>
-          </div>
-          <div>
-            <span className="k">first reported</span>
-            <span className="v">{formatIncidentDate(incident.date)}</span>
-          </div>
-        </div>
 
-        <div className="detail__body">
-          {contentSections.length > 0 ? (
-            contentSections.map((sec, idx) => (
-              <div key={`${sec.h}-${idx}`}>
+          <div className="detail__body">
+            {sections.map((sec, idx) => (
+              <div key={idx}>
                 <h3>{sec.h}</h3>
                 <p>{sec.p}</p>
               </div>
-            ))
-          ) : showPlainBody ? (
-            <p>{incident.content}</p>
-          ) : (
-            <p style={{ color: "var(--fg-muted)" }}>source did not provide sectioned body content.</p>
-          )}
-        </div>
-
-        <section className="detail__sources">
-          <h3>sources</h3>
-          <ul>
-            {incident.sources.map((sourceUrl) => (
-              <li key={sourceUrl}>
-                <a href={sourceUrl} target="_blank" rel="noreferrer">{sourceUrl}</a>
-              </li>
             ))}
-          </ul>
-        </section>
+          </div>
 
-        <IncidentSignoff incident={incident} />
-        </div>
+          <div className="detail__sources">
+            <h3>sources</h3>
+            <ul>
+              {incident.sources.map((sourceUrl) => (
+                <li key={sourceUrl}>
+                  <a href={sourceUrl} target="_blank" rel="noreferrer">{sourceUrl}</a>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <div className="signoff">
+            <em>
+              Curated {formatIncidentDate(incident.date)} by the ahackaday team.
+              <span className="sep">/</span>
+              Sources verified.
+              <span className="sep">/</span>
+              Brief grounded in {incident.sources.length} source{incident.sources.length === 1 ? "" : "s"}.
+            </em>
+          </div>
+        </article>
         <AskAI incident={incident} />
       </div>
     </main>

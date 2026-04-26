@@ -2,9 +2,7 @@ import { DailyBriefHead } from "@/components/daily-brief-head";
 import { FeedControls } from "@/components/feed-controls";
 import { IncidentItem, IncidentRow, IncidentTimelineItem } from "@/components/incident-item";
 import { QuietDayEmpty } from "@/components/quiet-day-empty";
-import Link from "next/link";
-import { buildFeedHref } from "@/lib/feed-nav";
-import { filterIncidents, getAllIncidents, type IncidentType, type Severity } from "@/lib/incidents";
+import { getAllIncidents, type IncidentType, type Severity } from "@/lib/incidents";
 
 type HomeProps = {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
@@ -23,46 +21,40 @@ export default async function Home({ searchParams }: HomeProps) {
   const typeValue = readParam(params.type, "all");
   const windowValue = readParam(params.window, "30d");
   const layout = readParam(params.layout, "card") as "card" | "row" | "timeline";
-  const exploitedRaw = readParam(params.exploited, "");
-  const mitigatedRaw = readParam(params.mitigated, "");
-  const onlyExploited = exploitedRaw === "1" || exploitedRaw.toLowerCase() === "true";
-  const onlyMitigated = mitigatedRaw === "1" || mitigatedRaw.toLowerCase() === "true";
+  const severityValue = severity as "all" | Severity;
+  const typeFilter = typeValue as "all" | IncidentType;
+  const win = (windowValue === "7d" ? "7" : windowValue) as "7" | "30d" | "90d" | "all";
 
   const all = await getAllIncidents();
-  const today = new Date();
-  const incidents = filterIncidents(all, {
-    query,
-    severity: severity as Severity | "all",
-    type: typeValue as IncidentType,
-    window: windowValue as "7d" | "30d" | "90d" | "all",
-    onlyExploited,
-    onlyMitigated,
+  const now = new Date(2026, 3, 21);
+  const qq = query.trim().toLowerCase();
+  const days = win === "all" ? null : parseInt(win, 10);
+  const parseLocal = (date: string) => {
+    const [y, m, d] = date.slice(0, 10).split("-").map((n) => Number.parseInt(n, 10));
+    if (Number.isNaN(y) || Number.isNaN(m) || Number.isNaN(d)) return new Date(date);
+    return new Date(y, m - 1, d);
+  };
+  const filtered = all.filter((i) => {
+    if (severityValue !== "all" && i.severity !== severityValue) return false;
+    if (typeFilter !== "all" && i.category !== typeFilter) return false;
+    if (days) {
+      const age = (now.getTime() - parseLocal(i.date).getTime()) / 86400000;
+      if (age > days) return false;
+    }
+    if (qq) {
+      const hay = [i.title, i.summary, i.affected, i.category].join(" ").toLowerCase();
+      if (!hay.includes(qq)) return false;
+    }
+    return true;
   });
 
-  const critical = incidents.filter((i) => i.severity === "critical").length;
-  const exploited = incidents.filter((i) => i.exploited).length;
-  const todayCrit = critical;
-  const actCount = exploited;
-  const dateStr = today.toLocaleDateString("en-GB", { day: "2-digit", month: "short" }).toLowerCase();
-  const scanUtc = new Intl.DateTimeFormat("en-GB", {
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-    timeZone: "UTC",
-  }).format(today);
+  const counts = {
+    critical: filtered.filter((i) => i.severity === "critical").length,
+    exploited: filtered.filter((i) => i.exploited).length,
+  };
+  const dateStr = new Date(2026, 3, 21).toLocaleDateString("en-GB", { day: "2-digit", month: "short" }).toLowerCase();
 
-  const mkHref = (nextSeverity: string, nextType = typeValue) =>
-    buildFeedHref({
-      q: query,
-      severity: nextSeverity,
-      type: nextType,
-      window: windowValue,
-      exploited: onlyExploited,
-      mitigated: onlyMitigated,
-      layout,
-    });
-
-  const groupedByDate = incidents.reduce<Record<string, typeof incidents>>((acc, incident) => {
+  const groupedByDate = filtered.reduce<Record<string, typeof filtered>>((acc, incident) => {
     const key = incident.date.slice(0, 10);
     if (!acc[key]) acc[key] = [];
     acc[key].push(incident);
@@ -75,24 +67,24 @@ export default async function Home({ searchParams }: HomeProps) {
         <div>
           <DailyBriefHead
             dateStr={dateStr}
-            filteredLen={incidents.length}
+            filteredLen={filtered.length}
             allLen={all.length}
-            todayCrit={todayCrit}
-            actCount={actCount}
+            todayCrit={counts.critical}
+            actCount={counts.exploited}
           />
         </div>
         <div className="page-head__stats">
           <div className="stat">
-            <span className="stat__k">in view</span>
-            <span className="stat__v">{incidents.length}</span>
+            <span className="stat__k">tracked</span>
+            <span className="stat__v">{filtered.length}</span>
           </div>
           <div className="stat">
             <span className="stat__k">critical</span>
-            <span className="stat__v crit">{critical}</span>
+            <span className="stat__v crit">{counts.critical}</span>
           </div>
           <div className="stat">
-            <span className="stat__k">actively exploited</span>
-            <span className="stat__v orange">{exploited}</span>
+            <span className="stat__k">active exploit</span>
+            <span className="stat__v orange">{counts.exploited}</span>
           </div>
         </div>
       </div>
@@ -101,27 +93,24 @@ export default async function Home({ searchParams }: HomeProps) {
         query={query}
         severity={severity}
         typeValue={typeValue}
-        windowValue={windowValue}
+        windowValue={win}
         layout={layout}
-        onlyExploited={onlyExploited}
-        onlyMitigated={onlyMitigated}
       />
-      <div className="mobile-severity-pills">
-        <Link href={mkHref("all")} className={`pill ${severity === "all" ? "is-active" : ""}`}>all</Link>
-        <Link href={mkHref("critical")} className={`pill ${severity === "critical" ? "is-active" : ""}`}>critical</Link>
-        <Link href={mkHref("high")} className={`pill ${severity === "high" ? "is-active" : ""}`}>high</Link>
-        <Link href={mkHref("medium")} className={`pill ${severity === "medium" ? "is-active" : ""}`}>medium</Link>
-        <Link href={mkHref("low")} className={`pill ${severity === "low" ? "is-active" : ""}`}>low</Link>
+
+      <div className="feed-meta">
+        <span>
+          showing <span style={{ color: "var(--fg)" }}>{filtered.length}</span> of {all.length}
+          <span className="dot">·</span>sorted by date desc
+        </span>
+        <span>
+          layout : <span style={{ color: "var(--brand-orange)" }}>{layout}</span>
+        </span>
       </div>
 
-      {incidents.length === 0 ? (
-        <QuietDayEmpty allLen={all.length} scanUtc={scanUtc} />
+      {filtered.length === 0 ? (
+        <QuietDayEmpty allLen={all.length} />
       ) : (
         <>
-          <div className="feed-meta">
-            <span>showing {incidents.length} of {all.length} · sorted by date desc</span>
-            <span>layout · {layout}</span>
-          </div>
           {layout === "row" ? (
             <div className="feed--row">
               <div className="row-head">
@@ -132,7 +121,7 @@ export default async function Home({ searchParams }: HomeProps) {
                 <span>affected</span>
                 <span />
               </div>
-              {incidents.map((i) => <IncidentRow key={i.slug} incident={i} />)}
+              {filtered.map((i) => <IncidentRow key={i.slug} incident={i} />)}
             </div>
           ) : layout === "timeline" ? (
             <div className="feed--timeline">
@@ -145,7 +134,7 @@ export default async function Home({ searchParams }: HomeProps) {
             </div>
           ) : (
             <div className="feed--card">
-              {incidents.map((i, idx) => <IncidentItem key={i.slug} incident={i} index={idx} />)}
+              {filtered.map((i, idx) => <IncidentItem key={i.slug} incident={i} index={idx} />)}
             </div>
           )}
         </>
