@@ -68,6 +68,25 @@ function normalizeDisplayText(value: string): string {
     .trim();
 }
 
+function trimToCompleteSentence(value: string): string {
+  const text = normalizeDisplayText(value);
+  if (!text) return text;
+  if (/[.!?]["')\]]?$/.test(text)) return text;
+
+  let lastTerminal = -1;
+  for (let i = text.length - 1; i >= 0; i -= 1) {
+    const ch = text[i];
+    if (ch === "." || ch === "!" || ch === "?") {
+      lastTerminal = i;
+      break;
+    }
+  }
+  if (lastTerminal >= 80) {
+    return text.slice(0, lastTerminal + 1).trim();
+  }
+  return text;
+}
+
 function createEmptyEvidence(): IncidentEvidence {
   return {
     packages: [],
@@ -230,7 +249,21 @@ function sanitizeArticleBody(body: string): string {
     .filter(Boolean);
 
   const compact = sentences.slice(0, 6).join(" ");
-  return compact.length > 950 ? `${compact.slice(0, 950).trim()}…` : compact;
+  if (compact.length <= 950) return trimToCompleteSentence(compact);
+
+  const head = compact.slice(0, 950).trim();
+  let lastTerminal = -1;
+  for (let i = head.length - 1; i >= 0; i -= 1) {
+    const ch = head[i];
+    if (ch === "." || ch === "!" || ch === "?") {
+      lastTerminal = i;
+      break;
+    }
+  }
+  if (lastTerminal >= 220) {
+    return head.slice(0, lastTerminal + 1).trim();
+  }
+  return `${trimToCompleteSentence(head)}…`;
 }
 
 function mapDbRowToIncident(row: SupabaseIncidentRow): Incident {
@@ -238,7 +271,9 @@ function mapDbRowToIncident(row: SupabaseIncidentRow): Incident {
     row.claude_summary.trim() || row.raw_content.trim() || "No summary available.",
   );
   const parsedBriefing = parseStructuredBriefing(row.claude_summary.trim());
-  const summary = dedupeSummaryAgainstTitle(row.title, parsedBriefing?.tldr || rawSummaryFallback);
+  const summary = trimToCompleteSentence(
+    dedupeSummaryAgainstTitle(row.title, parsedBriefing?.tldr || rawSummaryFallback),
+  );
   const impacted = parsedBriefing?.evidence.systems[0] || inferAffectedFromRow(row, summary);
   const inferredExploited = inferExploitedSignal(`${row.title} ${summary} ${row.raw_content}`);
   const defaultWhyCare =
@@ -250,7 +285,7 @@ function mapDbRowToIncident(row: SupabaseIncidentRow): Incident {
     "Track follow-up updates from primary sources and adjust response.",
   ];
   const content = parsedBriefing
-    ? normalizeDisplayText(parsedBriefing.realWorldImpact)
+    ? trimToCompleteSentence(parsedBriefing.realWorldImpact)
     : sanitizeArticleBody(
         dedupeBodyAgainstSummary(
           row.title,
