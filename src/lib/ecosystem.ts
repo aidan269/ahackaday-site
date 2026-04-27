@@ -34,10 +34,9 @@ export function graceDeepLink(storyUrl: string): string {
   return `${base}/?url=${encodeURIComponent(storyUrl)}#studio`;
 }
 
-/** Avatar image served by Grace (same asset as in-app chat). */
-export function graceAvatarUrl(): string | undefined {
-  const base = getGraceOrigin();
-  return base ? `${base}/grace-avatar.png` : undefined;
+/** Grace mark for “Open in Grace” and other AHackaday UI (served from this site). */
+export function graceAvatarUrl(): string {
+  return "/grace-avatar.png";
 }
 
 export type ToolkitRow = {
