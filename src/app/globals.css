@@ -432,8 +432,9 @@ main.shell { max-width: 1560px; margin: 0 auto; padding: 48px 40px 160px; positi
 
 .card__title { font-size: 17px; font-weight: 500; color: var(--fg); line-height: 1.3; letter-spacing: -0.015em; margin: 0 0 6px; transition: color 180ms; text-wrap: balance; }
 .card__sum { font-size: 12.5px; color: var(--fg-2); line-height: 1.6; margin: 0; max-width: 82ch; }
-.card__line { margin-top: 10px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 11.5px; color: var(--fg-2); }
+.card__line { margin-top: 10px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 11.5px; color: var(--fg-2); font-style: italic; }
 .card__line .k { font-size: 9px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--fg-muted); }
+.card__line .card__cve { font-style: normal; }
 .card__cve { margin-left: 4px; border: 1px solid rgba(250,94,6,0.35); background: rgba(250,94,6,0.08); border-radius: 6px; padding: 2px 7px; font-size: 10px; letter-spacing: 0.08em; color: var(--brand-orange); text-transform: uppercase; }
 .exploit-badge {
   display: inline-flex;
@@ -504,7 +505,7 @@ main.shell { max-width: 1560px; margin: 0 auto; padding: 48px 40px 160px; positi
 .row__sev.sev-high { font-weight: 700; }
 .row__cat { color: var(--fg-3); font-size: 11.5px; }
 .row__title { color: var(--fg); font-weight: 500; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; transition: color 180ms; letter-spacing: -0.005em; }
-.row__affected { color: var(--fg-3); font-size: 11.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.row__affected { color: var(--fg-3); font-size: 11.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-style: italic; }
 .row__arrow { color: var(--fg-muted); text-align: right; }
 
 /* ===== TIMELINE ===== */
@@ -550,6 +551,7 @@ main.shell { max-width: 1560px; margin: 0 auto; padding: 48px 40px 160px; positi
 .detail__meta > div:nth-last-child(-n+4) { border-bottom: 0; }
 .detail__meta .k { font-size: 9.5px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--fg-muted); display: block; margin-bottom: 6px; }
 .detail__meta .v { font-size: 13px; color: var(--fg); line-height: 1.5; }
+.detail__meta-affected { font-style: italic; }
 
 .detail__remediation { margin: 0 0 34px; }
 .detail__remediation h3 { font-size: 10.5px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--fg-3); margin: 0 0 14px; display: flex; align-items: center; gap: 10px; }

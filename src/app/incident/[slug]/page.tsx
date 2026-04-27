@@ -103,7 +103,7 @@ export default async function IncidentPage({ params }: IncidentPageProps) {
           </div>
 
           <div className="detail__meta">
-            <div>
+            <div className="detail__meta-affected">
               <span className="k">what&apos;s affected</span>
               <span className="v">{incident.affected}</span>
             </div>
