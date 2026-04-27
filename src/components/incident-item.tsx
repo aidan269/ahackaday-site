@@ -7,6 +7,7 @@ import { useEmotionalPreferences } from "@/components/emotional-preferences-prov
 import { OpenInGrace } from "@/components/open-in-grace";
 import { formatIncidentDate } from "@/lib/format-incident-date";
 import type { Incident, Severity } from "@/lib/incident-types";
+import { truncateForDisplay } from "@/lib/truncate-display";
 
 const SEV_COLOR: Record<Severity, string> = {
   critical: "var(--sev-critical)",
@@ -77,7 +78,7 @@ export function IncidentItem({ incident }: Props) {
           <p className="card__sum">{incident.summary}</p>
           <div className="card__line">
             <span className="k">affected</span>
-            <span>{incident.affected}</span>
+            <span className="card__line-v">{truncateForDisplay(incident.affected, 140)}</span>
             {cve && <span className="card__cve">{cve}</span>}
           </div>
         </div>
@@ -115,7 +116,7 @@ export function IncidentRow({ incident }: Props) {
       <div className={`row__sev sev-${incident.severity}`}>{incident.severity}</div>
       <div className="row__cat">{incident.category}</div>
       <div className="row__title">{incident.title}</div>
-      <div className="row__affected">{incident.affected}</div>
+      <div className="row__affected">{truncateForDisplay(incident.affected, 160)}</div>
       <div className="row__arrow">›</div>
     </Link>
   );
