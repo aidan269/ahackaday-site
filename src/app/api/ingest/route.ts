@@ -2,18 +2,12 @@ import Anthropic from "@anthropic-ai/sdk";
 import { createClient } from "@supabase/supabase-js";
 
 import { getAnthropicModel } from "@/lib/anthropic-model";
+import { getIngestMaxNewPerRun, loadIngestFeeds } from "@/lib/ingest-config";
+import { fetchFeedForConfig, type FeedItem } from "@/lib/ingest-feed-parse";
 import { decodeHtmlEntities, stripInvisibleUnicode } from "@/lib/html-entities";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
-
-type FeedItem = {
-  title: string;
-  link: string;
-  description: string;
-  pubDate: string;
-  sourceName: string;
-};
 
 type IngestItem = FeedItem & {
   fullText: string;
@@ -38,14 +32,18 @@ type ClaudeIncidentOutput = {
   severity: "critical" | "high" | "medium" | "low";
 };
 
-const FEEDS = [
-  {
-    url: "https://www.cisa.gov/cybersecurity-advisories/all.xml",
-    source: "CISA",
-  },
-  { url: "https://krebsonsecurity.com/feed/", source: "KrebsOnSecurity" },
-  { url: "https://www.bleepingcomputer.com/feed/", source: "BleepingComputer" },
-];
+type PerFeedReport = {
+  source: string;
+  url: string;
+  itemLimit: number;
+  enabled: boolean;
+  itemsFetched: number;
+  inserted: number;
+  skippedExisting: number;
+  newProcessingErrors: number;
+  skipped: boolean;
+  skipNote?: string;
+};
 
 function fallbackFromItem(item: IngestItem): ClaudeIncidentOutput {
   const tldr =
@@ -65,24 +63,6 @@ function fallbackFromItem(item: IngestItem): ClaudeIncidentOutput {
     exploited: false,
     severity: "medium",
   };
-}
-
-function readTag(block: string, tag: string): string {
-  const exact = new RegExp(`<${tag}>([\\s\\S]*?)</${tag}>`, "i").exec(block);
-  if (exact?.[1]) return exact[1].trim();
-
-  const cdata = new RegExp(`<${tag}><!\\[CDATA\\[([\\s\\S]*?)\\]\\]></${tag}>`, "i").exec(block);
-  if (cdata?.[1]) return cdata[1].trim();
-
-  return "";
-}
-
-function stripTags(value: string): string {
-  return value
-    .replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, "$1")
-    .replace(/<[^>]+>/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
 }
 
 function normalizeWhitespace(value: string): string {
@@ -126,7 +106,6 @@ async function fetchFullArticleText(url: string): Promise<string> {
   const html = await response.text();
   const primaryBlock = extractArticleLikeHtml(html);
 
-  // Prefer sentence-rich paragraph/list text from main content blocks.
   const chunkMatches = [
     ...primaryBlock.matchAll(/<(?:p|li|h1|h2|h3|h4)[^>]*>([\s\S]*?)<\/(?:p|li|h1|h2|h3|h4)>/gi),
   ];
@@ -141,20 +120,6 @@ async function fetchFullArticleText(url: string): Promise<string> {
   return text.slice(0, 16000);
 }
 
-function parseRssItems(xml: string, sourceName: string): FeedItem[] {
-  const itemMatches = [...xml.matchAll(/<item>([\s\S]*?)<\/item>/gi)];
-  return itemMatches
-    .map((match) => match[1] ?? "")
-    .map((block) => ({
-      title: stripTags(readTag(block, "title")),
-      link: stripTags(readTag(block, "link")),
-      description: stripTags(readTag(block, "description")),
-      pubDate: stripTags(readTag(block, "pubDate")),
-      sourceName,
-    }))
-    .filter((item) => item.title && item.link);
-}
-
 function createSupabaseAdminClient() {
   const url = process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -167,9 +132,12 @@ function createSupabaseAdminClient() {
 async function summarizeWithClaude(
   anthropic: Anthropic | null,
   item: IngestItem,
-): Promise<ClaudeIncidentOutput> {
+): Promise<{
+  output: ClaudeIncidentOutput;
+  usage: { input: number; output: number } | null;
+}> {
   if (!anthropic) {
-    return fallbackFromItem(item);
+    return { output: fallbackFromItem(item), usage: null };
   }
 
   const prompt = `Read the full page and return JSON only.
@@ -221,12 +189,18 @@ ${item.fullText.slice(0, 12000)}`;
 
     const parsed = JSON.parse(text) as ClaudeIncidentOutput;
     if (!parsed.tldr || !parsed.realWorldImpact || !parsed.whyCare || !parsed.severity) {
-      return fallbackFromItem(item);
+      return { output: fallbackFromItem(item), usage: null };
     }
 
-    return validateStructuredOutput(parsed);
+    const u = (response as { usage?: { input_tokens?: number; output_tokens?: number } }).usage;
+    const usage =
+      u && typeof u.input_tokens === "number" && typeof u.output_tokens === "number"
+        ? { input: u.input_tokens, output: u.output_tokens }
+        : null;
+
+    return { output: validateStructuredOutput(parsed), usage };
   } catch {
-    return fallbackFromItem(item);
+    return { output: fallbackFromItem(item), usage: null };
   }
 }
 
@@ -293,23 +267,6 @@ function validateStructuredOutput(output: ClaudeIncidentOutput): ClaudeIncidentO
   return normalized;
 }
 
-async function fetchFeed(url: string, sourceName: string): Promise<FeedItem[]> {
-  const response = await fetch(url, {
-    headers: {
-      "User-Agent": "AHackaday-Ingest/1.0",
-      Accept: "application/rss+xml, application/xml, text/xml, */*",
-    },
-    next: { revalidate: 0 },
-  });
-
-  if (!response.ok) {
-    throw new Error(`Feed fetch failed for ${sourceName}: ${response.status}`);
-  }
-
-  const xml = await response.text();
-  return parseRssItems(xml, sourceName).slice(0, 10);
-}
-
 async function runIngest(request: Request) {
   const authHeader = request.headers.get("authorization");
   const expected = process.env.CRON_SECRET;
@@ -317,19 +274,55 @@ async function runIngest(request: Request) {
     return Response.json({ ok: false, error: "Unauthorized" }, { status: 401 });
   }
 
+  const t0 = Date.now();
   const supabase = createSupabaseAdminClient();
   const anthropic = process.env.ANTHROPIC_API_KEY
     ? new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
     : null;
 
+  const feeds = loadIngestFeeds();
+  const maxNewPerRun = getIngestMaxNewPerRun();
+  let newIngestsThisRun = 0;
+  let capReached = false;
   let inserted = 0;
   let skipped = 0;
   const errors: string[] = [];
+  const feedReports: PerFeedReport[] = [];
+  let claudeInputTokens = 0;
+  let claudeOutputTokens = 0;
+  let claudeCalls = 0;
 
-  for (const feed of FEEDS) {
-    try {
-      const items = await fetchFeed(feed.url, feed.source);
-      for (const item of items) {
+  outer: for (const feed of feeds) {
+    const rep: PerFeedReport = {
+      source: feed.source,
+      url: feed.url,
+      itemLimit: feed.itemLimit,
+      enabled: feed.enabled !== false,
+      itemsFetched: 0,
+      inserted: 0,
+      skippedExisting: 0,
+      newProcessingErrors: 0,
+      skipped: false,
+    };
+    if (feed.enabled === false) {
+      rep.skipped = true;
+      rep.skipNote = "disabled in config";
+      feedReports.push(rep);
+      continue;
+    }
+
+    const result = await fetchFeedForConfig(feed, fetch);
+    if (!result.ok) {
+      errors.push(result.error);
+      rep.skipNote = result.error;
+      feedReports.push(rep);
+      continue;
+    }
+    const items = result.items;
+    rep.itemsFetched = items.length;
+
+    for (const item of items) {
+      if (item.link.length > 0) {
         try {
           const { data: existing, error: existsError } = await supabase
             .from("incidents")
@@ -338,13 +331,24 @@ async function runIngest(request: Request) {
             .maybeSingle();
 
           if (existsError) {
-            errors.push(`Existence check failed ${item.link}: ${existsError.message}`);
+            const msg = `Existence check failed ${item.link}: ${existsError.message}`;
+            errors.push(msg);
+            rep.newProcessingErrors += 1;
             continue;
           }
           if (existing) {
             skipped += 1;
+            rep.skippedExisting += 1;
             continue;
           }
+
+          if (newIngestsThisRun >= maxNewPerRun) {
+            capReached = true;
+            rep.skipNote = `cap: INGEST_MAX_NEW_PER_RUN (${maxNewPerRun}) reached`;
+            feedReports.push(rep);
+            break outer;
+          }
+          newIngestsThisRun += 1;
 
           let fullText = item.description;
           try {
@@ -359,7 +363,15 @@ async function runIngest(request: Request) {
             fullText: fullText || item.description,
           };
 
-          const ai = await summarizeWithClaude(anthropic, ingestItem);
+          const { output: ai, usage } = await summarizeWithClaude(anthropic, ingestItem);
+          if (usage) {
+            claudeInputTokens += usage.input;
+            claudeOutputTokens += usage.output;
+            claudeCalls += 1;
+          } else if (anthropic) {
+            claudeCalls += 1;
+          }
+
           const { error } = await supabase.from("incidents").upsert(
             {
               title: item.title,
@@ -379,29 +391,46 @@ async function runIngest(request: Request) {
           if (error) {
             if (error.message.includes("duplicate key value")) {
               skipped += 1;
+              rep.skippedExisting += 1;
             } else {
-              errors.push(`Upsert failed for ${item.link}: ${error.message}`);
+              const msg = `Upsert failed for ${item.link}: ${error.message}`;
+              errors.push(msg);
+              rep.newProcessingErrors += 1;
             }
           } else {
             inserted += 1;
+            rep.inserted += 1;
           }
         } catch (error) {
           const message = error instanceof Error ? error.message : String(error);
           errors.push(`Item failed ${item.link}: ${message}`);
+          rep.newProcessingErrors += 1;
         }
       }
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      errors.push(`Feed failed ${feed.source}: ${message}`);
     }
+    feedReports.push(rep);
   }
 
+  const durationMs = Date.now() - t0;
   return Response.json({
     ok: true,
+    durationMs,
     inserted,
     skipped,
     errors,
     model: process.env.ANTHROPIC_API_KEY ? getAnthropicModel() : null,
+    cap: {
+      maxNewPerRun: maxNewPerRun,
+      reached: capReached,
+      newIngestsThisRun,
+    },
+    claude: {
+      calls: claudeCalls,
+      inputTokens: claudeInputTokens,
+      outputTokens: claudeOutputTokens,
+      noApiKey: !process.env.ANTHROPIC_API_KEY,
+    },
+    feeds: feedReports,
   });
 }
 
