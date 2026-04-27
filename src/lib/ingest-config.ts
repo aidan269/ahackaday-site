@@ -20,6 +20,9 @@ const DEFAULT_FEEDS: IngestFeedConfig[] = [
   },
   { url: "https://krebsonsecurity.com/feed/", source: "KrebsOnSecurity", itemLimit: 10 },
   { url: "https://www.bleepingcomputer.com/feed/", source: "BleepingComputer", itemLimit: 10 },
+  /** Main site redirects to Feedburner; this URL is stable for fetch+parse. */
+  { url: "https://feeds.feedburner.com/TheHackersNews", source: "TheHackerNews", itemLimit: 8 },
+  { url: "https://www.securityweek.com/feed/", source: "SecurityWeek", itemLimit: 8 },
 ];
 
 function intEnv(name: string, fallback: number): number {
