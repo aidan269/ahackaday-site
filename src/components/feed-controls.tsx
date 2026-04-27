@@ -1,35 +1,38 @@
+import { ToolkitDrawer } from "@/components/toolkit-drawer";
+
 type FeedControlsProps = {
   query: string;
   severity: string;
   typeValue: string;
-  windowValue: string;
-  layout: string;
+  windowValue: "7" | "30d" | "90d" | "all";
+  layout: "card" | "row" | "timeline";
 };
 
-export function FeedControls({ query, severity, typeValue, windowValue, layout }: FeedControlsProps) {
+export function FeedControls({
+  query,
+  severity,
+  typeValue,
+  windowValue,
+  layout,
+}: FeedControlsProps) {
   return (
     <form className="controls">
-      {/* preserve the layout param across filter submissions */}
-      <input type="hidden" name="layout" value={layout} />
-
       <div className="ctrl">
-        <label className="sr" htmlFor="f-q">Search</label>
+        <label htmlFor="f-q">Search</label>
         <div className="ctrl__box">
-          <span className="prefix">/</span>
           <input
             id="f-q"
             type="text"
             name="q"
             defaultValue={query}
-            placeholder="cisco, zero-day, edge firewall…"
+            placeholder="search incidents, CVEs, vendors..."
           />
         </div>
       </div>
 
       <div className="ctrl">
-        <label className="sr" htmlFor="f-sev">Severity</label>
+        <label htmlFor="f-sev">Severity</label>
         <div className="ctrl__box">
-          <span className="prefix">●</span>
           <select id="f-sev" name="severity" defaultValue={severity}>
             <option value="all">all severities</option>
             <option value="critical">critical</option>
@@ -42,11 +45,10 @@ export function FeedControls({ query, severity, typeValue, windowValue, layout }
       </div>
 
       <div className="ctrl">
-        <label className="sr" htmlFor="f-win">Window</label>
+        <label htmlFor="f-win">Window</label>
         <div className="ctrl__box">
-          <span className="prefix">●</span>
           <select id="f-win" name="window" defaultValue={windowValue}>
-            <option value="7d">7 days</option>
+            <option value="7">7 days</option>
             <option value="30d">30 days</option>
             <option value="90d">90 days</option>
             <option value="all">all time</option>
@@ -56,9 +58,8 @@ export function FeedControls({ query, severity, typeValue, windowValue, layout }
       </div>
 
       <div className="ctrl">
-        <label className="sr" htmlFor="f-type">Type</label>
+        <label htmlFor="f-type">Type</label>
         <div className="ctrl__box">
-          <span className="prefix">●</span>
           <select id="f-type" name="type" defaultValue={typeValue}>
             <option value="all">all types</option>
             <option value="zero-day">zero-day</option>
@@ -77,24 +78,24 @@ export function FeedControls({ query, severity, typeValue, windowValue, layout }
         </div>
       </div>
 
-      <div className="layout-toggle">
-        {["card", "row", "timeline"].map((v) => {
-          // preserve other params by letting the apply button submit;
-          // layout links submit form after setting hidden input
-          return (
-            <button
-              key={v}
-              type="submit"
-              name="layout"
-              value={v}
-              className={"nav-link" + (layout === v ? " is-active" : "")}
-              style={{ border: 0, background: "transparent", font: "inherit", cursor: "pointer" }}
-            >
-              {v}
-            </button>
-          );
-        })}
+      <div className="layout-toggle" role="group" aria-label="Layout">
+        <button type="submit" name="layout" value="card" className={`layout-toggle__btn${layout === "card" ? " is-active" : ""}`}>
+          card
+        </button>
+        <button type="submit" name="layout" value="row" className={`layout-toggle__btn${layout === "row" ? " is-active" : ""}`}>
+          row
+        </button>
+        <button
+          type="submit"
+          name="layout"
+          value="timeline"
+          className={`layout-toggle__btn${layout === "timeline" ? " is-active" : ""}`}
+        >
+          timeline
+        </button>
       </div>
+
+      <ToolkitDrawer />
 
       <button type="submit" className="apply-btn">apply</button>
     </form>
