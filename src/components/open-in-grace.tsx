@@ -1,8 +1,8 @@
 "use client";
 
 import {
+  graceAvatarUrl,
   graceDeepLink,
-  graceFaviconUrl,
   getGraceOrigin,
   incidentCanonicalUrl,
 } from "@/lib/ecosystem";
@@ -18,7 +18,7 @@ const base = "open-in-grace";
 export function OpenInGrace({ incidentSlug, className = "" }: OpenInGraceProps) {
   const storyUrl = incidentCanonicalUrl(incidentSlug);
   const origin = getGraceOrigin();
-  const iconSrc = graceFaviconUrl();
+  const iconSrc = graceAvatarUrl();
   const label = "Open in Grace";
 
   if (!origin) {
@@ -31,10 +31,10 @@ export function OpenInGrace({ incidentSlug, className = "" }: OpenInGraceProps) 
         >
           <img
             className={`${base}__icon`}
-            src="/grace-glyph.svg"
+            src="/grace-avatar.png"
             alt=""
-            width={18}
-            height={18}
+            width={22}
+            height={22}
             decoding="async"
           />
         </span>
@@ -56,8 +56,8 @@ export function OpenInGrace({ incidentSlug, className = "" }: OpenInGraceProps) 
         className={`${base}__icon`}
         src={iconSrc}
         alt=""
-        width={18}
-        height={18}
+        width={22}
+        height={22}
         decoding="async"
       />
     </a>

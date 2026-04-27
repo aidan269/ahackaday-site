@@ -1402,9 +1402,11 @@ body.has-sidebar .cal-side {
 }
 .open-in-grace__icon {
   display: block;
-  width: 18px;
-  height: 18px;
+  width: 22px;
+  height: 22px;
   flex-shrink: 0;
+  border-radius: 50%;
+  object-fit: cover;
 }
 a.open-in-grace:hover {
   opacity: 0.92;
