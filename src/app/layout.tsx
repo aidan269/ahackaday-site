@@ -12,7 +12,7 @@ const mono = JetBrains_Mono({
   subsets: ["latin"],
 });
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://ahackaday-site.vercel.app";
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL?.trim() || "https://ahackaday-site.vercel.app";
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),

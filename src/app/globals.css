@@ -2390,3 +2390,38 @@ a.open-in-grace:focus-visible {
   0%,100% { transform: scale(1); opacity: 0.5; }
   50% { transform: scale(1.1); opacity: 1; }
 }
+
+/* ===== Mobile heading polish ===== */
+@media (max-width: 900px) {
+  .card__title {
+    font-size: clamp(24px, 8.2vw, 34px);
+    line-height: 1.06;
+    letter-spacing: -0.03em;
+    text-wrap: balance;
+    overflow-wrap: anywhere;
+    hyphens: auto;
+  }
+
+  .detail__title {
+    font-size: clamp(34px, 11vw, 52px);
+    line-height: 1.02;
+    letter-spacing: -0.045em;
+    max-width: 100%;
+    text-wrap: balance;
+    overflow-wrap: anywhere;
+    hyphens: auto;
+  }
+}
+
+@media (max-width: 560px) {
+  .card__title {
+    font-size: clamp(22px, 9vw, 30px);
+    line-height: 1.08;
+  }
+
+  .detail__title {
+    font-size: clamp(30px, 11.5vw, 42px);
+    line-height: 1.03;
+    letter-spacing: -0.04em;
+  }
+}
