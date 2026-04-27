@@ -12,6 +12,7 @@ import type {
   Severity,
 } from "./incident-types";
 import { INCIDENT_TYPE_OPTIONS } from "./incident-types";
+import { decodeHtmlEntities, stripInvisibleUnicode } from "./html-entities";
 
 export type { Incident, IncidentEvidence, IncidentFrontmatter, IncidentType, Severity };
 export { INCIDENT_TYPE_OPTIONS };
@@ -61,7 +62,8 @@ function slugify(value: string): string {
 }
 
 function normalizeDisplayText(value: string): string {
-  return value
+  const decoded = stripInvisibleUnicode(decodeHtmlEntities(value));
+  return decoded
     .replace(/\[\s*(?:\.\.\.|…)\s*\]/g, "")
     .replace(/(?:\s+[—–-])?\s*\.\.\.\s*$/, "")
     .replace(/\s{2,}/g, " ")
@@ -186,11 +188,11 @@ function inferAffectedFromRow(row: SupabaseIncidentRow, summary: string): string
     }
   }
 
-  const subjectFromTitle = row.title
+  const subjectFromTitle = normalizeDisplayText(row.title)
     .split(/(?:\s+confirms?\b|\s+gets\b|\s+reports?\b|\s+warns?\b|\s+hit\b|:)/i)[0]
     ?.trim();
   if (subjectFromTitle && subjectFromTitle.length >= 3) return subjectFromTitle;
-  return row.title;
+  return normalizeDisplayText(row.title);
 }
 
 function dedupeSummaryAgainstTitle(title: string, summary: string): string {
@@ -267,15 +269,16 @@ function sanitizeArticleBody(body: string): string {
 }
 
 function mapDbRowToIncident(row: SupabaseIncidentRow): Incident {
+  const cleanTitle = normalizeDisplayText(row.title);
   const rawSummaryFallback = normalizeDisplayText(
     row.claude_summary.trim() || row.raw_content.trim() || "No summary available.",
   );
   const parsedBriefing = parseStructuredBriefing(row.claude_summary.trim());
   const summary = trimToCompleteSentence(
-    dedupeSummaryAgainstTitle(row.title, parsedBriefing?.tldr || rawSummaryFallback),
+    dedupeSummaryAgainstTitle(cleanTitle, parsedBriefing?.tldr || rawSummaryFallback),
   );
   const impacted = parsedBriefing?.evidence.systems[0] || inferAffectedFromRow(row, summary);
-  const inferredExploited = inferExploitedSignal(`${row.title} ${summary} ${row.raw_content}`);
+  const inferredExploited = inferExploitedSignal(`${cleanTitle} ${summary} ${row.raw_content}`);
   const defaultWhyCare =
     "Why this matters: if this affects your stack, treat it as operational risk and assign an owner.";
   const defaultImpact = `This incident affects ${impacted} and can create security or operational disruption if ignored.`;
@@ -288,7 +291,7 @@ function mapDbRowToIncident(row: SupabaseIncidentRow): Incident {
     ? trimToCompleteSentence(parsedBriefing.realWorldImpact)
     : sanitizeArticleBody(
         dedupeBodyAgainstSummary(
-          row.title,
+          cleanTitle,
           summary,
           row.raw_content.trim() || row.claude_summary.trim() || "Awaiting analyst summary.",
         ),
@@ -296,7 +299,7 @@ function mapDbRowToIncident(row: SupabaseIncidentRow): Incident {
 
   return {
     slug: buildSlugFromDb(row),
-    title: row.title,
+    title: cleanTitle,
     date: row.published_at,
     severity: parsedBriefing?.severity ?? row.severity,
     affected: impacted,
@@ -319,7 +322,9 @@ function mapDbRowToIncident(row: SupabaseIncidentRow): Incident {
 }
 
 function classifyIncidentType(row: SupabaseIncidentRow): Exclude<IncidentType, "all"> {
-  return classifyIncidentTypeFromText(`${row.title} ${row.raw_content} ${row.source_name}`);
+  return classifyIncidentTypeFromText(
+    `${normalizeDisplayText(row.title)} ${row.raw_content} ${row.source_name}`,
+  );
 }
 
 export function classifyIncidentTypeFromText(textInput: string): Exclude<IncidentType, "all"> {
@@ -379,6 +384,7 @@ function getMarkdownIncidentBySlug(slug: string): Incident | null {
   const ambiguities = (data.ambiguities || []).map(normalizeDisplayText).filter(Boolean);
   return {
     ...data,
+    title: normalizeDisplayText(String(data.title || "")),
     summary: tldr,
     slug,
     content: parsed.content.trim(),

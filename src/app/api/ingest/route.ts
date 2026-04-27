@@ -2,6 +2,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { createClient } from "@supabase/supabase-js";
 
 import { getAnthropicModel } from "@/lib/anthropic-model";
+import { decodeHtmlEntities, stripInvisibleUnicode } from "@/lib/html-entities";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -88,26 +89,13 @@ function normalizeWhitespace(value: string): string {
   return value.replace(/\s+/g, " ").trim();
 }
 
-function decodeHtmlEntities(value: string): string {
-  return value
-    .replace(/&nbsp;/gi, " ")
-    .replace(/&amp;/gi, "&")
-    .replace(/&quot;/gi, "\"")
-    .replace(/&#39;|&apos;/gi, "'")
-    .replace(/&lt;/gi, "<")
-    .replace(/&gt;/gi, ">");
-}
-
 function htmlToText(value: string): string {
-  return normalizeWhitespace(
-    decodeHtmlEntities(
-      value
-        .replace(/<script[\s\S]*?<\/script>/gi, " ")
-        .replace(/<style[\s\S]*?<\/style>/gi, " ")
-        .replace(/<noscript[\s\S]*?<\/noscript>/gi, " ")
-        .replace(/<[^>]+>/g, " "),
-    ),
-  );
+  const stripped = value
+    .replace(/<script[\s\S]*?<\/script>/gi, " ")
+    .replace(/<style[\s\S]*?<\/style>/gi, " ")
+    .replace(/<noscript[\s\S]*?<\/noscript>/gi, " ")
+    .replace(/<[^>]+>/g, " ");
+  return normalizeWhitespace(stripInvisibleUnicode(decodeHtmlEntities(stripped)));
 }
 
 function extractArticleLikeHtml(html: string): string {
