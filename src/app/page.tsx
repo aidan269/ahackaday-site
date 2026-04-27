@@ -4,6 +4,9 @@ import { IncidentItem, IncidentRow, IncidentTimelineItem } from "@/components/in
 import { QuietDayEmpty } from "@/components/quiet-day-empty";
 import { getAllIncidents, type IncidentType, type Severity } from "@/lib/incidents";
 
+/** Refresh feed periodically (Supabase / markdown) so fixes and new rows surface without only redeploying. */
+export const revalidate = 120;
+
 type HomeProps = {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 };

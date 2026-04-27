@@ -11,6 +11,8 @@ import {
   getIncidentBySlug,
 } from "@/lib/incidents";
 
+export const revalidate = 120;
+
 type IncidentPageProps = {
   params: Promise<{ slug: string }>;
 };

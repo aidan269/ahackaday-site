@@ -24,7 +24,8 @@ export function decodeHtmlEntitiesOnce(value: string): string {
 
 export function decodeHtmlEntities(value: string): string {
   let s = value;
-  for (let i = 0; i < 3; i += 1) {
+  /** Unwind &amp;#8203; chains (some feeds double- or triple-encode). */
+  for (let i = 0; i < 8; i += 1) {
     const next = decodeHtmlEntitiesOnce(s);
     if (next === s) break;
     s = next;

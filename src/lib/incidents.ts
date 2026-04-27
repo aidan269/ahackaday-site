@@ -184,7 +184,7 @@ function inferAffectedFromRow(row: SupabaseIncidentRow, summary: string): string
       ) {
         continue;
       }
-      return candidate;
+      return normalizeDisplayText(candidate);
     }
   }
 
@@ -302,7 +302,7 @@ function mapDbRowToIncident(row: SupabaseIncidentRow): Incident {
     title: cleanTitle,
     date: row.published_at,
     severity: parsedBriefing?.severity ?? row.severity,
-    affected: impacted,
+    affected: normalizeDisplayText(String(impacted ?? "")),
     summary,
     tldr: summary,
     realWorldImpact: parsedBriefing?.realWorldImpact || defaultImpact,
@@ -314,7 +314,7 @@ function mapDbRowToIncident(row: SupabaseIncidentRow): Incident {
     evidence: parsedBriefing?.evidence || createEmptyEvidence(),
     exploited: parsedBriefing?.exploited ?? inferredExploited,
     category: classifyIncidentType(row),
-    cve: parsedBriefing?.evidence.cves[0] ?? /CVE-\d{4}-\d+/i.exec(row.title)?.[0],
+    cve: parsedBriefing?.evidence.cves[0] ?? /CVE-\d{4}-\d+/i.exec(cleanTitle)?.[0],
     mitigationStatus: "Monitoring updates",
     sources: [row.source_url],
     content,
@@ -385,9 +385,12 @@ function getMarkdownIncidentBySlug(slug: string): Incident | null {
   return {
     ...data,
     title: normalizeDisplayText(String(data.title || "")),
+    affected: normalizeDisplayText(String(data.affected ?? "")),
+    category: normalizeDisplayText(String(data.category ?? "")),
+    mitigationStatus: normalizeDisplayText(String(data.mitigationStatus ?? "")),
     summary: tldr,
     slug,
-    content: parsed.content.trim(),
+    content: normalizeDisplayText(parsed.content.trim()),
     tldr,
     realWorldImpact,
     whyCare,
