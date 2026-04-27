@@ -15,9 +15,15 @@ export function incidentCanonicalUrl(slug: string): string {
 }
 
 export function getGraceOrigin(): string | undefined {
-  const o = process.env.NEXT_PUBLIC_GRACE_ORIGIN?.trim();
-  if (!o) return undefined;
-  return o.replace(/\/$/, "");
+  const raw = process.env.NEXT_PUBLIC_GRACE_ORIGIN?.trim();
+  if (!raw) return undefined;
+  const noHash = raw.split("#")[0].trim().replace(/\/$/, "");
+  try {
+    const u = new URL(noHash.includes("://") ? noHash : `https://${noHash}`);
+    return u.origin;
+  } catch {
+    return noHash || undefined;
+  }
 }
 
 export function graceDeepLink(storyUrl: string): string {
