@@ -22,3 +22,13 @@ test("unwinds triple-encoded entity", () => {
 test("hex ZWSP", () => {
   assert.equal(scrub("&#x200b;yo"), "yo");
 });
+
+test("decodes typographic named entities (e.g. rsquo)", () => {
+  assert.equal(scrub("Foo&rsquo;s org"), "Foo\u2019s org");
+  /* `&rsquo` with no `;` before the next char (e.g. possessive) */
+  assert.equal(scrub("Bad&rsquos"), "Bad\u2019s");
+});
+
+test("decodes &ldquo; and &rdquo;", () => {
+  assert.equal(scrub("&ldquo;Hi&rdquo;"), "\u201CHi\u201D");
+});

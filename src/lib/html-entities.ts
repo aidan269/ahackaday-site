@@ -7,7 +7,17 @@ export function decodeHtmlEntitiesOnce(value: string): string {
     .replace(/&quot;/gi, '"')
     .replace(/&#39;|&apos;/gi, "'")
     .replace(/&lt;/gi, "<")
-    .replace(/&gt;/gi, ">");
+    .replace(/&gt;/gi, ">")
+    /* Typographic / WordPress–style names (not covered by generic numeric decode) */
+    .replace(/&rsquo;/gi, "\u2019")
+    .replace(/&lsquo;/gi, "\u2018")
+    .replace(/&ldquo;/gi, "\u201C")
+    .replace(/&rdquo;/gi, "\u201D")
+    .replace(/&hellip;/gi, "\u2026")
+    .replace(/&ndash;/gi, "\u2013")
+    .replace(/&mdash;/gi, "\u2014")
+    /* Broken exports: entity name without `;` */
+    .replace(/&rsquo(?!;)/gi, "\u2019");
 
   s = s.replace(/&#x([0-9a-f]+);/gi, (_, h) => {
     const code = Number.parseInt(h, 16);
