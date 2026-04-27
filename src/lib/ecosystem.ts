@@ -34,6 +34,12 @@ export function graceDeepLink(storyUrl: string): string {
   return `${base}/?url=${encodeURIComponent(storyUrl)}#studio`;
 }
 
+/** Favicon served by Grace at `/favicon.svg`. */
+export function graceFaviconUrl(): string | undefined {
+  const base = getGraceOrigin();
+  return base ? `${base}/favicon.svg` : undefined;
+}
+
 export type ToolkitRow = {
   label: string;
   /** Empty when not configured (e.g. Grace without env) */

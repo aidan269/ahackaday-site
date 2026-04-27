@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="Grace">
+  <rect width="32" height="32" rx="8" fill="#0a0a0a"/>
+  <path fill="#FA5E06" d="M9 8.5h9.2c3.3 0 5.5 1.9 5.5 4.6 0 2.1-1.2 3.6-3.1 4.2l3.4 6.2H19l-3-5.6h-3.2V23H9V8.5zm8.4 7.1c1.3 0 2-.6 2-1.7s-.7-1.7-2-1.7h-3.7v3.4h3.7z"/>
+</svg>

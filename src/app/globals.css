@@ -1391,20 +1391,30 @@ body.has-sidebar .cal-side {
   min-width: 0;
 }
 .open-in-grace {
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--fg-muted);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 0;
   text-decoration: none;
-  line-height: 1.2;
-  border-bottom: 1px solid transparent;
+  border-radius: 6px;
   align-self: end;
-  transition: color 180ms, border-color 180ms;
+  transition: opacity 180ms, background-color 180ms, transform 180ms;
+}
+.open-in-grace__icon {
+  display: block;
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
 }
 a.open-in-grace:hover {
-  color: var(--brand-orange);
-  border-bottom-color: rgba(250, 94, 6, 0.45);
+  opacity: 0.92;
+}
+a.open-in-grace:hover .open-in-grace__icon {
+  transform: scale(1.06);
+}
+a.open-in-grace:focus-visible {
+  outline: 2px solid var(--brand-orange);
+  outline-offset: 2px;
 }
 .open-in-grace--disabled {
   cursor: not-allowed;
