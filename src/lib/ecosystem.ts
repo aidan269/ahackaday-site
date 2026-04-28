@@ -56,7 +56,6 @@ export function getToolkitLinkRows(): ToolkitRow[] {
       markdownLabel: "[Grace Slack implementation](https://github.com/aidan269/grace.ai)",
       href: "https://github.com/aidan269/grace.ai",
     },
-    { label: "AHackaday (this site)", href: "", comingSoon: true },
     { label: "Clowasp (OWASP agentic pipeline auditor)", href: "", comingSoon: true },
     { label: "News / intake queue (GitHub issues)", href: "", comingSoon: true },
     { label: "Cantina", href: "", comingSoon: true },

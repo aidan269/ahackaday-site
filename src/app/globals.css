@@ -342,10 +342,7 @@ main.shell { max-width: 1560px; margin: 0 auto; padding: 48px 40px 160px; positi
 }
 .toolkit-list__row--soon {
   opacity: 0.55;
-  filter: blur(0.3px) saturate(0.65);
-}
-.toolkit-list__row--soon .toolkit-list__label {
-  text-decoration: line-through;
+  filter: blur(0.9px) saturate(0.6);
 }
 
 /* ===== FEED META ===== */
