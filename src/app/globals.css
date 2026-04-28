@@ -153,7 +153,7 @@ main.shell { max-width: 1560px; margin: 0 auto; padding: 48px 40px 160px; positi
 }
 
 /* ===== CONTROLS ===== */
-.controls { display: grid; grid-template-columns: 1.4fr 1fr 1fr 1fr 1fr auto auto auto; gap: 10px; align-items: end; margin-bottom: 14px; padding: 8px; border: 1px solid var(--border); background: rgba(255,255,255,0.96); border-radius: 10px; }
+.controls { display: grid; grid-template-columns: 1.4fr 1fr 1fr 1fr auto auto auto; gap: 10px; align-items: end; margin-bottom: 14px; padding: 8px; border: 1px solid var(--border); background: rgba(255,255,255,0.96); border-radius: 10px; }
 .ctrl { display: flex; flex-direction: column; gap: 4px; }
 .ctrl > label.sr { position: absolute; left: -9999px; }
 .ctrl__box { display: flex; align-items: center; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; height: 34px; padding: 0 12px; transition: border-color 160ms, box-shadow 160ms; }
@@ -383,7 +383,7 @@ main.shell { max-width: 1560px; margin: 0 auto; padding: 48px 40px 160px; positi
 /* ===== CARD ===== */
 .feed--card { display: flex; flex-direction: column; }
 .feed--card { border-top: 1px solid rgba(250,94,6,0.28); }
-.card { position: relative; display: grid; grid-template-columns: 72px 1fr auto; gap: 24px; padding: 20px 8px 20px 16px; border-top: 1px solid var(--border); cursor: pointer; transition: background 200ms var(--ease), padding-left 220ms var(--ease); align-items: start; }
+.card { position: relative; display: grid; grid-template-columns: 72px 1fr auto; gap: 24px; padding: 18px 8px 10px 16px; border-top: 1px solid var(--border); cursor: pointer; transition: background 200ms var(--ease), padding-left 220ms var(--ease); align-items: start; }
 .card:last-child { border-bottom: 1px solid var(--border); }
 .card::before { content: ""; position: absolute; left: 0; top: -1px; bottom: -1px; width: 2px; background: var(--sev); opacity: 0; transition: opacity 200ms var(--ease); }
 .card:hover { background: rgba(0,0,0,0.02); padding-left: 22px; }
@@ -1604,7 +1604,7 @@ a.open-in-grace:focus-visible {
 .card__grace {
   grid-column: 3;
   grid-row: 1;
-  align-self: end;
+  align-self: start;
   justify-self: end;
   z-index: 2;
   padding: 0 0 0 0;

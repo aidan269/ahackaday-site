@@ -137,7 +137,6 @@ export default async function IncidentPage({ params }: IncidentPageProps) {
     ? String(incident.socialMentions24h)
     : "n/a";
   const trend = incident.socialTrend ?? "flat";
-  const velocityArrow = trend === "up" ? "↑" : trend === "down" ? "↓" : "→";
   const socialTrendLabel = `trend ${trend}`;
   const socialSummary = incident.socialSummary || "Signal collection in progress for this incident.";
   const socialDetails = deriveSocialDetailSignals({
@@ -204,24 +203,15 @@ export default async function IncidentPage({ params }: IncidentPageProps) {
             <div className="detail__social-grid">
               <div className="detail__social-metric">
                 <span className="k">mentions (24h)</span>
-                <span className="v detail__mentions">
-                  <span className="detail__social-shape detail__social-shape--dot" aria-hidden />
-                  <span>{socialMentionsLabel}</span>
-                </span>
+                <span className="v">{socialMentionsLabel}</span>
               </div>
               <div className="detail__social-metric">
                 <span className="k">velocity</span>
-                <span className="v detail__velocity">
-                  <span className="detail__velocity-arrow" aria-hidden>{velocityArrow}</span>
-                  <span>{socialTrendLabel}</span>
-                </span>
+                <span className="v">{socialTrendLabel}</span>
               </div>
               <div className="detail__social-metric">
                 <span className="k">mentions delta</span>
-                <span className="v detail__social-inline">
-                  <span className="detail__social-shape detail__social-shape--square" aria-hidden />
-                  <span>{socialDetails.mentionsDelta}</span>
-                </span>
+                <span className="v">{socialDetails.mentionsDelta}</span>
               </div>
               <div className="detail__social-metric">
                 <span className="k">platform split</span>

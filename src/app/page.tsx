@@ -2,7 +2,7 @@ import { DailyBriefHead } from "@/components/daily-brief-head";
 import { FeedControls } from "@/components/feed-controls";
 import { IncidentItem, IncidentTimelineItem } from "@/components/incident-item";
 import { QuietDayEmpty } from "@/components/quiet-day-empty";
-import { getAllIncidents, type IncidentType, type Severity } from "@/lib/incidents";
+import { getAllIncidents, type IncidentType } from "@/lib/incidents";
 
 /** Refresh feed periodically (Supabase / markdown) so fixes and new rows surface without only redeploying. */
 export const revalidate = 120;
@@ -20,13 +20,11 @@ function readParam(v: string | string[] | undefined, fallback: string): string {
 export default async function Home({ searchParams }: HomeProps) {
   const params = await searchParams;
   const query = readParam(params.q, "");
-  const severity = readParam(params.severity, "all");
   const typeValue = readParam(params.type, "all");
   const socialValue = readParam(params.social, "all");
   const windowValue = readParam(params.window, "30d");
   const layoutParam = readParam(params.layout, "card");
   const layout = (layoutParam === "timeline" ? "timeline" : "card") as "card" | "timeline";
-  const severityValue = severity as "all" | Severity;
   const typeFilter = typeValue as "all" | IncidentType;
   const win = (windowValue === "7d" ? "7" : windowValue) as "7" | "30d" | "90d" | "all";
 
@@ -40,7 +38,6 @@ export default async function Home({ searchParams }: HomeProps) {
     return new Date(y, m - 1, d);
   };
   const filtered = all.filter((i) => {
-    if (severityValue !== "all" && i.severity !== severityValue) return false;
     if (typeFilter !== "all" && i.category !== typeFilter) return false;
     if (days) {
       const age = (now.getTime() - parseLocal(i.date).getTime()) / 86400000;
@@ -103,7 +100,6 @@ export default async function Home({ searchParams }: HomeProps) {
 
       <FeedControls
         query={query}
-        severity={severity}
         typeValue={typeValue}
         socialValue={socialValue}
         windowValue={win}

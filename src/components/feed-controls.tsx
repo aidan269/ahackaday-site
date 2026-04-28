@@ -2,7 +2,6 @@ import { ToolkitDrawer } from "@/components/toolkit-drawer";
 
 type FeedControlsProps = {
   query: string;
-  severity: string;
   typeValue: string;
   socialValue: string;
   windowValue: "7" | "30d" | "90d" | "all";
@@ -11,7 +10,6 @@ type FeedControlsProps = {
 
 export function FeedControls({
   query,
-  severity,
   typeValue,
   socialValue,
   windowValue,
@@ -33,14 +31,13 @@ export function FeedControls({
       </div>
 
       <div className="ctrl">
-        <label htmlFor="f-sev">Severity</label>
+        <label htmlFor="f-social">Social</label>
         <div className="ctrl__box">
-          <select id="f-sev" name="severity" defaultValue={severity}>
-            <option value="all">all severities</option>
-            <option value="critical">critical</option>
-            <option value="high">high</option>
-            <option value="medium">medium</option>
-            <option value="low">low</option>
+          <select id="f-social" name="social" defaultValue={socialValue}>
+            <option value="all">all social</option>
+            <option value="rising">rising</option>
+            <option value="high-mentions">high mentions</option>
+            <option value="big-delta">big delta</option>
           </select>
           <span className="chev">▾</span>
         </div>
@@ -75,19 +72,6 @@ export function FeedControls({
             <option value="critical-infrastructure">critical infra</option>
             <option value="exploitation">exploitation</option>
             <option value="consumer-security">consumer</option>
-          </select>
-          <span className="chev">▾</span>
-        </div>
-      </div>
-
-      <div className="ctrl">
-        <label htmlFor="f-social">Social</label>
-        <div className="ctrl__box">
-          <select id="f-social" name="social" defaultValue={socialValue}>
-            <option value="all">all social</option>
-            <option value="rising">rising</option>
-            <option value="high-mentions">high mentions</option>
-            <option value="big-delta">big delta</option>
           </select>
           <span className="chev">▾</span>
         </div>
