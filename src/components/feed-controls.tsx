@@ -5,7 +5,7 @@ type FeedControlsProps = {
   severity: string;
   typeValue: string;
   windowValue: "7" | "30d" | "90d" | "all";
-  layout: "card" | "row" | "timeline";
+  layout: "card" | "timeline";
 };
 
 export function FeedControls({
@@ -81,9 +81,6 @@ export function FeedControls({
       <div className="layout-toggle" role="group" aria-label="Layout">
         <button type="submit" name="layout" value="card" className={`layout-toggle__btn${layout === "card" ? " is-active" : ""}`}>
           card
-        </button>
-        <button type="submit" name="layout" value="row" className={`layout-toggle__btn${layout === "row" ? " is-active" : ""}`}>
-          row
         </button>
         <button
           type="submit"

@@ -21,6 +21,13 @@ export type IncidentFrontmatter = {
   socialMentions24h?: number;
   socialTrend?: SocialTrend;
   socialSummary?: string;
+  socialDelta24hPct?: number;
+  socialPlatformSplit?: {
+    x: number;
+    reddit: number;
+    github: number;
+  };
+  socialKeywords?: string[];
 };
 
 export type IncidentEvidence = {

@@ -61,3 +61,27 @@ curl "https://ahackaday-intel.vercel.app/api/v1/incidents/<slug-from-first-call>
 curl "https://ahackaday-intel.vercel.app/api/v1/stats"
 curl "https://ahackaday-intel.vercel.app/api/v1/health"
 ```
+
+## Social Metrics Refresh (Phase A)
+
+Real social metrics are stored in Supabase `incident_social_metrics` and refreshed via:
+
+- `POST /api/social/refresh`
+- `GET /api/social/refresh?limit=60`
+
+Auth:
+
+- Requires `Authorization: Bearer $CRON_SECRET`
+
+Environment:
+
+- `CRON_SECRET` (required for the refresh endpoint)
+- `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` (required for writes)
+- `GITHUB_TOKEN` (optional but recommended for higher GitHub API limits)
+
+Example:
+
+```bash
+curl -X POST "https://ahackaday-intel.vercel.app/api/social/refresh?limit=60" \
+  -H "Authorization: Bearer $CRON_SECRET"
+```

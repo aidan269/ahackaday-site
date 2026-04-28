@@ -1,6 +1,6 @@
 import { DailyBriefHead } from "@/components/daily-brief-head";
 import { FeedControls } from "@/components/feed-controls";
-import { IncidentItem, IncidentRow, IncidentTimelineItem } from "@/components/incident-item";
+import { IncidentItem, IncidentTimelineItem } from "@/components/incident-item";
 import { QuietDayEmpty } from "@/components/quiet-day-empty";
 import { getAllIncidents, type IncidentType, type Severity } from "@/lib/incidents";
 
@@ -23,7 +23,8 @@ export default async function Home({ searchParams }: HomeProps) {
   const severity = readParam(params.severity, "all");
   const typeValue = readParam(params.type, "all");
   const windowValue = readParam(params.window, "30d");
-  const layout = readParam(params.layout, "card") as "card" | "row" | "timeline";
+  const layoutParam = readParam(params.layout, "card");
+  const layout = (layoutParam === "timeline" ? "timeline" : "card") as "card" | "timeline";
   const severityValue = severity as "all" | Severity;
   const typeFilter = typeValue as "all" | IncidentType;
   const win = (windowValue === "7d" ? "7" : windowValue) as "7" | "30d" | "90d" | "all";
@@ -114,19 +115,7 @@ export default async function Home({ searchParams }: HomeProps) {
         <QuietDayEmpty allLen={all.length} />
       ) : (
         <>
-          {layout === "row" ? (
-            <div className="feed--row">
-              <div className="row-head">
-                <span>date</span>
-                <span>severity</span>
-                <span>type</span>
-                <span>title</span>
-                <span>affected</span>
-                <span />
-              </div>
-              {filtered.map((i) => <IncidentRow key={i.slug} incident={i} />)}
-            </div>
-          ) : layout === "timeline" ? (
+          {layout === "timeline" ? (
             <div className="feed--timeline">
               {Object.entries(groupedByDate).map(([date, items]) => (
                 <div key={date} className="tl-group">

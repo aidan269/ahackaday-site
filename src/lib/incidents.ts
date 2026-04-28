@@ -44,6 +44,16 @@ type SupabaseIncidentRow = {
   created_at: string;
 };
 
+type SupabaseSocialMetricRow = {
+  incident_id: string;
+  social_mentions_24h: number | null;
+  social_trend: SocialTrend | null;
+  social_summary: string | null;
+  social_delta_24h_pct: number | null;
+  social_platform_split: unknown;
+  social_keywords: string[] | null;
+};
+
 type StructuredBriefing = {
   tldr: string;
   realWorldImpact: string;
@@ -151,11 +161,15 @@ function parseStructuredBriefing(value: string): StructuredBriefing | null {
   }
 }
 
-function buildSlugFromDb(row: SupabaseIncidentRow): string {
-  const datePrefix = new Date(row.published_at).toISOString().slice(0, 10);
-  const titleSlug = slugify(row.title);
-  const idShort = row.id.slice(0, 8);
+export function buildIncidentSlug(dateIso: string, title: string, id: string): string {
+  const datePrefix = new Date(dateIso).toISOString().slice(0, 10);
+  const titleSlug = slugify(title);
+  const idShort = id.slice(0, 8);
   return `${datePrefix}-${titleSlug}-${idShort}`;
+}
+
+function buildSlugFromDb(row: SupabaseIncidentRow): string {
+  return buildIncidentSlug(row.published_at, row.title, row.id);
 }
 
 function getSupabaseServerClient() {
@@ -272,7 +286,7 @@ function sanitizeArticleBody(body: string): string {
   return `${trimToCompleteSentence(head)}…`;
 }
 
-function mapDbRowToIncident(row: SupabaseIncidentRow): Incident {
+function mapDbRowToIncident(row: SupabaseIncidentRow, socialMetrics?: SupabaseSocialMetricRow): Incident {
   const cleanTitle = normalizeDisplayText(row.title);
   const rawSummaryFallback = normalizeDisplayText(
     row.claude_summary.trim() || row.raw_content.trim() || "No summary available.",
@@ -310,6 +324,7 @@ function mapDbRowToIncident(row: SupabaseIncidentRow): Incident {
     category: incidentCategory,
     summary,
   });
+  const socialPlatformSplit = normalizeSocialPlatformSplit(socialMetrics?.social_platform_split);
 
   return {
     slug: buildSlugFromDb(row),
@@ -332,9 +347,18 @@ function mapDbRowToIncident(row: SupabaseIncidentRow): Incident {
     mitigationStatus: "Monitoring updates",
     sources: [row.source_url],
     content,
-    socialMentions24h: socialPulse.socialMentions24h,
-    socialTrend: socialPulse.socialTrend,
-    socialSummary: socialPulse.socialSummary,
+    socialMentions24h: socialMetrics?.social_mentions_24h ?? socialPulse.socialMentions24h,
+    socialTrend: normalizeSocialTrend(socialMetrics?.social_trend) ?? socialPulse.socialTrend,
+    socialSummary:
+      (typeof socialMetrics?.social_summary === "string"
+        ? normalizeDisplayText(socialMetrics.social_summary)
+        : undefined)
+      ?? socialPulse.socialSummary,
+    socialDelta24hPct: socialMetrics?.social_delta_24h_pct ?? undefined,
+    socialPlatformSplit,
+    socialKeywords: Array.isArray(socialMetrics?.social_keywords)
+      ? socialMetrics.social_keywords.map(normalizeDisplayText).filter(Boolean).slice(0, 5)
+      : undefined,
   };
 }
 
@@ -378,6 +402,22 @@ function normalizeSocialTrend(value: unknown): SocialTrend | undefined {
     return normalized;
   }
   return undefined;
+}
+
+function normalizeSocialPlatformSplit(
+  value: unknown,
+): { x: number; reddit: number; github: number } | undefined {
+  if (!value || typeof value !== "object") return undefined;
+  const rec = value as Record<string, unknown>;
+  const x = Number(rec.x);
+  const reddit = Number(rec.reddit);
+  const github = Number(rec.github);
+  if (![x, reddit, github].every(Number.isFinite)) return undefined;
+  return {
+    x: Math.max(0, Math.round(x)),
+    reddit: Math.max(0, Math.round(reddit)),
+    github: Math.max(0, Math.round(github)),
+  };
 }
 
 type SocialPulse = {
@@ -492,6 +532,11 @@ function getMarkdownIncidentBySlug(slug: string): Incident | null {
     socialSummary:
       (typeof data.socialSummary === "string" ? normalizeDisplayText(data.socialSummary) : undefined)
       ?? socialPulse.socialSummary,
+    socialDelta24hPct: typeof data.socialDelta24hPct === "number" ? data.socialDelta24hPct : undefined,
+    socialPlatformSplit: normalizeSocialPlatformSplit(data.socialPlatformSplit),
+    socialKeywords: Array.isArray(data.socialKeywords)
+      ? data.socialKeywords.map(normalizeDisplayText).filter(Boolean).slice(0, 5)
+      : undefined,
   };
 }
 
@@ -567,9 +612,25 @@ async function getAllSupabaseIncidents(): Promise<Incident[]> {
     console.error("Failed loading incidents from Supabase", error);
     return [];
   }
+  const rows = data as SupabaseIncidentRow[];
+  const incidentIds = rows.map((row) => row.id);
+  const metricByIncidentId = new Map<string, SupabaseSocialMetricRow>();
+  if (incidentIds.length > 0) {
+    const { data: socialRows, error: socialError } = await client
+      .from("incident_social_metrics")
+      .select("incident_id,social_mentions_24h,social_trend,social_summary,social_delta_24h_pct,social_platform_split,social_keywords")
+      .in("incident_id", incidentIds);
+    if (socialError) {
+      console.error("Failed loading social metrics from Supabase", socialError);
+    } else {
+      for (const metric of (socialRows as SupabaseSocialMetricRow[] | null) ?? []) {
+        metricByIncidentId.set(metric.incident_id, metric);
+      }
+    }
+  }
 
   const deduped = new Map<string, Incident>();
-  for (const incident of (data as SupabaseIncidentRow[]).map(mapDbRowToIncident)) {
+  for (const incident of rows.map((row) => mapDbRowToIncident(row, metricByIncidentId.get(row.id)))) {
     const key = dedupeFingerprint(incident);
     const existing = deduped.get(key);
     if (!existing) {

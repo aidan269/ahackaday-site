@@ -30,6 +30,13 @@ export type ApiIncident = {
   socialMentions24h?: number;
   socialTrend?: "up" | "flat" | "down";
   socialSummary?: string;
+  socialDelta24hPct?: number;
+  socialPlatformSplit?: {
+    x: number;
+    reddit: number;
+    github: number;
+  };
+  socialKeywords?: string[];
 };
 
 export type ApiIncidentDetail = ApiIncident & {
@@ -73,6 +80,9 @@ function toApiIncident(incident: Incident): ApiIncident {
     socialMentions24h: incident.socialMentions24h,
     socialTrend: incident.socialTrend,
     socialSummary: incident.socialSummary,
+    socialDelta24hPct: incident.socialDelta24hPct,
+    socialPlatformSplit: incident.socialPlatformSplit,
+    socialKeywords: incident.socialKeywords,
   };
 }
 
