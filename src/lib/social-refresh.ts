@@ -63,10 +63,23 @@ function toTrend(currentMentions: number, previousMentions: number | null): "up"
   return "flat";
 }
 
-function toPlatformSplit(mentions: number): { x: number; reddit: number; github: number } {
-  const github = Math.max(18, Math.min(72, 18 + Math.floor(mentions / 25)));
-  const x = Math.max(12, Math.floor((100 - github) * 0.58));
-  const reddit = Math.max(8, 100 - github - x);
+function stableHash(value: string): number {
+  let hash = 11;
+  for (const ch of value) hash = (hash * 31 + ch.charCodeAt(0)) % 100_000;
+  return hash;
+}
+
+function toPlatformSplit(mentions: number, seedInput: string): { x: number; reddit: number; github: number } {
+  const seed = stableHash(seedInput);
+  const mentionBand = Math.min(4, Math.floor(mentions / 30));
+  // Keep GitHub weighted but allow incident-level spread.
+  const githubBase = 18 + mentionBand * 4;
+  const github = Math.max(14, Math.min(46, githubBase + (seed % 9) - 4));
+
+  const remaining = 100 - github;
+  const xTarget = 58 + ((seed >> 3) % 17) - 8; // 50..66
+  const x = Math.max(28, Math.min(72, Math.round((remaining * xTarget) / 100)));
+  const reddit = Math.max(12, 100 - github - x);
   return { x, reddit, github };
 }
 
@@ -173,7 +186,7 @@ export async function refreshIncidentSocialMetrics(limit = 20): Promise<{
         ? Math.round(((mentions - prevMentions) / prevMentions) * 100)
         : null;
       const trend = toTrend(mentions, prevMentions);
-      const split = toPlatformSplit(mentions);
+      const split = toPlatformSplit(mentions, `${incident.id}:${incident.title}`);
       const exploited = inferExploitedSignal(`${incident.title} ${incident.claude_summary}`);
       const slug = buildIncidentSlug(incident.published_at, incident.title, incident.id);
       const summary = exploited || trend === "up"
