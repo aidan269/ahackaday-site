@@ -87,14 +87,14 @@ export function IncidentItem({ incident }: Props) {
           <div className="card__line">
             <span className="k">affected</span>
             <span className="card__line-v">{truncateForDisplay(incident.affected, 140)}</span>
+            {socialPreviewParts.length > 0 && (
+              <>
+                <span className="k">social</span>
+                <span className="card__social-inline">{socialPreviewParts.join(" · ")}</span>
+              </>
+            )}
             {cve && <span className="card__cve">{cve}</span>}
           </div>
-          {socialPreviewParts.length > 0 && (
-            <div className="card__social-preview">
-              <span className="k">social</span>
-              <span className="v">{socialPreviewParts.join(" · ")}</span>
-            </div>
-          )}
         </div>
       </Link>
       <OpenInGrace incidentSlug={incident.slug} className="card__grace" />
