@@ -225,22 +225,16 @@ export default async function IncidentPage({ params }: IncidentPageProps) {
               </div>
               <div className="detail__social-metric">
                 <span className="k">platform split</span>
-                <span className="v detail__social-inline">
-                  <span className="detail__social-shape detail__social-shape--diamond" aria-hidden />
-                  <span>{socialDetails.platformSplit}</span>
-                </span>
+                <span className="v">{socialDetails.platformSplit}</span>
               </div>
               <div className="detail__social-metric">
                 <span className="k">keywords</span>
-                <div className="detail__keyword-row">
-                  <span className="detail__social-shape detail__social-shape--bar" aria-hidden />
-                  <div className="detail__keyword-chips">
-                    {displayKeywords.length > 0
-                      ? displayKeywords.map((keyword) => (
-                          <span key={keyword} className="detail__keyword-chip">{keyword}</span>
-                        ))
-                      : <span className="detail__keyword-chip">monitoring</span>}
-                  </div>
+                <div className="detail__keyword-chips">
+                  {displayKeywords.length > 0
+                    ? displayKeywords.map((keyword) => (
+                        <span key={keyword} className="detail__keyword-chip">{keyword}</span>
+                      ))
+                    : <span className="detail__keyword-chip">monitoring</span>}
                 </div>
               </div>
               <div className="detail__social-summary">
