@@ -197,7 +197,7 @@ export default async function IncidentPage({ params }: IncidentPageProps) {
               <div>
                 <span className="k">mentions (24h)</span>
                 <span className="v detail__mentions">
-                  <span className="detail__mentions-pulse" aria-hidden />
+                  <span className="detail__social-shape detail__social-shape--dot" aria-hidden />
                   <span>{socialMentionsLabel}</span>
                 </span>
               </div>
@@ -210,15 +210,24 @@ export default async function IncidentPage({ params }: IncidentPageProps) {
               </div>
               <div>
                 <span className="k">mentions delta</span>
-                <span className="v">{socialDetails.mentionsDelta}</span>
+                <span className="v detail__social-inline">
+                  <span className="detail__social-shape detail__social-shape--square" aria-hidden />
+                  <span>{socialDetails.mentionsDelta}</span>
+                </span>
               </div>
               <div>
                 <span className="k">platform split</span>
-                <span className="v">{socialDetails.platformSplit}</span>
+                <span className="v detail__social-inline">
+                  <span className="detail__social-shape detail__social-shape--diamond" aria-hidden />
+                  <span>{socialDetails.platformSplit}</span>
+                </span>
               </div>
               <div>
                 <span className="k">keywords</span>
-                <span className="v detail__keywords">{socialDetails.keywords.join(" ")}</span>
+                <span className="v detail__social-inline">
+                  <span className="detail__social-shape detail__social-shape--bar" aria-hidden />
+                  <span className="detail__keywords">{socialDetails.keywords.join(" ")}</span>
+                </span>
               </div>
               <div className="detail__social-summary">
                 <span className="k">summary</span>
