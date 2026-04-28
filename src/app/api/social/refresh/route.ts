@@ -7,9 +7,9 @@ export const runtime = "nodejs";
 
 function readLimit(url: URL): number {
   const raw = url.searchParams.get("limit");
-  if (!raw) return 60;
+  if (!raw) return 20;
   const parsed = Number.parseInt(raw, 10);
-  if (!Number.isFinite(parsed) || parsed <= 0) return 60;
+  if (!Number.isFinite(parsed) || parsed <= 0) return 20;
   return Math.min(parsed, 200);
 }
 
