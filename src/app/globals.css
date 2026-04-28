@@ -911,11 +911,36 @@ body.has-sidebar main.shell {
   background: rgba(10, 10, 11, 0.04);
 }
 
+.sidebar__brand-logo-wrap {
+  width: 24px;
+  height: 24px;
+  border-radius: 7px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  background:
+    repeating-linear-gradient(
+      45deg,
+      rgba(255, 255, 255, 0.7) 0px,
+      rgba(255, 255, 255, 0.7) 2px,
+      rgba(238, 238, 238, 0.7) 2px,
+      rgba(238, 238, 238, 0.7) 4px
+    ),
+    linear-gradient(180deg, #ffffff 0%, #f2f4f7 100%);
+  border: 1px solid rgba(16, 16, 16, 0.08);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.9) inset,
+    0 6px 14px rgba(10, 10, 11, 0.14),
+    0 2px 4px rgba(10, 10, 11, 0.08);
+}
+
 .sidebar__brand-logo {
   width: 22px;
   height: 22px;
   border-radius: 6px;
-  flex-shrink: 0;
+  display: block;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.8) inset;
 }
 
 .sidebar__brand-wordmark {

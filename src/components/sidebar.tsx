@@ -124,7 +124,9 @@ function SidebarBody({ counts, filters }: Props & { filters: UrlFilters }) {
   return (
     <aside className="sidebar" aria-label="Primary navigation">
       <Link href="https://cantina.security" target="_blank" rel="noreferrer" className="sidebar__brand">
-        <img src="/cantina-logo.svg" alt="Cantina Security" className="sidebar__brand-logo" />
+        <span className="sidebar__brand-logo-wrap" aria-hidden>
+          <img src="/cantina-logo.svg" alt="Cantina Security" className="sidebar__brand-logo" />
+        </span>
         <span className="sidebar__brand-wordmark">Cantina Security</span>
       </Link>
 
