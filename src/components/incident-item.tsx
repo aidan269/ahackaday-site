@@ -42,6 +42,14 @@ export function IncidentItem({ incident }: Props) {
     `${incident.title} ${incident.summary} ${incident.content}`,
   );
   const cve = incident.evidence.cves[0] ?? /CVE-\d{4}-\d+/i.exec(incident.title)?.[0];
+  const socialMentions = typeof incident.socialMentions24h === "number" ? incident.socialMentions24h : null;
+  const socialTrend = incident.socialTrend ?? null;
+  const socialDelta = typeof incident.socialDelta24hPct === "number" ? incident.socialDelta24hPct : null;
+  const socialPreviewParts = [
+    socialMentions !== null ? `${socialMentions}` : null,
+    socialTrend,
+    socialDelta !== null ? `Δ ${socialDelta >= 0 ? "+" : ""}${socialDelta}%` : null,
+  ].filter((part): part is string => Boolean(part));
 
   const saved = isSaved(incident.slug);
   const read = isRead(incident.slug);
@@ -81,6 +89,12 @@ export function IncidentItem({ incident }: Props) {
             <span className="card__line-v">{truncateForDisplay(incident.affected, 140)}</span>
             {cve && <span className="card__cve">{cve}</span>}
           </div>
+          {socialPreviewParts.length > 0 && (
+            <div className="card__social-preview">
+              <span className="k">social</span>
+              <span className="v">{socialPreviewParts.join(" · ")}</span>
+            </div>
+          )}
         </div>
         <div className="card__arrow">→</div>
       </Link>

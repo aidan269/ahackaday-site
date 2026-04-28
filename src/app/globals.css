@@ -450,6 +450,23 @@ main.shell { max-width: 1560px; margin: 0 auto; padding: 48px 40px 160px; positi
 }
 .card__line .card__cve { font-style: normal; flex-shrink: 0; }
 .card__cve { margin-left: 4px; border: 1px solid rgba(250,94,6,0.35); background: rgba(250,94,6,0.08); border-radius: 6px; padding: 2px 7px; font-size: 10px; letter-spacing: 0.08em; color: var(--brand-orange); text-transform: uppercase; }
+.card__social-preview {
+  margin-top: 5px;
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  color: var(--fg-3);
+  font-size: 11px;
+}
+.card__social-preview .k {
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--fg-muted);
+}
+.card__social-preview .v {
+  color: var(--fg-2);
+}
 .exploit-badge {
   display: inline-flex;
   align-items: center;
