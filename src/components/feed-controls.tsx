@@ -4,6 +4,7 @@ type FeedControlsProps = {
   query: string;
   severity: string;
   typeValue: string;
+  socialValue: string;
   windowValue: "7" | "30d" | "90d" | "all";
   layout: "card" | "timeline";
 };
@@ -12,6 +13,7 @@ export function FeedControls({
   query,
   severity,
   typeValue,
+  socialValue,
   windowValue,
   layout,
 }: FeedControlsProps) {
@@ -73,6 +75,19 @@ export function FeedControls({
             <option value="critical-infrastructure">critical infra</option>
             <option value="exploitation">exploitation</option>
             <option value="consumer-security">consumer</option>
+          </select>
+          <span className="chev">▾</span>
+        </div>
+      </div>
+
+      <div className="ctrl">
+        <label htmlFor="f-social">Social</label>
+        <div className="ctrl__box">
+          <select id="f-social" name="social" defaultValue={socialValue}>
+            <option value="all">all social</option>
+            <option value="rising">rising</option>
+            <option value="high-mentions">high mentions</option>
+            <option value="big-delta">big delta</option>
           </select>
           <span className="chev">▾</span>
         </div>

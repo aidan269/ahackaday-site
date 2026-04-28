@@ -22,6 +22,7 @@ export default async function Home({ searchParams }: HomeProps) {
   const query = readParam(params.q, "");
   const severity = readParam(params.severity, "all");
   const typeValue = readParam(params.type, "all");
+  const socialValue = readParam(params.social, "all");
   const windowValue = readParam(params.window, "30d");
   const layoutParam = readParam(params.layout, "card");
   const layout = (layoutParam === "timeline" ? "timeline" : "card") as "card" | "timeline";
@@ -48,6 +49,13 @@ export default async function Home({ searchParams }: HomeProps) {
     if (qq) {
       const hay = [i.title, i.summary, i.affected, i.category].join(" ").toLowerCase();
       if (!hay.includes(qq)) return false;
+    }
+    if (socialValue === "rising" && i.socialTrend !== "up") return false;
+    if (socialValue === "high-mentions" && (typeof i.socialMentions24h !== "number" || i.socialMentions24h < 50)) {
+      return false;
+    }
+    if (socialValue === "big-delta" && (typeof i.socialDelta24hPct !== "number" || Math.abs(i.socialDelta24hPct) < 10)) {
+      return false;
     }
     return true;
   });
@@ -97,6 +105,7 @@ export default async function Home({ searchParams }: HomeProps) {
         query={query}
         severity={severity}
         typeValue={typeValue}
+        socialValue={socialValue}
         windowValue={win}
         layout={layout}
       />
