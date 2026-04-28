@@ -1,6 +1,7 @@
-import { getAllIncidents } from "@/lib/incidents";
+import { headers } from "next/headers";
 
-export const dynamic = "force-static";
+import { getPublicSiteUrl } from "@/lib/ecosystem";
+import { getAllIncidents } from "@/lib/incidents";
 
 function escapeXml(value: string): string {
   return value
@@ -12,16 +13,29 @@ function escapeXml(value: string): string {
 }
 
 function normalizeSiteUrl(value: string): string {
-  if (value.startsWith("http://") || value.startsWith("https://")) return value;
-  return `https://${value}`;
+  const trimmed = value.trim().replace(/\/$/, "");
+  if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) return trimmed;
+  return `https://${trimmed}`;
 }
 
-export async function GET(request: Request) {
-  const site =
-    (process.env.NEXT_PUBLIC_SITE_URL && normalizeSiteUrl(process.env.NEXT_PUBLIC_SITE_URL)) ||
-    (process.env.VERCEL_PROJECT_PRODUCTION_URL &&
-      normalizeSiteUrl(process.env.VERCEL_PROJECT_PRODUCTION_URL)) ||
-    new URL(request.url).origin;
+/** Prefer request-time deployment origin so RSS links are not stuck to a dev URL baked at build. */
+function siteFromForwarded(h: Headers): string | null {
+  const host = h.get("x-forwarded-host")?.split(",")[0]?.trim();
+  if (!host || /^(localhost|127\.0\.0\.1)(:|$)/i.test(host)) return null;
+  const proto = h.get("x-forwarded-proto")?.split(",")[0]?.trim() || "https";
+  return normalizeSiteUrl(`${proto}://${host}`);
+}
+
+function siteFromVercelRuntime(): string | null {
+  if (process.env.VERCEL !== "1") return null;
+  const host = process.env.VERCEL_URL?.trim();
+  if (!host) return null;
+  return normalizeSiteUrl(host);
+}
+
+export async function GET() {
+  const h = await headers();
+  const site = siteFromForwarded(h) ?? siteFromVercelRuntime() ?? getPublicSiteUrl();
   const incidents = await getAllIncidents();
 
   const items = incidents

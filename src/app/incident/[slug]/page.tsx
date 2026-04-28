@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 
 import { AskAI } from "@/components/ask-ai";
 import { OpenInGrace } from "@/components/open-in-grace";
+import { getPublicSiteUrl } from "@/lib/ecosystem";
 import {
   formatIncidentDate,
   getAllIncidents,
@@ -26,7 +27,7 @@ export async function generateMetadata({ params }: IncidentPageProps): Promise<M
   const { slug } = await params;
   const incident = await getIncidentBySlug(slug);
   if (!incident) return { title: "Incident Not Found" };
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL?.trim() || "https://ahackaday-site.vercel.app";
+  const siteUrl = getPublicSiteUrl();
   const title = `${incident.title} | AHackaday`;
   const description = incident.summary;
   const url = `/incident/${incident.slug}`;
