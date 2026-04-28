@@ -80,10 +80,11 @@ export default async function IncidentPage({ params }: IncidentPageProps) {
   const sev = SEV_COLOR[incident.severity];
   const trackingId = incident.cve || incident.evidence.cves[0] || null;
   const sections = Array.isArray(incident.content) ? incident.content : [];
-  const hasSocialPulse = typeof incident.socialMentions24h === "number"
-    || Boolean(incident.socialTrend)
-    || Boolean(incident.socialSummary);
-  const socialTrendLabel = incident.socialTrend ? `trend ${incident.socialTrend}` : null;
+  const socialMentionsLabel = typeof incident.socialMentions24h === "number"
+    ? String(incident.socialMentions24h)
+    : "n/a";
+  const socialTrendLabel = `trend ${incident.socialTrend ?? "flat"}`;
+  const socialSummary = incident.socialSummary || "Signal collection in progress for this incident.";
 
   return (
     <main className="shell">
@@ -128,31 +129,23 @@ export default async function IncidentPage({ params }: IncidentPageProps) {
             </div>
           </div>
 
-          {hasSocialPulse && (
-            <div className="detail__social">
-              <h3>social pulse</h3>
-              <div className="detail__social-grid">
-                {typeof incident.socialMentions24h === "number" && (
-                  <div>
-                    <span className="k">mentions (24h)</span>
-                    <span className="v">{incident.socialMentions24h}</span>
-                  </div>
-                )}
-                {socialTrendLabel && (
-                  <div>
-                    <span className="k">velocity</span>
-                    <span className="v">{socialTrendLabel}</span>
-                  </div>
-                )}
-                {incident.socialSummary && (
-                  <div className="detail__social-summary">
-                    <span className="k">summary</span>
-                    <span className="v">{incident.socialSummary}</span>
-                  </div>
-                )}
+          <div className="detail__social">
+            <h3>social pulse</h3>
+            <div className="detail__social-grid">
+              <div>
+                <span className="k">mentions (24h)</span>
+                <span className="v">{socialMentionsLabel}</span>
+              </div>
+              <div>
+                <span className="k">velocity</span>
+                <span className="v">{socialTrendLabel}</span>
+              </div>
+              <div className="detail__social-summary">
+                <span className="k">summary</span>
+                <span className="v">{socialSummary}</span>
               </div>
             </div>
-          )}
+          </div>
 
           <div className="detail__body">
             {sections.map((sec, idx) => (
