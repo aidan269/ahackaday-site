@@ -95,8 +95,8 @@ export function ToolkitDrawer() {
             </div>
             <div className="toolkit-panel__body">
               <p className="toolkit-panel__intro">
-                Teams can use the markdown link below to implement the Grace Slack integration. Other toolkit items are
-                staged and marked as coming soon.
+                Teams can use the markdown link below for the Slack integration. Other toolkit items are marked as
+                coming soon.
               </p>
               <ul className="toolkit-list">
                 {rows.map((row) => {

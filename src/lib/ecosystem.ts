@@ -52,12 +52,12 @@ export type ToolkitRow = {
 export function getToolkitLinkRows(): ToolkitRow[] {
   return [
     {
-      label: "Grace Slack implementation",
-      markdownLabel: "[Grace Slack implementation](https://github.com/aidan269/grace.ai)",
+      label: "Slack integration",
+      markdownLabel: "[Slack integration](https://github.com/aidan269/grace.ai)",
       href: "https://github.com/aidan269/grace.ai",
     },
     { label: "Clowasp (OWASP agentic pipeline auditor)", href: "", comingSoon: true },
     { label: "News / intake queue (GitHub issues)", href: "", comingSoon: true },
-    { label: "Cantina", href: "", comingSoon: true },
+    { label: "Cantina", href: "https://cantina.security" },
   ];
 }
