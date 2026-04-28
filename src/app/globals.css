@@ -2036,13 +2036,13 @@ a.open-in-grace:focus-visible {
 .detail__mentions {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 9px;
 }
 
 .detail__velocity {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 9px;
 }
 
 .detail__velocity-arrow {
@@ -2054,11 +2054,14 @@ a.open-in-grace:focus-visible {
 .detail__social-inline {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 9px;
 }
 
 .detail__social-shape {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
   color: color-mix(in srgb, var(--brand-orange) 85%, white);
   background: color-mix(in srgb, var(--brand-orange) 85%, white);
 }
