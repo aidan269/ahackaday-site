@@ -1,0 +1,28 @@
+import {
+  checkApiRateLimit,
+  getIncidentListPayload,
+  makeApiHeaders,
+} from "@/lib/api-v1";
+
+export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
+
+export async function GET(request: Request) {
+  const rate = checkApiRateLimit(request);
+  if (!rate.ok) {
+    return Response.json(
+      { error: "Rate limit exceeded. Please retry shortly." },
+      { status: 429, headers: makeApiHeaders({ retryAfterSeconds: rate.retryAfterSeconds }) },
+    );
+  }
+
+  const payload = await getIncidentListPayload(new URL(request.url));
+  if ("error" in payload) {
+    return Response.json(
+      { error: payload.error },
+      { status: payload.status, headers: makeApiHeaders() },
+    );
+  }
+
+  return Response.json(payload, { headers: makeApiHeaders() });
+}
