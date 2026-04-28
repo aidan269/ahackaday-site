@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { JetBrains_Mono } from "next/font/google";
 import { EmotionalPreferencesProvider } from "@/components/emotional-preferences-provider";
 import { MobileDock } from "@/components/mobile-dock";
 import { SidebarShell } from "@/components/sidebar-shell";
@@ -7,14 +6,6 @@ import { computeSidebarCounts } from "@/lib/sidebar-counts";
 import { getPublicSiteUrl } from "@/lib/ecosystem";
 import { getAllIncidents } from "@/lib/incidents";
 import "./globals.css";
-
-const mono = JetBrains_Mono({
-  variable: "--font-mono",
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
-  display: "swap",
-  adjustFontFallback: true,
-});
 
 const siteUrl = getPublicSiteUrl();
 
@@ -57,7 +48,7 @@ export default async function RootLayout({
   const counts = computeSidebarCounts(all);
 
   return (
-    <html lang="en" className={`${mono.variable} h-full antialiased`}>
+    <html lang="en" className="h-full antialiased">
       <body className="min-h-full">
         <EmotionalPreferencesProvider>
           <SidebarShell counts={counts} />

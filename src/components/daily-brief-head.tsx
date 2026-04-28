@@ -14,7 +14,7 @@ export function DailyBriefHead({ dateStr, filteredLen, allLen, todayCrit, actCou
     <>
       <div className={`dailybrief${hot ? " is-hot" : ""}`}>
         <span className="pulse" aria-hidden />
-        <span className="date">your security situation · {dateStr}</span>
+        <span className="date">Your Security Digest · {dateStr}</span>
       </div>
       <h1 className="page-title">
         {hot ? (
