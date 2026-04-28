@@ -95,12 +95,20 @@ export function ToolkitDrawer() {
             </div>
             <div className="toolkit-panel__body">
               <p className="toolkit-panel__intro">
-                Ecosystem around AHackaday: ship agentic security work into Grace, explore Cantina, and use sister
-                tools. Clawtsuite, cooked-meter, and Archway in the monorepo may be run locally when not published
-                elsewhere.
+                Teams can use the markdown link below to implement the Grace Slack integration. Other toolkit items are
+                staged and marked as coming soon.
               </p>
               <ul className="toolkit-list">
                 {rows.map((row) => {
+                  if (row.comingSoon) {
+                    return (
+                      <li key={row.label} className="toolkit-list__row toolkit-list__row--soon">
+                        <span className="toolkit-list__label">{row.label}</span>
+                        <span className="toolkit-list__missing">coming soon</span>
+                      </li>
+                    );
+                  }
+
                   if (row.missing) {
                     return (
                       <li key={row.label} className="toolkit-list__row">
@@ -123,7 +131,7 @@ export function ToolkitDrawer() {
                         rel="noopener noreferrer"
                         onClick={onClose}
                       >
-                        {row.label}
+                        {row.markdownLabel ?? row.label}
                       </a>
                     </li>
                   );
