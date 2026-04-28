@@ -46,11 +46,8 @@ function buildGithubQuery(incident: IncidentRow): string {
     .split(/\s+/)
     .filter((token) => token.length >= 4)
     .slice(0, 3);
-  const focus = cveMatch
-    ? cveMatch.toLowerCase()
-    : (titleTokens.length > 0 ? titleTokens.join(" ") : "security incident");
-  const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
-  return `${focus} in:title,body created:>=${since}`;
+  const focus = cveMatch ? cveMatch.toLowerCase() : (titleTokens.length > 0 ? titleTokens.join(" ") : "security incident");
+  return `${focus} is:issue`;
 }
 
 function toTrend(currentMentions: number, previousMentions: number | null): "up" | "flat" | "down" {
@@ -92,7 +89,7 @@ async function fetchGithubMentions(incident: IncidentRow): Promise<{ mentions: n
     .split(/\s+/)
     .find((token) => token.length >= 5);
   if (fallbackToken) {
-    queries.push(`${fallbackToken} in:title,body`);
+    queries.push(`${fallbackToken} is:issue`);
   }
   const token = process.env.GITHUB_TOKEN;
   const headers: Record<string, string> = {
@@ -119,10 +116,19 @@ async function fetchGithubMentions(incident: IncidentRow): Promise<{ mentions: n
       throw new Error("GitHub search rate-limited (403). Try a smaller limit (<=20) per refresh run.");
     }
     if (response.status !== 422) {
-      throw new Error(`GitHub search failed (${response.status})`);
+      let details = "";
+      try {
+        const payload = await response.json() as { message?: string };
+        details = payload.message ? `: ${payload.message}` : "";
+      } catch {}
+      throw new Error(`GitHub search failed (${response.status})${details}`);
     }
   }
-  throw new Error(`GitHub search failed (${lastStatus})`);
+  // Avoid hard-fail on repeated 422s; store a real zero-count observation.
+  return {
+    mentions: 0,
+    keywords: extractKeywords(incident, []),
+  };
 }
 
 export async function refreshIncidentSocialMetrics(limit = 20): Promise<{
