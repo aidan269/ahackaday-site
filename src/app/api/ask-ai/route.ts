@@ -2,13 +2,33 @@ import Anthropic from "@anthropic-ai/sdk";
 import { NextResponse } from "next/server";
 
 import { getAnthropicModel } from "@/lib/anthropic-model";
+import { deriveRateLimitKey, takeRateLimit } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
 
 const MAX_PROMPT_CHARS = 200_000;
+const ASK_AI_RATE_LIMIT_MAX = 8;
+const ASK_AI_RATE_LIMIT_WINDOW_MS = 60_000;
 
 export async function POST(request: Request) {
   try {
+    const key = deriveRateLimitKey(request);
+    const quota = takeRateLimit(key, {
+      max: ASK_AI_RATE_LIMIT_MAX,
+      windowMs: ASK_AI_RATE_LIMIT_WINDOW_MS,
+    });
+    if (!quota.ok) {
+      return NextResponse.json(
+        { error: "Rate limit exceeded. Please retry shortly." },
+        {
+          status: 429,
+          headers: {
+            "Retry-After": String(quota.retryAfterSeconds),
+          },
+        },
+      );
+    }
+
     const body = (await request.json()) as { prompt?: string };
     let prompt = typeof body.prompt === "string" ? body.prompt.trim() : "";
     if (!prompt) {

@@ -4,15 +4,19 @@ import { EmotionalPreferencesProvider } from "@/components/emotional-preferences
 import { MobileDock } from "@/components/mobile-dock";
 import { SidebarShell } from "@/components/sidebar-shell";
 import { computeSidebarCounts } from "@/lib/sidebar-counts";
+import { getPublicSiteUrl } from "@/lib/ecosystem";
 import { getAllIncidents } from "@/lib/incidents";
 import "./globals.css";
 
 const mono = JetBrains_Mono({
   variable: "--font-mono",
   subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+  display: "swap",
+  adjustFontFallback: true,
 });
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://ahackaday-site.vercel.app";
+const siteUrl = getPublicSiteUrl();
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),

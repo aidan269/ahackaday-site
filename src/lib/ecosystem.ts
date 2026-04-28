@@ -3,7 +3,7 @@
  * NEXT_PUBLIC_GRACE_ORIGIN: Grace deployment origin, no trailing slash.
  */
 
-const DEFAULT_SITE = "https://ahackaday-site.vercel.app";
+const DEFAULT_SITE = "https://ahackaday-intel.vercel.app";
 
 export function getPublicSiteUrl(): string {
   const raw = process.env.NEXT_PUBLIC_SITE_URL?.trim() || DEFAULT_SITE;
