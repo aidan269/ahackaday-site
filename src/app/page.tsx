@@ -17,6 +17,16 @@ function readParam(v: string | string[] | undefined, fallback: string): string {
   return fallback;
 }
 
+function getPlatformMentions(
+  incident: Awaited<ReturnType<typeof getAllIncidents>>[number],
+  platform: "x" | "reddit" | "github",
+): number {
+  if (typeof incident.socialMentions24h !== "number") return 0;
+  const share = incident.socialPlatformSplit?.[platform];
+  if (typeof share !== "number" || share <= 0) return 0;
+  return Math.round((incident.socialMentions24h * share) / 100);
+}
+
 export default async function Home({ searchParams }: HomeProps) {
   const params = await searchParams;
   const query = readParam(params.q, "");
@@ -50,13 +60,9 @@ export default async function Home({ searchParams }: HomeProps) {
       const hay = [i.title, i.summary, i.affected, i.category].join(" ").toLowerCase();
       if (!hay.includes(qq)) return false;
     }
-    if (socialValue === "rising" && i.socialTrend !== "up") return false;
-    if (socialValue === "high-mentions" && (typeof i.socialMentions24h !== "number" || i.socialMentions24h < 50)) {
-      return false;
-    }
-    if (socialValue === "big-delta" && (typeof i.socialDelta24hPct !== "number" || Math.abs(i.socialDelta24hPct) < 10)) {
-      return false;
-    }
+    if (socialValue === "twitter-mentions" && getPlatformMentions(i, "x") < 20) return false;
+    if (socialValue === "reddit-mentions" && getPlatformMentions(i, "reddit") < 20) return false;
+    if (socialValue === "github-mentions" && getPlatformMentions(i, "github") < 20) return false;
     return true;
   });
 

@@ -20,6 +20,24 @@ type GithubSearchResponse = {
   items?: Array<{ title?: string; body?: string }>;
 };
 
+type RedditSearchResponse = {
+  data?: {
+    dist?: number;
+    children?: Array<{
+      data?: {
+        title?: string;
+        selftext?: string;
+      };
+    }>;
+  };
+};
+
+type XRecentSearchResponse = {
+  meta?: {
+    result_count?: number;
+  };
+};
+
 const STOPWORDS = new Set([
   "with", "from", "that", "this", "have", "after", "under", "into", "about", "while",
   "incident", "security", "attack", "attacks", "vulnerability", "vulnerabilities",
@@ -55,6 +73,22 @@ function buildGithubQuery(incident: IncidentRow): string {
   return `${focus} is:issue`;
 }
 
+function buildSocialQueryTerms(incident: IncidentRow): { primary: string; fallback?: string } {
+  const cveMatch = /CVE-\d{4}-\d+/i.exec(`${incident.title} ${incident.claude_summary}`)?.[0];
+  if (cveMatch) {
+    return { primary: `"${cveMatch}"`, fallback: cveMatch.toLowerCase() };
+  }
+  const titleTokens = incident.title
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, " ")
+    .split(/\s+/)
+    .filter((token) => token.length >= 4)
+    .slice(0, 4);
+  if (titleTokens.length === 0) return { primary: "cyber security incident" };
+  const primary = titleTokens.map((token) => `"${token}"`).join(" ");
+  return { primary, fallback: titleTokens[0] };
+}
+
 function toTrend(currentMentions: number, previousMentions: number | null): "up" | "flat" | "down" {
   if (previousMentions === null || previousMentions <= 0) return "flat";
   const delta = ((currentMentions - previousMentions) / previousMentions) * 100;
@@ -80,6 +114,19 @@ function toPlatformSplit(mentions: number, seedInput: string): { x: number; redd
   const xTarget = 58 + ((seed >> 3) % 17) - 8; // 50..66
   const x = Math.max(28, Math.min(72, Math.round((remaining * xTarget) / 100)));
   const reddit = Math.max(12, 100 - github - x);
+  return { x, reddit, github };
+}
+
+function toPlatformSplitFromObserved(counts: {
+  x: number;
+  reddit: number;
+  github: number;
+}): { x: number; reddit: number; github: number } {
+  const total = counts.x + counts.reddit + counts.github;
+  if (total <= 0) return { x: 47, reddit: 35, github: 18 };
+  const x = Math.max(0, Math.round((counts.x / total) * 100));
+  const reddit = Math.max(0, Math.round((counts.reddit / total) * 100));
+  const github = Math.max(0, 100 - x - reddit);
   return { x, reddit, github };
 }
 
@@ -150,6 +197,62 @@ async function fetchGithubMentions(incident: IncidentRow): Promise<{ mentions: n
   };
 }
 
+async function fetchRedditMentions(incident: IncidentRow): Promise<number> {
+  const { primary, fallback } = buildSocialQueryTerms(incident);
+  const queries = [primary, fallback].filter((q): q is string => Boolean(q));
+  const headers: Record<string, string> = {
+    "User-Agent": "AHackaday-SocialRefresh/1.0",
+    Accept: "application/json",
+  };
+  for (const query of queries) {
+    const response = await fetch(
+      `https://www.reddit.com/search.json?q=${encodeURIComponent(query)}&sort=new&t=day&limit=50`,
+      {
+        headers,
+        signal: AbortSignal.timeout(10_000),
+        cache: "no-store",
+      },
+    );
+    if (!response.ok) {
+      if (response.status === 429) {
+        throw new Error("Reddit search rate-limited (429).");
+      }
+      continue;
+    }
+    const data = await response.json() as RedditSearchResponse;
+    const dist = data.data?.dist;
+    const childrenCount = data.data?.children?.length ?? 0;
+    return Math.max(0, dist ?? childrenCount);
+  }
+  return 0;
+}
+
+async function fetchXMentions(incident: IncidentRow): Promise<number> {
+  const bearerToken = process.env.X_BEARER_TOKEN ?? process.env.TWITTER_BEARER_TOKEN;
+  if (!bearerToken) return 0;
+  const { primary } = buildSocialQueryTerms(incident);
+  const query = `${primary} lang:en -is:retweet`;
+  const response = await fetch(
+    `https://api.x.com/2/tweets/search/recent?query=${encodeURIComponent(query)}&max_results=100`,
+    {
+      headers: {
+        Authorization: `Bearer ${bearerToken}`,
+        "User-Agent": "AHackaday-SocialRefresh/1.0",
+      },
+      signal: AbortSignal.timeout(10_000),
+      cache: "no-store",
+    },
+  );
+  if (!response.ok) {
+    if (response.status === 429) {
+      throw new Error("X search rate-limited (429).");
+    }
+    throw new Error(`X search failed (${response.status})`);
+  }
+  const data = await response.json() as XRecentSearchResponse;
+  return Math.max(0, data.meta?.result_count ?? 0);
+}
+
 export async function refreshIncidentSocialMetrics(limit = 20): Promise<{
   ok: true;
   scanned: number;
@@ -180,13 +283,33 @@ export async function refreshIncidentSocialMetrics(limit = 20): Promise<{
   const errors: string[] = [];
   for (const incident of rows) {
     try {
-      const { mentions, keywords } = await fetchGithubMentions(incident);
+      const githubSignal = await fetchGithubMentions(incident);
+      let redditMentions = 0;
+      let xMentions = 0;
+      try {
+        redditMentions = await fetchRedditMentions(incident);
+      } catch (error) {
+        errors.push(`${incident.title}: ${error instanceof Error ? error.message : String(error)}`);
+      }
+      try {
+        xMentions = await fetchXMentions(incident);
+      } catch (error) {
+        errors.push(`${incident.title}: ${error instanceof Error ? error.message : String(error)}`);
+      }
+      const mentions = githubSignal.mentions + redditMentions + xMentions;
       const prevMentions = previous.get(incident.id)?.social_mentions_24h ?? null;
       const deltaPct = prevMentions && prevMentions > 0
         ? Math.round(((mentions - prevMentions) / prevMentions) * 100)
         : null;
       const trend = toTrend(mentions, prevMentions);
-      const split = toPlatformSplit(mentions, `${incident.id}:${incident.title}`);
+      const observedSplit = toPlatformSplitFromObserved({
+        github: githubSignal.mentions,
+        reddit: redditMentions,
+        x: xMentions,
+      });
+      const split = mentions > 0
+        ? observedSplit
+        : toPlatformSplit(mentions, `${incident.id}:${incident.title}`);
       const exploited = inferExploitedSignal(`${incident.title} ${incident.claude_summary}`);
       const slug = buildIncidentSlug(incident.published_at, incident.title, incident.id);
       const summary = exploited || trend === "up"
@@ -202,8 +325,8 @@ export async function refreshIncidentSocialMetrics(limit = 20): Promise<{
         social_summary: summary,
         social_delta_24h_pct: deltaPct,
         social_platform_split: split,
-        social_keywords: keywords,
-        source: "github",
+        social_keywords: githubSignal.keywords,
+        source: "github+reddit+x",
         updated_at: new Date().toISOString(),
       }, { onConflict: "incident_id" });
 

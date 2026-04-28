@@ -38,9 +38,9 @@ export function FeedControls({
         <div className="ctrl__box">
           <select id="f-social" name="social" defaultValue={socialValue}>
             <option value="all">all social</option>
-            <option value="rising">rising</option>
-            <option value="high-mentions">high mentions</option>
-            <option value="big-delta">big delta</option>
+            <option value="reddit-mentions">reddit mentions</option>
+            <option value="github-mentions">github mentions</option>
+            <option value="twitter-mentions">twitter mentions</option>
           </select>
           <span className="chev">▾</span>
         </div>
