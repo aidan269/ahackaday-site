@@ -45,10 +45,12 @@ function buildGithubQuery(incident: IncidentRow): string {
     .replace(/[^a-z0-9\s-]/g, " ")
     .split(/\s+/)
     .filter((token) => token.length >= 4)
-    .slice(0, 4);
-  const focus = cveMatch ? `"${cveMatch}"` : titleTokens.map((token) => `"${token}"`).join(" ");
+    .slice(0, 3);
+  const focus = cveMatch
+    ? cveMatch.toLowerCase()
+    : (titleTokens.length > 0 ? titleTokens.join(" ") : "security incident");
   const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
-  return `${focus} created:>=${since}`;
+  return `${focus} in:title,body created:>=${since}`;
 }
 
 function toTrend(currentMentions: number, previousMentions: number | null): "up" | "flat" | "down" {
@@ -83,29 +85,47 @@ function extractKeywords(incident: IncidentRow, githubItems: GithubSearchRespons
 }
 
 async function fetchGithubMentions(incident: IncidentRow): Promise<{ mentions: number; keywords: string[] }> {
-  const query = buildGithubQuery(incident);
+  const queries = [buildGithubQuery(incident)];
+  const fallbackToken = incident.title
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, " ")
+    .split(/\s+/)
+    .find((token) => token.length >= 5);
+  if (fallbackToken) {
+    queries.push(`${fallbackToken} in:title,body`);
+  }
   const token = process.env.GITHUB_TOKEN;
   const headers: Record<string, string> = {
     Accept: "application/vnd.github+json",
     "User-Agent": "AHackaday-SocialRefresh/1.0",
   };
   if (token) headers.Authorization = `Bearer ${token}`;
-  const response = await fetch(`https://api.github.com/search/issues?q=${encodeURIComponent(query)}&per_page=25`, {
-    headers,
-    signal: AbortSignal.timeout(10_000),
-    cache: "no-store",
-  });
-  if (!response.ok) {
-    throw new Error(`GitHub search failed (${response.status})`);
+  let lastStatus = 500;
+  for (const query of queries) {
+    const response = await fetch(`https://api.github.com/search/issues?q=${encodeURIComponent(query)}&per_page=25`, {
+      headers,
+      signal: AbortSignal.timeout(10_000),
+      cache: "no-store",
+    });
+    if (response.ok) {
+      const data = await response.json() as GithubSearchResponse;
+      return {
+        mentions: Math.max(0, Math.min(5000, data.total_count ?? 0)),
+        keywords: extractKeywords(incident, data.items),
+      };
+    }
+    lastStatus = response.status;
+    if (response.status === 403) {
+      throw new Error("GitHub search rate-limited (403). Try a smaller limit (<=20) per refresh run.");
+    }
+    if (response.status !== 422) {
+      throw new Error(`GitHub search failed (${response.status})`);
+    }
   }
-  const data = await response.json() as GithubSearchResponse;
-  return {
-    mentions: Math.max(0, Math.min(5000, data.total_count ?? 0)),
-    keywords: extractKeywords(incident, data.items),
-  };
+  throw new Error(`GitHub search failed (${lastStatus})`);
 }
 
-export async function refreshIncidentSocialMetrics(limit = 60): Promise<{
+export async function refreshIncidentSocialMetrics(limit = 20): Promise<{
   ok: true;
   scanned: number;
   updated: number;
