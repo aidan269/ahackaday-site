@@ -121,6 +121,10 @@ function deriveSocialDetailSignals(input: {
   };
 }
 
+function normalizeKeywordForDisplay(value: string): string {
+  return value.replace(/^#+/, "").trim().toLowerCase();
+}
+
 export default async function IncidentPage({ params }: IncidentPageProps) {
   const { slug } = await params;
   const incident = await getIncidentBySlug(slug);
@@ -147,6 +151,10 @@ export default async function IncidentPage({ params }: IncidentPageProps) {
     platformSplit: incident.socialPlatformSplit,
     keywords: incident.socialKeywords,
   });
+  const displayKeywords = socialDetails.keywords
+    .map(normalizeKeywordForDisplay)
+    .filter(Boolean)
+    .slice(0, 3);
 
   return (
     <main className="shell">
@@ -194,40 +202,46 @@ export default async function IncidentPage({ params }: IncidentPageProps) {
           <div className="detail__social">
             <h3>social pulse</h3>
             <div className="detail__social-grid">
-              <div>
+              <div className="detail__social-metric">
                 <span className="k">mentions (24h)</span>
                 <span className="v detail__mentions">
                   <span className="detail__social-shape detail__social-shape--dot" aria-hidden />
                   <span>{socialMentionsLabel}</span>
                 </span>
               </div>
-              <div>
+              <div className="detail__social-metric">
                 <span className="k">velocity</span>
                 <span className="v detail__velocity">
                   <span className="detail__velocity-arrow" aria-hidden>{velocityArrow}</span>
                   <span>{socialTrendLabel}</span>
                 </span>
               </div>
-              <div>
+              <div className="detail__social-metric">
                 <span className="k">mentions delta</span>
                 <span className="v detail__social-inline">
                   <span className="detail__social-shape detail__social-shape--square" aria-hidden />
                   <span>{socialDetails.mentionsDelta}</span>
                 </span>
               </div>
-              <div>
+              <div className="detail__social-metric">
                 <span className="k">platform split</span>
                 <span className="v detail__social-inline">
                   <span className="detail__social-shape detail__social-shape--diamond" aria-hidden />
                   <span>{socialDetails.platformSplit}</span>
                 </span>
               </div>
-              <div>
+              <div className="detail__social-metric">
                 <span className="k">keywords</span>
-                <span className="v detail__social-inline">
+                <div className="detail__keyword-row">
                   <span className="detail__social-shape detail__social-shape--bar" aria-hidden />
-                  <span className="detail__keywords">{socialDetails.keywords.join(" ")}</span>
-                </span>
+                  <div className="detail__keyword-chips">
+                    {displayKeywords.length > 0
+                      ? displayKeywords.map((keyword) => (
+                          <span key={keyword} className="detail__keyword-chip">{keyword}</span>
+                        ))
+                      : <span className="detail__keyword-chip">monitoring</span>}
+                  </div>
+                </div>
               </div>
               <div className="detail__social-summary">
                 <span className="k">summary</span>

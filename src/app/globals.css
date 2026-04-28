@@ -2009,6 +2009,13 @@ a.open-in-grace:focus-visible {
   gap: 10px;
 }
 
+.detail__social-metric {
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid color-mix(in srgb, var(--border) 82%, white);
+  border-radius: 8px;
+  padding: 10px 11px;
+}
+
 .detail__social .k {
   display: block;
   font-size: 9.5px;
@@ -2020,9 +2027,10 @@ a.open-in-grace:focus-visible {
 .detail__social .v {
   display: block;
   margin-top: 4px;
-  color: var(--fg-2);
+  color: var(--fg);
   font-size: 12.5px;
   line-height: 1.45;
+  font-weight: 500;
 }
 
 .detail__mentions {
@@ -2051,8 +2059,8 @@ a.open-in-grace:focus-visible {
 
 .detail__social-shape {
   display: inline-block;
-  color: var(--brand-orange);
-  background: var(--brand-orange);
+  color: color-mix(in srgb, var(--brand-orange) 85%, white);
+  background: color-mix(in srgb, var(--brand-orange) 85%, white);
 }
 
 .detail__social-shape--dot {
@@ -2085,6 +2093,30 @@ a.open-in-grace:focus-visible {
 .detail__keywords {
   color: var(--brand-orange);
   letter-spacing: 0.02em;
+}
+
+.detail__keyword-row {
+  margin-top: 4px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.detail__keyword-chips {
+  display: inline-flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.detail__keyword-chip {
+  border: 1px solid color-mix(in srgb, var(--brand-orange) 28%, var(--border));
+  background: color-mix(in srgb, var(--brand-orange) 8%, white);
+  color: color-mix(in srgb, var(--fg) 88%, var(--brand-orange));
+  border-radius: 999px;
+  padding: 2px 8px;
+  font-size: 11px;
+  letter-spacing: 0.01em;
+  line-height: 1.2;
 }
 
 .detail__body h3 {
