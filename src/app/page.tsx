@@ -29,7 +29,7 @@ export default async function Home({ searchParams }: HomeProps) {
   const win = (windowValue === "7d" ? "7" : windowValue) as "7" | "30d" | "90d" | "all";
 
   const all = await getAllIncidents();
-  const now = new Date(2026, 3, 21);
+  const now = new Date();
   const qq = query.trim().toLowerCase();
   const days = win === "all" ? null : parseInt(win, 10);
   const parseLocal = (date: string) => {
@@ -55,7 +55,7 @@ export default async function Home({ searchParams }: HomeProps) {
     critical: filtered.filter((i) => i.severity === "critical").length,
     exploited: filtered.filter((i) => i.exploited).length,
   };
-  const dateStr = new Date(2026, 3, 21).toLocaleDateString("en-GB", { day: "2-digit", month: "short" }).toLowerCase();
+  const dateStr = now.toLocaleDateString("en-GB", { day: "2-digit", month: "short" }).toLowerCase();
 
   const groupedByDate = filtered.reduce<Record<string, typeof filtered>>((acc, incident) => {
     const key = incident.date.slice(0, 10);

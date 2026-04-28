@@ -6,6 +6,9 @@ affected: "Virtualization clusters in manufacturing and education"
 summary: "A ransomware affiliate shifted from endpoint phishing to hypervisor console compromise, encrypting many VMs at once. Recovery timelines stretched from days to weeks."
 category: "ransomware"
 mitigationStatus: "No decryptor; containment and rebuild recommended"
+socialMentions24h: 1200
+socialTrend: "up"
+socialSummary: "Social discussion is accelerating with active-response chatter and exploit validation."
 sources:
   - "https://example.com/ir-report/hypervisor-ransomware"
   - "https://example.com/cisa/aa-hypervisor"

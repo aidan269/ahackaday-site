@@ -6,6 +6,9 @@ affected: "SMS-based MFA across consumer and enterprise accounts"
 summary: "Researchers documented active abuse of telecom signaling weaknesses to intercept one-time passcodes. Fraud and account takeover rates rose in targeted regions."
 category: "identity"
 mitigationStatus: "No quick protocol fix; stronger auth factors advised"
+socialMentions24h: 260
+socialTrend: "flat"
+socialSummary: "Steady discussion focused on patch timing and exposure checks."
 sources:
   - "https://example.com/research/ss7-abuse-2026"
   - "https://example.com/bank-fraud/advisory"

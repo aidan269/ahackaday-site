@@ -6,6 +6,9 @@ affected: "Organizations exchanging HR and financial files over MFT"
 summary: "Attackers exploited an auth bypass in a managed file transfer platform and pulled sensitive archives from exposed instances. Victims include payroll providers and insurers."
 category: "breach"
 mitigationStatus: "Vendor hotfix available; incident response still active"
+socialMentions24h: 1200
+socialTrend: "up"
+socialSummary: "Social discussion is accelerating with active-response chatter and exploit validation."
 sources:
   - "https://example.com/vendor/mft-response"
   - "https://example.com/news/mft-breach"

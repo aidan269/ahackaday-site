@@ -6,6 +6,9 @@ affected: "SMB and mid-market firewall and NAS appliances"
 summary: "Botnets are mass-compromising edge appliances still using factory credentials. Incidents are feeding DDoS traffic and providing staging points for ransomware access."
 category: "exploitation"
 mitigationStatus: "No vendor patch needed; operational hygiene required"
+socialMentions24h: 260
+socialTrend: "flat"
+socialSummary: "Steady discussion focused on patch timing and exposure checks."
 sources:
   - "https://example.com/threat-report/default-creds"
   - "https://example.com/cert/appliance-hardening"

@@ -6,6 +6,9 @@ affected: "Industrial and smart-building IoT product lines"
 summary: "A leaked firmware signing key allowed attackers to produce valid-looking malicious updates. Several operators disconnected update channels pending key rotation."
 category: "supply-chain"
 mitigationStatus: "Emergency key rotation initiated; device recovery uneven"
+socialMentions24h: 1200
+socialTrend: "up"
+socialSummary: "Social discussion is accelerating with active-response chatter and exploit validation."
 sources:
   - "https://example.com/vendor/firmware-key-incident"
   - "https://example.com/ot-security/analysis"

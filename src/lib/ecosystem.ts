@@ -41,23 +41,23 @@ export function graceAvatarUrl(): string {
 
 export type ToolkitRow = {
   label: string;
+  markdownLabel?: string;
   /** Empty when not configured (e.g. Grace without env) */
   href: string;
   /** Show as disabled in UI */
   missing?: boolean;
+  comingSoon?: boolean;
 };
 
 export function getToolkitLinkRows(): ToolkitRow[] {
-  const grace = getGraceOrigin();
   return [
     {
-      label: "Grace (main app)",
-      href: grace ? `${grace}/` : "",
-      missing: !grace,
+      label: "Slack integration",
+      markdownLabel: "[Slack integration](https://github.com/aidan269/grace.ai)",
+      href: "https://github.com/aidan269/grace.ai",
     },
-    { label: "AHackaday (this site)", href: `${getPublicSiteUrl()}/?layout=card` },
-    { label: "Clowasp (OWASP agentic pipeline auditor)", href: "https://github.com/aidan269/clowasp" },
-    { label: "News / intake queue (GitHub issues)", href: "https://github.com/aidan269/grace.ai/issues" },
-    { label: "Cantina", href: "https://cantina.xyz" },
+    { label: "Clowasp (OWASP agentic pipeline auditor)", href: "", comingSoon: true },
+    { label: "News / intake queue (GitHub issues)", href: "", comingSoon: true },
+    { label: "Cantina", href: "https://cantina.security" },
   ];
 }

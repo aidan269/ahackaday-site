@@ -6,6 +6,9 @@ affected: "Web apps serving shared JavaScript bundles via CDN"
 summary: "Cache key confusion in a CDN edge path enabled temporary script poisoning for some routes. Affected pages loaded credential-harvesting JavaScript before purge."
 category: "web"
 mitigationStatus: "Purge complete; cache key safeguards added"
+socialMentions24h: 640
+socialTrend: "up"
+socialSummary: "Conversation is rising as teams compare mitigations and vendor guidance."
 sources:
   - "https://example.com/cdn/postmortem"
   - "https://example.com/websec/cache-poisoning-case"

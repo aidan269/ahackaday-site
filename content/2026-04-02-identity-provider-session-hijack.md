@@ -6,6 +6,9 @@ affected: "SSO tenants with legacy session token policies"
 summary: "Attackers are replaying stolen session artifacts to bypass MFA in older SSO tenant configurations. Victims include MSPs, giving attackers downstream customer access."
 category: "identity"
 mitigationStatus: "Session binding controls available but not default"
+socialMentions24h: 1200
+socialTrend: "up"
+socialSummary: "Social discussion is accelerating with active-response chatter and exploit validation."
 sources:
   - "https://example.com/identity/provider-advisory"
   - "https://example.com/ir-lab/session-replay"

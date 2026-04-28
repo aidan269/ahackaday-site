@@ -80,6 +80,13 @@ export default async function IncidentPage({ params }: IncidentPageProps) {
   const sev = SEV_COLOR[incident.severity];
   const trackingId = incident.cve || incident.evidence.cves[0] || null;
   const sections = Array.isArray(incident.content) ? incident.content : [];
+  const socialMentionsLabel = typeof incident.socialMentions24h === "number"
+    ? String(incident.socialMentions24h)
+    : "n/a";
+  const trend = incident.socialTrend ?? "flat";
+  const velocityArrow = trend === "up" ? "↑" : trend === "down" ? "↓" : "→";
+  const socialTrendLabel = `trend ${trend}`;
+  const socialSummary = incident.socialSummary || "Signal collection in progress for this incident.";
 
   return (
     <main className="shell">
@@ -121,6 +128,27 @@ export default async function IncidentPage({ params }: IncidentPageProps) {
             <div>
               <span className="k">first reported</span>
               <span className="v">{formatIncidentDate(incident.date)}</span>
+            </div>
+          </div>
+
+          <div className="detail__social">
+            <h3>social pulse</h3>
+            <div className="detail__social-grid">
+              <div>
+                <span className="k">mentions (24h)</span>
+                <span className="v">{socialMentionsLabel}</span>
+              </div>
+              <div>
+                <span className="k">velocity</span>
+                <span className="v detail__velocity">
+                  <span className="detail__velocity-arrow" aria-hidden>{velocityArrow}</span>
+                  <span>{socialTrendLabel}</span>
+                </span>
+              </div>
+              <div className="detail__social-summary">
+                <span className="k">summary</span>
+                <span className="v">{socialSummary}</span>
+              </div>
             </div>
           </div>
 

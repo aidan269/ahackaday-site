@@ -6,6 +6,9 @@ affected: "Edge VPN gateways in finance, healthcare, and logistics"
 summary: "A pre-auth remote code execution bug in a widely deployed VPN appliance is under active exploitation. Internet-facing gateways were compromised in hours, with follow-on credential theft."
 category: "zero-day"
 mitigationStatus: "Emergency patch released; compensating controls still needed"
+socialMentions24h: 1320
+socialTrend: "up"
+socialSummary: "Conversation is accelerating around exploit confirmations and emergency patch guidance."
 sources:
   - "https://example.com/advisory/vpn-rce"
   - "https://example.com/research/vpn-exploitation"

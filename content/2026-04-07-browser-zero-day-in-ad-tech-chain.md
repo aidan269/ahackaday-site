@@ -6,6 +6,9 @@ affected: "Enterprise browsers exposed to compromised ad exchanges"
 summary: "A sandbox escape zero-day was delivered through malicious ad redirects on legitimate sites. Several SOCs observed drive-by payload staging without user interaction."
 category: "zero-day"
 mitigationStatus: "Browser patch shipped; ad network cleanup in progress"
+socialMentions24h: 640
+socialTrend: "up"
+socialSummary: "Conversation is rising as teams compare mitigations and vendor guidance."
 sources:
   - "https://example.com/browser/advisory"
   - "https://example.com/threat-intel/adtech-chain"

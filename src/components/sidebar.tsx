@@ -1,7 +1,7 @@
 "use client";
 
 import type { CSSProperties } from "react";
-import { Suspense, useEffect, useState } from "react";
+import { Suspense } from "react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 
@@ -106,27 +106,9 @@ function IconMitigated() {
   );
 }
 
-function utcTimeLabel(d: Date): string {
-  const hh = String(d.getUTCHours()).padStart(2, "0");
-  const mm = String(d.getUTCMinutes()).padStart(2, "0");
-  return `${hh}:${mm}`;
-}
-
 function SidebarBody({ counts, filters }: Props & { filters: UrlFilters }) {
   const pathname = usePathname();
   const { reviewCount, savedCount } = useEmotionalPreferences();
-  const [utcClock, setUtcClock] = useState(() => utcTimeLabel(new Date()));
-  const [brandFresh, setBrandFresh] = useState(true);
-
-  useEffect(() => {
-    const id = setInterval(() => setUtcClock(utcTimeLabel(new Date())), 30_000);
-    return () => clearInterval(id);
-  }, []);
-
-  useEffect(() => {
-    const t = setTimeout(() => setBrandFresh(false), 1500);
-    return () => clearTimeout(t);
-  }, []);
 
   const isFeed = pathname === "/";
   const isCalendar = pathname.startsWith("/calendar");
@@ -141,13 +123,11 @@ function SidebarBody({ counts, filters }: Props & { filters: UrlFilters }) {
 
   return (
     <aside className="sidebar" aria-label="Primary navigation">
-      <Link href={feedHomeHref} className="sidebar__brand">
-        <span className={`sidebar__brand-badge brand__mark${brandFresh ? " is-fresh" : ""}`} aria-hidden />
-        <span className="sidebar__brand-wordmark">
-          <span className="sidebar__brand-strong">ahackaday</span>
-          <span className="sidebar__brand-dot">.</span>
-          <span className="sidebar__brand-muted">feed</span>
+      <Link href="https://cantina.security" target="_blank" rel="noreferrer" className="sidebar__brand">
+        <span className="sidebar__brand-logo-wrap" aria-hidden>
+          <img src="/cantina-logo.svg" alt="Cantina Security" className="sidebar__brand-logo" />
         </span>
+        <span className="sidebar__brand-wordmark">Cantina Security</span>
       </Link>
 
       <div className="sidebar__section-label">workspace</div>
@@ -240,9 +220,7 @@ function SidebarBody({ counts, filters }: Props & { filters: UrlFilters }) {
 
       <div className="sidebar__status">
         <span className="sidebar__status-dot" aria-hidden />
-        <span>
-          live · {utcClock} UTC
-        </span>
+        <span>Powered by Cantina Security</span>
       </div>
     </aside>
   );
