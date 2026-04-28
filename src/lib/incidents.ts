@@ -15,6 +15,7 @@ import type {
 } from "./incident-types";
 import { INCIDENT_TYPE_OPTIONS } from "./incident-types";
 import { decodeHtmlEntities, stripInvisibleUnicode } from "./html-entities";
+import { omitEditorialListingNoise } from "./editorial-listing-filter";
 
 export type { Incident, IncidentEvidence, IncidentFrontmatter, IncidentType, Severity };
 export { INCIDENT_TYPE_OPTIONS };
@@ -497,11 +498,14 @@ async function getAllSupabaseIncidents(): Promise<Incident[]> {
 }
 
 async function loadAllIncidentsFromSource(): Promise<Incident[]> {
+  let incidents: Incident[];
   if (DATA_SOURCE === "supabase") {
     const dbIncidents = await getAllSupabaseIncidents();
-    if (dbIncidents.length > 0) return dbIncidents;
+    incidents = dbIncidents.length > 0 ? dbIncidents : getAllMarkdownIncidents();
+  } else {
+    incidents = getAllMarkdownIncidents();
   }
-  return getAllMarkdownIncidents();
+  return omitEditorialListingNoise(incidents);
 }
 
 /** Cross-request cache (120s) + per-request dedupe: critical for traffic spikes (layout + page + feeds). */
