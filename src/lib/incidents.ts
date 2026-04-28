@@ -394,6 +394,8 @@ function deriveSocialPulse(input: {
   summary: string;
 }): SocialPulse {
   const text = `${input.title} ${input.category} ${input.summary}`.toLowerCase();
+  const stableHash = [...text].reduce((acc, ch) => ((acc * 31) + ch.charCodeAt(0)) % 100_000, 7);
+  const variance = (stableHash % 181) - 90;
   const baseBySeverity: Record<Severity, number> = {
     critical: 1200,
     high: 650,
@@ -405,13 +407,18 @@ function deriveSocialPulse(input: {
   if (input.exploited) mentions += 260;
   if (/zero-day|ransom|breach|cve-/i.test(text)) mentions += 110;
   if (/patch|mitigation|monitoring|resolved/i.test(text)) mentions -= 80;
+  mentions += variance;
   mentions = Math.max(60, mentions);
 
-  const trend: SocialTrend = input.exploited || input.severity === "critical"
-    ? "up"
-    : input.severity === "low"
-      ? "down"
-      : "flat";
+  let velocityScore = 0;
+  if (input.exploited) velocityScore += 3;
+  if (input.severity === "critical") velocityScore += 2;
+  if (input.severity === "high") velocityScore += 1;
+  if (/zero-day|ransom|breach|active|campaign|exploit/i.test(text)) velocityScore += 2;
+  if (/patch|resolved|contained|postmortem|recovery/i.test(text)) velocityScore -= 2;
+  velocityScore += (stableHash % 5) - 2;
+
+  const trend: SocialTrend = velocityScore >= 2 ? "up" : velocityScore <= -2 ? "down" : "flat";
 
   const summaryByTrend: Record<SocialTrend, string> = {
     up: "Conversation is accelerating with active-response chatter and exploit validation.",
