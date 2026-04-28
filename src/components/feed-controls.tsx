@@ -2,6 +2,7 @@ import { ToolkitDrawer } from "@/components/toolkit-drawer";
 
 type FeedControlsProps = {
   query: string;
+  severity: string;
   typeValue: string;
   socialValue: string;
   windowValue: "7" | "30d" | "90d" | "all";
@@ -10,6 +11,7 @@ type FeedControlsProps = {
 
 export function FeedControls({
   query,
+  severity,
   typeValue,
   socialValue,
   windowValue,
@@ -17,6 +19,7 @@ export function FeedControls({
 }: FeedControlsProps) {
   return (
     <form className="controls">
+      <input type="hidden" name="severity" value={severity} />
       <div className="ctrl">
         <label htmlFor="f-q">Search</label>
         <div className="ctrl__box">
