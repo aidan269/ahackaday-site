@@ -89,6 +89,7 @@ export function IncidentItem({ incident }: Props) {
             <span className="card__line-v">{truncateForDisplay(incident.affected, 140)}</span>
             {socialPreviewParts.length > 0 && (
               <>
+                <span className="card__meta-sep" aria-hidden>·</span>
                 <span className="k">social</span>
                 <span className="card__social-inline">{socialPreviewParts.join(" · ")}</span>
               </>
