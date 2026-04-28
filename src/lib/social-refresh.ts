@@ -25,6 +25,11 @@ const STOPWORDS = new Set([
   "incident", "security", "attack", "attacks", "vulnerability", "vulnerabilities",
 ]);
 
+const NOISY_KEYWORD_TOKENS = new Set([
+  "http", "https", "www", "com", "org", "net", "topic", "documents", "github", "weixin", "your",
+  "their", "there", "which", "where", "when", "what", "then", "than", "were", "been", "over", "more",
+]);
+
 function getSupabaseAdminClient() {
   const url = process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -70,7 +75,8 @@ function extractKeywords(incident: IncidentRow, githubItems: GithubSearchRespons
   const bucket = new Map<string, number>();
   const raw = `${incident.title} ${githubItems?.map((item) => `${item.title ?? ""} ${item.body ?? ""}`).join(" ")}`;
   for (const token of raw.toLowerCase().replace(/[^a-z0-9-\s]/g, " ").split(/\s+/)) {
-    if (token.length < 4 || STOPWORDS.has(token)) continue;
+    if (token.length < 4 || STOPWORDS.has(token) || NOISY_KEYWORD_TOKENS.has(token)) continue;
+    if (/^\d+$/.test(token) || token.includes("vercel")) continue;
     bucket.set(token, (bucket.get(token) ?? 0) + 1);
   }
   const keywords = [...bucket.entries()]
