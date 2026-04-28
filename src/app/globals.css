@@ -383,13 +383,12 @@ main.shell { max-width: 1560px; margin: 0 auto; padding: 48px 40px 160px; positi
 /* ===== CARD ===== */
 .feed--card { display: flex; flex-direction: column; }
 .feed--card { border-top: 1px solid rgba(250,94,6,0.28); }
-.card { position: relative; display: grid; grid-template-columns: 72px 1fr auto; gap: 24px; padding: 18px 8px 10px 16px; border-top: 1px solid var(--border); cursor: pointer; transition: background 200ms var(--ease), padding-left 220ms var(--ease); align-items: start; }
+.card { position: relative; display: grid; grid-template-columns: 72px 1fr; gap: 24px; padding: 18px 8px 10px 16px; border-top: 1px solid var(--border); cursor: pointer; transition: background 200ms var(--ease), padding-left 220ms var(--ease); align-items: start; }
 .card:last-child { border-bottom: 1px solid var(--border); }
 .card::before { content: ""; position: absolute; left: 0; top: -1px; bottom: -1px; width: 2px; background: var(--sev); opacity: 0; transition: opacity 200ms var(--ease); }
 .card:hover { background: rgba(0,0,0,0.02); padding-left: 22px; }
 .card:hover::before { opacity: 1; }
 .card:hover .card__title { color: var(--brand-orange); }
-.card:hover .card__arrow { transform: translateX(4px); opacity: 1; color: var(--brand-orange); }
 .card--critical {
   background: color-mix(in srgb, var(--sev-critical) 4%, #fff);
 }
@@ -516,8 +515,6 @@ main.shell { max-width: 1560px; margin: 0 auto; padding: 48px 40px 160px; positi
   color: var(--fg-2);
   line-height: 1.45;
 }
-
-.card__arrow { align-self: center; color: var(--fg-muted); font-size: 18px; opacity: 0.4; transition: transform 240ms var(--ease), color 180ms, opacity 180ms; padding-right: 8px; }
 
 /* ===== ROW ===== */
 .feed--row { border: 1px solid var(--border); border-radius: 10px; overflow: hidden; background: rgba(255,255,255,0.96); }

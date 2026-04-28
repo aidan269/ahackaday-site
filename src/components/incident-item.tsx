@@ -96,7 +96,6 @@ export function IncidentItem({ incident }: Props) {
             </div>
           )}
         </div>
-        <div className="card__arrow">→</div>
       </Link>
       <OpenInGrace incidentSlug={incident.slug} className="card__grace" />
       <button
