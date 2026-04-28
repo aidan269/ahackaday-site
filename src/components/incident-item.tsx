@@ -50,6 +50,10 @@ export function IncidentItem({ incident }: Props) {
     socialTrend,
     socialDelta !== null ? `Δ ${socialDelta >= 0 ? "+" : ""}${socialDelta}%` : null,
   ].filter((part): part is string => Boolean(part));
+  const platformSplitPreview = incident.socialPlatformSplit
+    ? `X ${incident.socialPlatformSplit.x}% · Reddit ${incident.socialPlatformSplit.reddit}% · GitHub ${incident.socialPlatformSplit.github}%`
+    : null;
+  const socialPreviewText = platformSplitPreview ?? socialPreviewParts.join(" · ");
 
   const saved = isSaved(incident.slug);
   const read = isRead(incident.slug);
@@ -87,11 +91,11 @@ export function IncidentItem({ incident }: Props) {
           <div className="card__line">
             <span className="k">affected</span>
             <span className="card__line-v">{truncateForDisplay(incident.affected, 140)}</span>
-            {socialPreviewParts.length > 0 && (
+            {socialPreviewText && (
               <>
                 <span className="card__meta-sep" aria-hidden>·</span>
                 <span className="k">social</span>
-                <span className="card__social-inline">{socialPreviewParts.join(" · ")}</span>
+                <span className="card__social-inline">{socialPreviewText}</span>
               </>
             )}
             {cve && <span className="card__cve">{cve}</span>}
