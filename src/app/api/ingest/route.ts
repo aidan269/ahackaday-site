@@ -1,5 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { createClient } from "@supabase/supabase-js";
+import { revalidateTag } from "next/cache";
 
 import { getAnthropicModel } from "@/lib/anthropic-model";
 import { getIngestMaxNewPerRun, loadIngestFeeds } from "@/lib/ingest-config";
@@ -412,6 +413,9 @@ async function runIngest(request: Request) {
   }
 
   const durationMs = Date.now() - t0;
+  if (inserted > 0) {
+    revalidateTag("incidents", "max");
+  }
   return Response.json({
     ok: true,
     durationMs,

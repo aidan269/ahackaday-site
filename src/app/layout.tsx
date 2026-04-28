@@ -11,6 +11,9 @@ import "./globals.css";
 const mono = JetBrains_Mono({
   variable: "--font-mono",
   subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+  display: "swap",
+  adjustFontFallback: true,
 });
 
 const siteUrl = getPublicSiteUrl();

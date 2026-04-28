@@ -3,6 +3,8 @@ import path from "node:path";
 
 import matter from "gray-matter";
 import { createClient } from "@supabase/supabase-js";
+import { unstable_cache } from "next/cache";
+import { cache } from "react";
 
 import type {
   Incident,
@@ -494,7 +496,7 @@ async function getAllSupabaseIncidents(): Promise<Incident[]> {
   });
 }
 
-export async function getAllIncidents(): Promise<Incident[]> {
+async function loadAllIncidentsFromSource(): Promise<Incident[]> {
   if (DATA_SOURCE === "supabase") {
     const dbIncidents = await getAllSupabaseIncidents();
     if (dbIncidents.length > 0) return dbIncidents;
@@ -502,12 +504,18 @@ export async function getAllIncidents(): Promise<Incident[]> {
   return getAllMarkdownIncidents();
 }
 
+/** Cross-request cache (120s) + per-request dedupe: critical for traffic spikes (layout + page + feeds). */
+const loadAllIncidentsCached = unstable_cache(loadAllIncidentsFromSource, ["incidents-all"], {
+  revalidate: 120,
+  tags: ["incidents"],
+});
+
+export const getAllIncidents = cache(loadAllIncidentsCached);
+
 export async function getIncidentBySlug(slug: string): Promise<Incident | null> {
-  if (DATA_SOURCE === "supabase") {
-    const incidents = await getAllSupabaseIncidents();
-    const hit = incidents.find((incident) => incident.slug === slug);
-    if (hit) return hit;
-  }
+  const incidents = await getAllIncidents();
+  const hit = incidents.find((incident) => incident.slug === slug);
+  if (hit) return hit;
   return getMarkdownIncidentBySlug(slug);
 }
 

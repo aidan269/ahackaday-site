@@ -1,5 +1,4 @@
 @import "tailwindcss";
-@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap');
 
 :root {
   --brand-orange: #FA5E06;
@@ -31,7 +30,6 @@
   --sev-medium: #F2B100;
   --sev-low: #7DE2B5;
 
-  --font-mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
   --ease: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
