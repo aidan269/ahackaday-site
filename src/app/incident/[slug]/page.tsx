@@ -83,7 +83,9 @@ export default async function IncidentPage({ params }: IncidentPageProps) {
   const socialMentionsLabel = typeof incident.socialMentions24h === "number"
     ? String(incident.socialMentions24h)
     : "n/a";
-  const socialTrendLabel = `trend ${incident.socialTrend ?? "flat"}`;
+  const trend = incident.socialTrend ?? "flat";
+  const velocityArrow = trend === "up" ? "↑" : trend === "down" ? "↓" : "→";
+  const socialTrendLabel = `trend ${trend}`;
   const socialSummary = incident.socialSummary || "Signal collection in progress for this incident.";
 
   return (
@@ -138,7 +140,10 @@ export default async function IncidentPage({ params }: IncidentPageProps) {
               </div>
               <div>
                 <span className="k">velocity</span>
-                <span className="v">{socialTrendLabel}</span>
+                <span className="v detail__velocity">
+                  <span className="detail__velocity-arrow" aria-hidden>{velocityArrow}</span>
+                  <span>{socialTrendLabel}</span>
+                </span>
               </div>
               <div className="detail__social-summary">
                 <span className="k">summary</span>

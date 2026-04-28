@@ -2013,6 +2013,18 @@ a.open-in-grace:focus-visible {
   font-size: 12.5px;
 }
 
+.detail__velocity {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.detail__velocity-arrow {
+  color: var(--brand-orange);
+  font-weight: 700;
+  line-height: 1;
+}
+
 .detail__social-summary {
   grid-column: 1 / -1;
 }
