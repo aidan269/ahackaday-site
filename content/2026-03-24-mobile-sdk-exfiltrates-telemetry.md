@@ -6,6 +6,9 @@ affected: "Consumer and fintech apps embedding analytics SDK"
 summary: "A compromised mobile analytics SDK version exfiltrated sensitive telemetry fields to attacker infrastructure. Multiple app publishers shipped the affected update."
 category: "supply-chain"
 mitigationStatus: "Clean SDK release available; app update rollout required"
+socialMentions24h: 640
+socialTrend: "up"
+socialSummary: "Conversation is rising as teams compare mitigations and vendor guidance."
 sources:
   - "https://example.com/mobile-sdk/incident"
   - "https://example.com/appsec/reverse-analysis"

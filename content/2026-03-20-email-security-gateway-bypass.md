@@ -6,6 +6,9 @@ affected: "Organizations relying on one major secure email gateway"
 summary: "A parsing bypass let weaponized attachments evade scanning and hit inboxes. Detection teams observed a spike in credential-theft payloads."
 category: "email"
 mitigationStatus: "Signature updates deployed; retroactive scans recommended"
+socialMentions24h: 260
+socialTrend: "flat"
+socialSummary: "Steady discussion focused on patch timing and exposure checks."
 sources:
   - "https://example.com/vendor/email-gateway-update"
   - "https://example.com/soc/attachment-bypass"

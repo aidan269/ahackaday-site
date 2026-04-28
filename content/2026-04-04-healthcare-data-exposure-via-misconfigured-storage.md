@@ -6,6 +6,9 @@ affected: "Patient records synced by third-party billing processors"
 summary: "Open cloud storage buckets exposed patient intake and billing records for multiple healthcare groups. Data appears indexed by public scanners before takedown."
 category: "breach"
 mitigationStatus: "Buckets locked down; notification obligations underway"
+socialMentions24h: 640
+socialTrend: "up"
+socialSummary: "Conversation is rising as teams compare mitigations and vendor guidance."
 sources:
   - "https://example.com/news/healthcare-bucket-exposure"
   - "https://example.com/regulator/breach-notice"

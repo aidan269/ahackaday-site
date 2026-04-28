@@ -6,6 +6,9 @@ affected: "Multi-tenant workloads in one major cloud region"
 summary: "During a control-plane outage, attackers abused stale API tokens and weak fallback paths. Several tenants reported unauthorized snapshot exports."
 category: "cloud"
 mitigationStatus: "Provider rolled out token revocation improvements"
+socialMentions24h: 640
+socialTrend: "up"
+socialSummary: "Conversation is rising as teams compare mitigations and vendor guidance."
 sources:
   - "https://example.com/cloud/status-postmortem"
   - "https://example.com/research/token-fallback"

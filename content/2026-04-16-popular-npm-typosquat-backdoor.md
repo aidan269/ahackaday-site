@@ -6,6 +6,9 @@ affected: "JavaScript CI pipelines and internal package mirrors"
 summary: "A typosquatted package reached thousands of installs and executed a postinstall backdoor. CI runners leaked environment tokens and private registry credentials."
 category: "supply-chain"
 mitigationStatus: "Package removed; token rotation and audit ongoing"
+socialMentions24h: 640
+socialTrend: "up"
+socialSummary: "Conversation is rising as teams compare mitigations and vendor guidance."
 sources:
   - "https://example.com/blog/npm-typosquat"
   - "https://example.com/cert/supply-chain-alert"

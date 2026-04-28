@@ -6,6 +6,9 @@ affected: "Self-hosted CI runners across software organizations"
 summary: "A container escape in a popular CI runner let untrusted build jobs access host-level secrets. Attackers used it to steal cloud credentials and signing keys."
 category: "supply-chain"
 mitigationStatus: "Patched runner released; hardening guidance published"
+socialMentions24h: 640
+socialTrend: "up"
+socialSummary: "Conversation is rising as teams compare mitigations and vendor guidance."
 sources:
   - "https://example.com/maintainer/security-bulletin"
   - "https://example.com/research/ci-runner-escape"

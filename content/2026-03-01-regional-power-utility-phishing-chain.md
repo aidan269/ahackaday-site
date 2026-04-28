@@ -6,6 +6,9 @@ affected: "Operational IT systems and customer portals"
 summary: "A utility operator disclosed a phishing-led intrusion that reached billing and operational support networks. No grid disruption reported, but service portals degraded."
 category: "critical-infrastructure"
 mitigationStatus: "Containment complete; long-tail remediation ongoing"
+socialMentions24h: 260
+socialTrend: "flat"
+socialSummary: "Steady discussion focused on patch timing and exposure checks."
 sources:
   - "https://example.com/utility/incident-update"
   - "https://example.com/ics-cert/phishing-advisory"

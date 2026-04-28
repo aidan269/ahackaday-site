@@ -6,6 +6,9 @@ affected: "Users of a popular browser password manager extension"
 summary: "A malicious extension update briefly reached the official browser store and attempted vault credential interception. Rapid takedown limited spread but not initial installs."
 category: "consumer-security"
 mitigationStatus: "Compromised version removed; forced update and key rotation advised"
+socialMentions24h: 640
+socialTrend: "up"
+socialSummary: "Conversation is rising as teams compare mitigations and vendor guidance."
 sources:
   - "https://example.com/store/security-notice"
   - "https://example.com/research/extension-hijack"
