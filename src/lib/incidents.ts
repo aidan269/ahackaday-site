@@ -11,13 +11,14 @@ import type {
   IncidentEvidence,
   IncidentFrontmatter,
   IncidentType,
+  SocialTrend,
   Severity,
 } from "./incident-types";
 import { INCIDENT_TYPE_OPTIONS } from "./incident-types";
 import { decodeHtmlEntities, stripInvisibleUnicode } from "./html-entities";
 import { omitEditorialListingNoise } from "./editorial-listing-filter";
 
-export type { Incident, IncidentEvidence, IncidentFrontmatter, IncidentType, Severity };
+export type { Incident, IncidentEvidence, IncidentFrontmatter, IncidentType, SocialTrend, Severity };
 export { INCIDENT_TYPE_OPTIONS };
 export { formatIncidentDate } from "./format-incident-date";
 
@@ -321,6 +322,9 @@ function mapDbRowToIncident(row: SupabaseIncidentRow): Incident {
     mitigationStatus: "Monitoring updates",
     sources: [row.source_url],
     content,
+    socialMentions24h: undefined,
+    socialTrend: undefined,
+    socialSummary: undefined,
   };
 }
 
@@ -355,6 +359,15 @@ function normalizeIncidentType(value: string): Exclude<IncidentType, "all"> {
     return normalized as Exclude<IncidentType, "all">;
   }
   return "other";
+}
+
+function normalizeSocialTrend(value: unknown): SocialTrend | undefined {
+  if (typeof value !== "string") return undefined;
+  const normalized = value.trim().toLowerCase();
+  if (normalized === "up" || normalized === "flat" || normalized === "down") {
+    return normalized;
+  }
+  return undefined;
 }
 
 function getMarkdownIncidentSlugs(): string[] {
@@ -403,6 +416,9 @@ function getMarkdownIncidentBySlug(slug: string): Incident | null {
     confidenceScore: typeof data.confidenceScore === "number" ? data.confidenceScore : 0.7,
     evidence: createEmptyEvidence(),
     exploited: inferExploitedSignal(`${data.title} ${data.summary} ${parsed.content}`),
+    socialMentions24h: typeof data.socialMentions24h === "number" ? data.socialMentions24h : undefined,
+    socialTrend: normalizeSocialTrend(data.socialTrend),
+    socialSummary: typeof data.socialSummary === "string" ? normalizeDisplayText(data.socialSummary) : undefined,
   };
 }
 

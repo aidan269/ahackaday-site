@@ -1976,6 +1976,47 @@ a.open-in-grace:focus-visible {
   margin-top: 4px;
 }
 
+.detail__social {
+  margin: 0 0 28px;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg-elev-1);
+}
+
+.detail__social h3 {
+  margin: 0 0 10px;
+  font-size: 10.5px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--fg-muted);
+}
+
+.detail__social-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.detail__social .k {
+  display: block;
+  font-size: 9.5px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--fg-muted);
+}
+
+.detail__social .v {
+  display: block;
+  margin-top: 4px;
+  color: var(--fg-2);
+  font-size: 12.5px;
+}
+
+.detail__social-summary {
+  grid-column: 1 / -1;
+}
+
 .detail__body h3 {
   font-size: 11px;
   text-transform: uppercase;

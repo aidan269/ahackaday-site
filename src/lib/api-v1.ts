@@ -27,6 +27,9 @@ export type ApiIncident = {
   mitigationStatus: string;
   sources: string[];
   canonical_url: string;
+  socialMentions24h?: number;
+  socialTrend?: "up" | "flat" | "down";
+  socialSummary?: string;
 };
 
 export type ApiIncidentDetail = ApiIncident & {
@@ -67,6 +70,9 @@ function toApiIncident(incident: Incident): ApiIncident {
     mitigationStatus: incident.mitigationStatus,
     sources: incident.sources,
     canonical_url: incidentCanonicalUrl(incident.slug),
+    socialMentions24h: incident.socialMentions24h,
+    socialTrend: incident.socialTrend,
+    socialSummary: incident.socialSummary,
   };
 }
 

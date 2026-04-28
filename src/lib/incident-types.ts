@@ -1,4 +1,5 @@
 export type Severity = "critical" | "high" | "medium" | "low";
+export type SocialTrend = "up" | "flat" | "down";
 
 export type IncidentFrontmatter = {
   title: string;
@@ -17,6 +18,9 @@ export type IncidentFrontmatter = {
   iocs?: string[];
   ambiguities?: string[];
   confidenceScore?: number;
+  socialMentions24h?: number;
+  socialTrend?: SocialTrend;
+  socialSummary?: string;
 };
 
 export type IncidentEvidence = {
