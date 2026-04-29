@@ -140,9 +140,6 @@ export default async function Home({ searchParams }: HomeProps) {
           showing <span style={{ color: "var(--fg)" }}>{filtered.length}</span> of {all.length}
           <span className="dot">·</span>sorted by date desc
         </span>
-        <span>
-          layout : <span style={{ color: "var(--brand-orange)" }}>{layout}</span>
-        </span>
       </div>
 
       {filtered.length === 0 ? (

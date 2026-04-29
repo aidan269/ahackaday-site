@@ -394,7 +394,7 @@ main.shell { max-width: 1560px; margin: 0 auto; padding: 48px 40px 160px; positi
   top: 82px;
   border: 1px solid var(--border);
   border-radius: 12px;
-  background: rgba(255, 255, 255, 0.96);
+  background: rgba(244, 244, 244, 0.96);
   padding: 10px;
 }
 .x-feed-rail__head {
@@ -431,7 +431,7 @@ main.shell { max-width: 1560px; margin: 0 auto; padding: 48px 40px 160px; positi
   padding: 8px;
   color: inherit;
   text-decoration: none;
-  background: #fff;
+  background: rgba(248, 248, 248, 0.95);
 }
 .x-feed-rail__item:hover {
   border-color: color-mix(in srgb, var(--brand-orange) 32%, var(--border));
@@ -2566,6 +2566,31 @@ a.open-in-grace:focus-visible {
   gap: 6px;
   padding: 12px 12px 0;
 }
+.askai__roles {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  padding: 8px 12px 0;
+}
+.askai__role {
+  border: 1px solid var(--border);
+  background: var(--bg-elev-1);
+  border-radius: 8px;
+  padding: 7px 8px;
+  cursor: pointer;
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--fg-2);
+}
+.askai__role.is-active {
+  background: rgba(250,94,6,0.08);
+  border-color: rgba(250,94,6,0.45);
+  color: var(--brand-orange);
+  box-shadow: 0 0 0 1px rgba(250,94,6,0.2) inset;
+}
 .askai__step-label {
   margin: 10px 12px 0;
   font: 9.5px var(--font-mono);
@@ -2592,6 +2617,33 @@ a.open-in-grace:focus-visible {
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: color-mix(in srgb, var(--fg) 80%, var(--brand-orange));
+}
+.askai__artifact-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  padding: 6px 12px 0;
+}
+.askai__artifact {
+  border: 1px solid var(--border);
+  background: var(--bg-elev-1);
+  border-radius: 7px;
+  height: 30px;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--fg-2);
+  cursor: pointer;
+}
+.askai__artifact:hover:not(:disabled) {
+  border-color: rgba(250,94,6,0.45);
+  color: var(--brand-orange);
+  background: #fff;
+}
+.askai__artifact:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
 }
 .askai__topic {
   position: relative; overflow: hidden;

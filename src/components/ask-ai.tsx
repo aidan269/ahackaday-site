@@ -5,17 +5,43 @@ import type { Incident } from "@/lib/incident-types";
 
 const ASK_TOPICS = [
   { id: "tldr", label: "TL;DR", hint: "60s read" },
-  { id: "triage", label: "Cantina triage plan", hint: "~2min · owner + next steps" },
-  { id: "exec", label: "Exec update", hint: "~90s · leadership-ready" },
+  { id: "triage", label: "30-min triage", hint: "owner + immediate actions" },
+  { id: "decision", label: "Escalate now?", hint: "yes/no + why" },
+  { id: "exec", label: "Exec update", hint: "leadership-ready" },
 ] as const;
 
 const ASK_PROMPTS: Record<string, string> = {
   tldr: "Give me a tight TL;DR of this incident in 3 short bullets. No fluff. Plain text, dashes for bullets.",
   triage:
-    "For Cantina Security, produce a practical triage plan: immediate owner, urgency level (high/medium/low), top 3 actions for the next 24h, and a clear bar to downgrade urgency.",
+    "For Cantina Security, produce a practical 30-minute triage plan: immediate owner, urgency level (high/medium/low), and top 3 actions for the next 30 minutes.",
+  decision:
+    "Should we escalate this incident right now? Answer yes or no first, then explain why in practical terms and what signal would change that call.",
   exec:
     "Write a leadership-safe executive update for Cantina Security in 6 lines max: what happened, who is affected, business risk if delayed, what the security team is doing now, and what decision/support is needed.",
 };
+
+const ROLE_PRESETS = [
+  {
+    id: "soc",
+    label: "SOC analyst",
+    instruction: "Optimize for technical responders. Focus on triage speed, concrete checks, and clear owner handoff.",
+  },
+  {
+    id: "eng",
+    label: "Eng manager",
+    instruction: "Optimize for engineering execution. Focus on impact to services, rollback/patch paths, and sequencing work.",
+  },
+  {
+    id: "exec",
+    label: "Exec",
+    instruction: "Optimize for leadership decisions. Keep concise, emphasize business exposure and decision points.",
+  },
+  {
+    id: "comms",
+    label: "Comms",
+    instruction: "Optimize for stakeholder communication. Keep language clear, calm, and externally safe.",
+  },
+] as const;
 
 const TICKER_STAGES = [
   "reading the brief…",
@@ -40,6 +66,7 @@ function asSections(content: Incident["content"]): { h: string; p: string }[] {
 
 export function AskAI({ incident }: { incident: Incident }) {
   const [topic, setTopic] = useState<string | null>(null);
+  const [role, setRole] = useState<(typeof ROLE_PRESETS)[number]["id"]>("soc");
   const [messages, setMessages] = useState<Msg[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -49,6 +76,8 @@ export function AskAI({ incident }: { incident: Incident }) {
   const [mode, setMode] = useState<OutputMode>("brief");
   const bodyRef = useRef<HTMLDivElement>(null);
   const activeTopicLabel = ASK_TOPICS.find((t) => t.id === topic)?.label ?? "pick prompt";
+  const activeRole = ROLE_PRESETS.find((r) => r.id === role) ?? ROLE_PRESETS[0];
+  const latestAiText = [...messages].reverse().find((m) => m.role === "ai")?.text ?? "";
 
   useEffect(() => {
     if (!loading) {
@@ -87,6 +116,12 @@ export function AskAI({ incident }: { incident: Incident }) {
       incident.socialPlatformSplit
         ? `Platform split: X ${incident.socialPlatformSplit.x}% · Reddit ${incident.socialPlatformSplit.reddit}% · GitHub ${incident.socialPlatformSplit.github}%`
         : "",
+      `X mentions (24h): ${incident.xMentions24h ?? 0}`,
+      `X unique authors (24h): ${incident.xUniqueAuthors24h ?? 0}`,
+      `X verified mentions (24h): ${incident.xVerifiedMentions24h ?? 0}`,
+      `X heat score: ${incident.xHeatScore ?? 0}`,
+      `X heat trend: ${incident.xHeatTrend ?? "flat"}`,
+      `X top hashtags: ${(incident.xTopHashtags ?? []).slice(0, 5).join(", ") || "n/a"}`,
       `Summary: ${incident.summary}`,
       "",
       "Full brief:",
@@ -105,17 +140,19 @@ export function AskAI({ incident }: { incident: Incident }) {
       const structureInstruction = prompt === ASK_PROMPTS.tldr
         ? "Keep it crisp and factual."
         : `Use this exact structure:
-- Risk in 1 line
-- What to do in next 24h
-- Who should own this
-- What would change this recommendation
-- Confidence: High/Medium/Low
-- Assumptions: 1-2 bullets`;
+- What changed
+- Why it matters
+- Next 30 minutes
+- Owner
+- Decision call
+- Confidence and unknowns`;
       const full = `You are an analyst helping a security/platform engineer understand a cybersecurity incident. Use ONLY the brief below as ground truth. Be concise, direct, and plain-spoken. No marketing tone.
 Do not critique the incident taxonomy or classification labels. Do not say the item is "not cybersecurity" or "miscategorized."
 If details are missing, state the specific uncertainty briefly, then still provide the most practical impact/risk interpretation possible from available facts.
+Role mode: ${activeRole.label}. ${activeRole.instruction}
 ${formatInstructionForMode(activeMode)}
 ${structureInstruction}
+Always include "Confidence: <high|medium|low>" and "Unknowns: <bullet list>" at the end for non-TL;DR responses.
 
 --- INCIDENT BRIEF ---
 ${ctx}
@@ -161,13 +198,42 @@ Question: ${prompt}`;
     setTopic(null);
   }
 
-  function share(idx: number, text: string) {
+  function copyTeamUpdate(idx: number, text: string) {
     const md = `**${incident.title}**\n_severity: ${incident.severity} · ${incident.category}_\n\n${text}\n\n— shared by you via ahackaday`;
     try {
       navigator.clipboard.writeText(md);
     } catch {}
     setCopiedIdx(idx);
     setTimeout(() => setCopiedIdx(null), 1600);
+  }
+
+  function copySlackArtifact() {
+    if (!latestAiText) return;
+    const payload = `:rotating_light: *${incident.title}*\nSeverity: *${incident.severity}* | Category: ${incident.category}\n\n${latestAiText}\n\nSource count: ${incident.sources.length}`;
+    try {
+      navigator.clipboard.writeText(payload);
+    } catch {}
+  }
+
+  function copyJiraArtifact() {
+    if (!latestAiText) return;
+    const payload = `[Security] ${incident.title}
+
+Summary:
+${incident.summary}
+
+Severity: ${incident.severity}
+Category: ${incident.category}
+CVE/Tracking ID: ${incident.cve ?? "n/a"}
+
+Triage Guidance:
+${latestAiText}
+
+Sources:
+${incident.sources.join("\n")}`;
+    try {
+      navigator.clipboard.writeText(payload);
+    } catch {}
   }
 
   return (
@@ -186,6 +252,21 @@ Question: ${prompt}`;
             clear
           </button>
         )}
+      </div>
+
+      <div className="askai__step-label">Role</div>
+      <div className="askai__roles" role="group" aria-label="Role preset">
+        {ROLE_PRESETS.map((preset) => (
+          <button
+            key={preset.id}
+            type="button"
+            className={"askai__role" + (role === preset.id ? " is-active" : "")}
+            onClick={() => setRole(preset.id)}
+            disabled={loading}
+          >
+            {preset.label}
+          </button>
+        ))}
       </div>
 
       <div className="askai__step-label">Step 1 - Pick your prompt</div>
@@ -223,7 +304,15 @@ Question: ${prompt}`;
         ))}
       </div>
       <div className="askai__combo">
-        {activeTopicLabel} {"->"} {mode}
+        {activeRole.label} {"->"} {activeTopicLabel} {"->"} {mode}
+      </div>
+      <div className="askai__artifact-actions">
+        <button type="button" className="askai__artifact" onClick={copySlackArtifact} disabled={!latestAiText || loading}>
+          generate Slack update
+        </button>
+        <button type="button" className="askai__artifact" onClick={copyJiraArtifact} disabled={!latestAiText || loading}>
+          generate Jira ticket
+        </button>
       </div>
 
       <div className="askai__body" ref={bodyRef}>
@@ -243,7 +332,7 @@ Question: ${prompt}`;
                     <path d="M2.5 7l3 3 6-6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
                   based on {incident.sources.length} source{incident.sources.length === 1 ? "" : "s"} · uses severity/mitigation/social context
-                  <button className={"send" + (copiedIdx === idx ? " is-copied" : "")} onClick={() => share(idx, m.text)}>
+                  <button className={"send" + (copiedIdx === idx ? " is-copied" : "")} onClick={() => copyTeamUpdate(idx, m.text)}>
                     {copiedIdx === idx ? "copied ✓" : "send to team"}
                   </button>
                 </span>
