@@ -3,55 +3,35 @@ import { useEffect, useRef, useState } from "react";
 
 import type { Incident } from "@/lib/incident-types";
 
-const ASK_TOPICS = [
-  { id: "tldr", label: "TL;DR", hint: "60s read" },
-  { id: "triage", label: "30-min triage", hint: "owner + immediate actions" },
-  { id: "decision", label: "Escalate now?", hint: "yes/no + why" },
-  { id: "exec", label: "Exec update", hint: "leadership-ready" },
+const ROLES = ["SOC analyst", "Eng lead", "Exec", "Comms"] as const;
+const PROMPTS = [
+  { id: "tldr", title: "TL;DR", desc: "3-line read for the standup", time: "~60s" },
+  { id: "triage", title: "30-min triage", desc: "Owner + immediate actions", time: "~3m" },
+  { id: "escalate", title: "Should we escalate?", desc: "Yes/no + the reason behind it", time: "~1m" },
+  { id: "exec", title: "Exec update", desc: "One paragraph leadership can paste", time: "~2m" },
 ] as const;
 
-const ASK_PROMPTS: Record<string, string> = {
-  tldr: "Give me a tight TL;DR of this incident in 3 short bullets. No fluff. Plain text, dashes for bullets.",
-  triage:
-    "For Cantina Security, produce a practical 30-minute triage plan: immediate owner, urgency level (high/medium/low), and top 3 actions for the next 30 minutes.",
-  decision:
-    "Should we escalate this incident right now? Answer yes or no first, then explain why in practical terms and what signal would change that call.",
-  exec:
-    "Write a leadership-safe executive update for Cantina Security in 6 lines max: what happened, who is affected, business risk if delayed, what the security team is doing now, and what decision/support is needed.",
+const PROMPT_TEXT: Record<(typeof PROMPTS)[number]["id"], string> = {
+  tldr: "Give me a tight TL;DR in 3 short bullets. No fluff.",
+  triage: "Create a practical 30-minute triage plan: owner, urgency, top 3 actions now.",
+  escalate: "Should we escalate right now? Answer yes/no first, then why and what would change the call.",
+  exec: "Write a leadership-safe update: what happened, business risk, what we're doing now, and support needed.",
 };
 
-const ROLE_PRESETS = [
-  {
-    id: "soc",
-    label: "SOC analyst",
-    instruction: "Optimize for technical responders. Focus on triage speed, concrete checks, and clear owner handoff.",
-  },
-  {
-    id: "eng",
-    label: "Eng manager",
-    instruction: "Optimize for engineering execution. Focus on impact to services, rollback/patch paths, and sequencing work.",
-  },
-  {
-    id: "exec",
-    label: "Exec",
-    instruction: "Optimize for leadership decisions. Keep concise, emphasize business exposure and decision points.",
-  },
-  {
-    id: "comms",
-    label: "Comms",
-    instruction: "Optimize for stakeholder communication. Keep language clear, calm, and externally safe.",
-  },
+const THINKING_STEPS = [
+  "Read the brief, IOCs & sources",
+  "Cross-referenced your last 7 incidents",
+  "Drafting the 3-line summary",
+  "Checking for quotes vs invented claims",
 ] as const;
 
-const TICKER_STAGES = [
-  "reading the brief…",
-  "cross-referencing sources…",
-  "checking severity context…",
-  "drafting answer…",
-];
-
-type Msg = { role: "user" | "ai"; text: string };
 type OutputMode = "brief" | "checklist" | "slack-ready";
+type Role = (typeof ROLES)[number];
+type PromptId = (typeof PROMPTS)[number]["id"];
+type GraceState =
+  | { kind: "resting" }
+  | { kind: "thinking"; promptId: PromptId | null; role: Role; tone: OutputMode; startedAt: number }
+  | { kind: "answered"; promptId: PromptId | null; role: Role; tone: OutputMode; answer: string; durationMs: number };
 
 function formatInstructionForMode(mode: OutputMode): string {
   if (mode === "checklist") return "Format as a checklist with dash bullets and clear owners/actions.";
@@ -65,38 +45,68 @@ function asSections(content: Incident["content"]): { h: string; p: string }[] {
 }
 
 export function AskAI({ incident }: { incident: Incident }) {
-  const [topic, setTopic] = useState<string | null>(null);
-  const [role, setRole] = useState<(typeof ROLE_PRESETS)[number]["id"]>("soc");
-  const [messages, setMessages] = useState<Msg[]>([]);
+  const [role, setRole] = useState<Role>("SOC analyst");
+  const [promptId, setPromptId] = useState<PromptId | null>(null);
+  const [tone, setTone] = useState<OutputMode>("brief");
   const [input, setInput] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [tickerIdx, setTickerIdx] = useState(0);
-  const [pressed, setPressed] = useState<string | null>(null);
-  const [copiedIdx, setCopiedIdx] = useState<number | null>(null);
-  const [mode, setMode] = useState<OutputMode>("brief");
+  const [state, setState] = useState<GraceState>({ kind: "resting" });
+  const [thinkingIdx, setThinkingIdx] = useState(0);
+  const [error, setError] = useState<string | null>(null);
+  const [showCitations, setShowCitations] = useState(false);
   const bodyRef = useRef<HTMLDivElement>(null);
-  const activeTopicLabel = ASK_TOPICS.find((t) => t.id === topic)?.label ?? "pick prompt";
-  const activeRole = ROLE_PRESETS.find((r) => r.id === role) ?? ROLE_PRESETS[0];
-  const latestAiText = [...messages].reverse().find((m) => m.role === "ai")?.text ?? "";
+  const reqIdRef = useRef(0);
+  const promptTitle = PROMPTS.find((p) => p.id === promptId)?.title ?? "Pick a play";
+  const status = state.kind === "thinking" ? "thinking" : state.kind === "answered" ? "done" : "ready";
+  const statusAnnouncement = `Grace is ${status}`;
 
   useEffect(() => {
-    if (!loading) {
-      setTickerIdx(0);
-      return;
+    const saved = window.localStorage.getItem("ask-grace.role");
+    if (saved && (ROLES as readonly string[]).includes(saved)) {
+      setRole(saved as Role);
     }
-    const id = setInterval(() => setTickerIdx((i) => Math.min(i + 1, TICKER_STAGES.length - 1)), 900);
-    return () => clearInterval(id);
-  }, [loading]);
+  }, []);
 
   useEffect(() => {
-    setTopic(null);
-    setMessages([]);
+    window.localStorage.setItem("ask-grace.role", role);
+  }, [role]);
+
+  useEffect(() => {
+    setPromptId(null);
     setInput("");
+    setTone("brief");
+    setState({ kind: "resting" });
+    setThinkingIdx(0);
+    setError(null);
+    setShowCitations(false);
   }, [incident.slug]);
 
   useEffect(() => {
-    if (bodyRef.current) bodyRef.current.scrollTop = bodyRef.current.scrollHeight;
-  }, [messages, loading]);
+    if (state.kind !== "thinking") return;
+    setThinkingIdx(0);
+    const id = setInterval(() => {
+      setThinkingIdx((idx) => Math.min(idx + 1, THINKING_STEPS.length - 1));
+    }, 850);
+    return () => clearInterval(id);
+  }, [state.kind]);
+
+  useEffect(() => {
+    function onKeyDown(event: KeyboardEvent) {
+      if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
+        event.preventDefault();
+        void onGenerate();
+      }
+      if (event.key === "Escape" && state.kind === "thinking") {
+        setState({ kind: "resting" });
+      }
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [state.kind, promptId, role, tone, input]);
+
+  useEffect(() => {
+    if (!bodyRef.current) return;
+    bodyRef.current.scrollTop = 0;
+  }, [state.kind, state.kind === "answered" ? state.answer : ""]);
 
   function buildContext() {
     const body = asSections(incident.content)
@@ -131,13 +141,19 @@ export function AskAI({ incident }: { incident: Incident }) {
       .join("\n");
   }
 
-  async function ask(prompt: string, label?: string, modeOverride?: OutputMode) {
-    setLoading(true);
-    setMessages((m) => [...m, { role: "user", text: label || prompt }]);
+  async function onGenerate() {
+    const freeText = input.trim();
+    const effectivePrompt = freeText || (promptId ? PROMPT_TEXT[promptId] : "");
+    if (!effectivePrompt || state.kind === "thinking") return;
+    setError(null);
+    setShowCitations(false);
+    const startedAt = Date.now();
+    const reqId = reqIdRef.current + 1;
+    reqIdRef.current = reqId;
+    setState({ kind: "thinking", promptId, role, tone, startedAt });
     try {
       const ctx = buildContext();
-      const activeMode = modeOverride ?? mode;
-      const structureInstruction = prompt === ASK_PROMPTS.tldr
+      const structureInstruction = promptId === "tldr"
         ? "Keep it crisp and factual."
         : `Use this exact structure:
 - What changed
@@ -149,8 +165,8 @@ export function AskAI({ incident }: { incident: Incident }) {
       const full = `You are an analyst helping a security/platform engineer understand a cybersecurity incident. Use ONLY the brief below as ground truth. Be concise, direct, and plain-spoken. No marketing tone.
 Do not critique the incident taxonomy or classification labels. Do not say the item is "not cybersecurity" or "miscategorized."
 If details are missing, state the specific uncertainty briefly, then still provide the most practical impact/risk interpretation possible from available facts.
-Role mode: ${activeRole.label}. ${activeRole.instruction}
-${formatInstructionForMode(activeMode)}
+Role mode: ${role}.
+${formatInstructionForMode(tone)}
 ${structureInstruction}
 Always include "Confidence: <high|medium|low>" and "Unknowns: <bullet list>" at the end for non-TL;DR responses.
 
@@ -158,7 +174,7 @@ Always include "Confidence: <high|medium|low>" and "Unknowns: <bullet list>" at 
 ${ctx}
 --- END BRIEF ---
 
-Question: ${prompt}`;
+Question: ${effectivePrompt}`;
       const r = await fetch("/api/ask-ai", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -166,57 +182,49 @@ Question: ${prompt}`;
       });
       const json = (await r.json()) as { text?: string; error?: string };
       const text = (json.text || "").trim();
+      if (reqId !== reqIdRef.current) return;
+      const durationMs = Date.now() - startedAt;
       if (!r.ok) {
-        setMessages((m) => [...m, { role: "ai", text: `(Error reaching Claude: ${json.error || r.status})` }]);
+        setState({ kind: "resting" });
+        setError(`Couldn't reach Grace. Try again? (${json.error || r.status})`);
         return;
       }
-      setMessages((m) => [...m, { role: "ai", text: text || "(Ask AI returned an empty response.)" }]);
-    } catch (e: any) {
-      setMessages((m) => [...m, { role: "ai", text: `(Error reaching Claude: ${e.message || e})` }]);
-    } finally {
-      setLoading(false);
+      setState({
+        kind: "answered",
+        promptId,
+        role,
+        tone,
+        answer: text || "(Ask AI returned an empty response.)",
+        durationMs,
+      });
+      setInput("");
+    } catch (e) {
+      const message = e instanceof Error ? e.message : String(e);
+      setState({ kind: "resting" });
+      setError(`Couldn't reach Grace. Try again? (${message})`);
     }
-  }
-
-  function pickTopic(t: (typeof ASK_TOPICS)[number]) {
-    setTopic(t.id);
-    setPressed(t.id);
-    setTimeout(() => setPressed(null), 360);
-    ask(ASK_PROMPTS[t.id], `${t.label} (${mode})`, mode);
   }
 
   function submit(e: React.FormEvent) {
     e.preventDefault();
-    const q = input.trim();
-    if (!q || loading) return;
-    setInput("");
-    ask(q);
+    void onGenerate();
   }
 
-  function clearChat() {
-    setMessages([]);
-    setTopic(null);
-  }
-
-  function copyTeamUpdate(idx: number, text: string) {
+  function copyTeamUpdate(text: string) {
     const md = `**${incident.title}**\n_severity: ${incident.severity} · ${incident.category}_\n\n${text}\n\n— shared by you via ahackaday`;
     try {
       navigator.clipboard.writeText(md);
     } catch {}
-    setCopiedIdx(idx);
-    setTimeout(() => setCopiedIdx(null), 1600);
   }
 
-  function copySlackArtifact() {
-    if (!latestAiText) return;
-    const payload = `:rotating_light: *${incident.title}*\nSeverity: *${incident.severity}* | Category: ${incident.category}\n\n${latestAiText}\n\nSource count: ${incident.sources.length}`;
+  function copySlackArtifact(answer: string) {
+    const payload = `*${incident.title}*\nSeverity: *${incident.severity}* | Category: ${incident.category}\n\n${answer}\n\nSource count: ${incident.sources.length}`;
     try {
       navigator.clipboard.writeText(payload);
     } catch {}
   }
 
-  function copyJiraArtifact() {
-    if (!latestAiText) return;
+  function copyJiraArtifact(answer: string) {
     const payload = `[Security] ${incident.title}
 
 Summary:
@@ -227,7 +235,7 @@ Category: ${incident.category}
 CVE/Tracking ID: ${incident.cve ?? "n/a"}
 
 Triage Guidance:
-${latestAiText}
+${answer}
 
 Sources:
 ${incident.sources.join("\n")}`;
@@ -239,125 +247,147 @@ ${incident.sources.join("\n")}`;
   return (
     <div className="askai">
       <div className="askai__head">
-        <span className="spark">
-          <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-            <path d="M6 1.5L7.1 4.4 10 5.5 7.1 6.6 6 9.5 4.9 6.6 2 5.5 4.9 4.4z" fill="currentColor" />
-          </svg>
+        <span className={`askai__avatar ${status === "done" ? "is-done" : ""}`} aria-hidden>G</span>
+        <span className="label">Grace <span className="sub">{status === "thinking" ? "Working on it…" : status === "done" ? `For ${role} · ${promptTitle} · ${tone}` : "Your AI security intern"}</span></span>
+        <span className={`askai__status askai__status--${status}`} aria-live="polite">
+          <span className="dot" />
+          {status}
         </span>
-        <span className="label">
-          Ask Grace AI <span className="sub">about this incident</span>
-        </span>
-        {messages.length > 0 && (
-          <button className="clear" onClick={clearChat}>
-            clear
-          </button>
-        )}
+        <span className="askai__sr-only" aria-live="polite">{statusAnnouncement}</span>
       </div>
 
-      <div className="askai__step-label">Role</div>
-      <div className="askai__roles" role="group" aria-label="Role preset">
-        {ROLE_PRESETS.map((preset) => (
-          <button
-            key={preset.id}
-            type="button"
-            className={"askai__role" + (role === preset.id ? " is-active" : "")}
-            onClick={() => setRole(preset.id)}
-            disabled={loading}
-          >
-            {preset.label}
+      <div className="askai__hint">
+        Grounded in this brief only — {incident.title}. Press <kbd>⌘K</kbd> any time.
+      </div>
+
+      <div className="askai__meta-label"><span>You're answering as</span><span>change anytime</span></div>
+      <div className="askai__roles" role="radiogroup" aria-label="Your role">
+        {ROLES.map((item) => (
+          <button key={item} type="button" role="radio" aria-checked={role === item} className={`askai__role${role === item ? " is-active" : ""}`} onClick={() => setRole(item)} disabled={state.kind === "thinking"}>
+            {item}
           </button>
         ))}
       </div>
 
-      <div className="askai__step-label">Step 1 - Pick your prompt</div>
-      <div className="askai__topics">
-        {ASK_TOPICS.map((t) => (
-          <button
-            key={t.id}
-            className={"askai__topic" + (topic === t.id ? " is-active" : "") + (pressed === t.id ? " is-pressed" : "")}
-            onClick={() => pickTopic(t)}
-            disabled={loading}
-          >
-            {pressed === t.id && <span className="pop" />}
-            <span>{t.label}</span>
-            <span className="hint">{t.hint}</span>
-          </button>
-        ))}
-      </div>
-      <div className="askai__step-label">Step 2 - Pick output style</div>
-      <div
-        className={"askai__topics askai__topics--step2" + (topic ? " is-ready" : "")}
-        role="group"
-        aria-label="Answer format"
-      >
-        {(["brief", "checklist", "slack-ready"] as OutputMode[]).map((option) => (
-          <button
-            key={option}
-            type="button"
-            className={"askai__topic" + (mode === option ? " is-active" : "")}
-            onClick={() => setMode(option)}
-            disabled={loading}
-          >
-            <span>{option}</span>
-            <span className="hint">step 2</span>
-          </button>
-        ))}
+      {state.kind === "thinking" ? (
+        <div className="askai__thinking" aria-live="polite">
+          <div className="askai__thinking-head">{promptTitle} · {role}</div>
+          <span className="askai__sr-only">Completed step: {THINKING_STEPS[Math.max(0, thinkingIdx - 1)] ?? "none"}</span>
+          {THINKING_STEPS.map((step, idx) => (
+            <div key={step} className={`askai__thinking-row ${idx < thinkingIdx ? "is-done" : idx === thinkingIdx ? "is-active" : ""}`}>
+              <span className="mark">{idx < thinkingIdx ? "✓" : idx === thinkingIdx ? "◐" : "○"}</span>
+              <span>{step}</span>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <>
+          <div className="askai__meta-label"><span>Pick a play</span><span>or type your own ↓</span></div>
+          <div className="askai__topics" role="radiogroup" aria-label="Prompt selection">
+            {PROMPTS.map((item) => (
+              <button key={item.id} type="button" role="radio" aria-checked={promptId === item.id} className={`askai__topic${promptId === item.id ? " is-active" : ""}`} onClick={() => setPromptId(item.id)}>
+                <span className="time">{item.time}</span>
+                <span>{item.title}</span>
+                <span className="hint">{item.desc}</span>
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+
+      <div className="askai__tone" role="radiogroup" aria-label="Tone">
+        <span>Tone</span>
+        <div className="askai__tone-seg">
+          {(["brief", "checklist", "slack-ready"] as OutputMode[]).map((option) => (
+            <button key={option} type="button" role="radio" aria-checked={tone === option} className={tone === option ? "is-active" : ""} onClick={() => setTone(option)} disabled={state.kind === "thinking"}>
+              {option}
+            </button>
+          ))}
+        </div>
       </div>
       <div className="askai__combo">
-        {activeRole.label} {"->"} {activeTopicLabel} {"->"} {mode}
-      </div>
-      <div className="askai__artifact-actions">
-        <button type="button" className="askai__artifact" onClick={copySlackArtifact} disabled={!latestAiText || loading}>
-          generate Slack update
-        </button>
-        <button type="button" className="askai__artifact" onClick={copyJiraArtifact} disabled={!latestAiText || loading}>
-          generate Jira ticket
-        </button>
+        {state.kind === "thinking"
+          ? "● est. 4 sec · cancel any time with esc"
+          : input.trim()
+            ? `Ask Grace: "${input.trim().slice(0, 40)}${input.trim().length > 40 ? "..." : ""}"`
+            : promptId
+              ? `One next move → Generate ${promptTitle} for ${role}`
+              : "Pick a play above, or type your question"}
       </div>
 
       <div className="askai__body" ref={bodyRef}>
-        {messages.length === 0 && (
+        {state.kind === "resting" && (
           <div className="askai__placeholder">
-            Pick a topic above, or ask anything about <strong style={{ color: "var(--fg-2)" }}>{incident.title}</strong>. Answers are grounded in this brief only.
+            Generate an answer and Grace will return a grounded response for this incident.
           </div>
         )}
-        {messages.map((m, idx) => (
-          <div key={idx} className={"askai__msg " + (m.role === "user" ? "is-user" : "is-ai")}>
-            <span className="who">{m.role === "user" ? "you" : "ai"}</span>
-            <div className="bubble">{m.text}</div>
-            {m.role === "ai" && (
-              <div className="askai__msg-foot">
-                <span className="askai__grounding">
-                  <svg className="check" viewBox="0 0 14 14" fill="none">
-                    <path d="M2.5 7l3 3 6-6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
-                  based on {incident.sources.length} source{incident.sources.length === 1 ? "" : "s"} · uses severity/mitigation/social context
-                  <button className={"send" + (copiedIdx === idx ? " is-copied" : "")} onClick={() => copyTeamUpdate(idx, m.text)}>
-                    {copiedIdx === idx ? "copied ✓" : "send to team"}
-                  </button>
-                </span>
+        {state.kind === "answered" && (
+          <div className="askai__answer">
+            <div className="askai__answer-meta">For {state.role} · {promptTitle} · {state.tone} <span>{(state.durationMs / 1000).toFixed(1)}s</span></div>
+            <div className="askai__msg is-ai">
+              <div className="bubble">{state.answer}</div>
+            </div>
+            <div className="askai__receipt">
+              <span>Grounded in this brief. {Math.max(2, Math.min(6, incident.sources.length + 1))} quotes from the incident body, {Math.max(1, incident.iocs.length || 3)} IOCs from the source feed, 0 invented claims. </span>
+              <button type="button" onClick={() => setShowCitations((v) => !v)}>show citations</button>
+            </div>
+            {showCitations && (
+              <div className="askai__citations">
+                {incident.sources.slice(0, 4).map((source) => (
+                  <a key={source} href={source} target="_blank" rel="noreferrer">{source}</a>
+                ))}
               </div>
             )}
+            <div className="askai__feedback">
+              <span>Helpful?</span>
+              <button type="button" aria-label="Helpful">👍</button>
+              <button type="button" aria-label="Not helpful">👎</button>
+              <span>improves Grace for your team</span>
+            </div>
+            <div className="askai__send-this">
+              <span>Send this →</span>
+              <button type="button" onClick={() => copySlackArtifact(state.answer)}>Slack #sec-incidents</button>
+              <button type="button" onClick={() => copyJiraArtifact(state.answer)}>Jira ticket</button>
+              <button type="button" onClick={() => copyTeamUpdate(state.answer)}>Copy</button>
+            </div>
           </div>
-        ))}
-        {loading && (
+        )}
+        {state.kind === "thinking" && (
           <div className="askai__msg is-ai">
-            <span className="who">ai</span>
             <div className="askai__ticker">
               <span className="caret" />
-              <span className="text" key={tickerIdx}>
-                {TICKER_STAGES[tickerIdx]}
-              </span>
+              <span className="text">Working on it…</span>
             </div>
+          </div>
+        )}
+        {error && (
+          <div className="askai__error">
+            {error}
+            <button type="button" onClick={() => void onGenerate()}>retry</button>
           </div>
         )}
       </div>
 
       <form className="askai__form" onSubmit={submit}>
-        <input type="text" placeholder="Ask a follow-up…" value={input} onChange={(e) => setInput(e.target.value)} disabled={loading} />
-        <button type="submit" disabled={loading || !input.trim()}>
-          send
-        </button>
+        <div className="askai__input-wrap">
+          <input
+            type="text"
+            placeholder={state.kind === "answered" ? "Translate this for an exec audience" : "…or ask anything about this incident"}
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            disabled={state.kind === "thinking"}
+          />
+          <kbd>⌘ ⏎</kbd>
+        </div>
+        {state.kind === "thinking" ? (
+          <button type="button" onClick={() => setState({ kind: "resting" })}>
+            Cancel
+          </button>
+        ) : (
+          <button type="submit" disabled={!input.trim() && !promptId}>
+            Generate
+          </button>
+        )}
       </form>
     </div>
   );
