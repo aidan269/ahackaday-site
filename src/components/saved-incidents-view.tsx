@@ -78,10 +78,14 @@ export function SavedIncidentsView({ incidents }: { incidents: SavedIncidentPrev
         <div className="feed--card">
           {savedIncidents.map((incident) => (
             <article key={incident.slug} className="card">
+              <div className="card__date">
+                {new Date(incident.date).toLocaleDateString("en-US", { month: "short", day: "2-digit" })}
+                <span className="rel">saved</span>
+              </div>
               <div className="card__main">
                 <div className="card__tagline">
                   <span className={`sev-chip sev-${incident.severity}`}>{incident.severity}</span>
-                  <span>{new Date(incident.date).toLocaleDateString("en-US", { month: "short", day: "2-digit" })}</span>
+                  <span>bookmarked</span>
                 </div>
                 <h2 className="card__title">
                   <Link href={`/incident/${incident.slug}`}>{incident.title}</Link>
