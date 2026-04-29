@@ -3420,6 +3420,49 @@ a.open-in-grace:focus-visible {
   }
 }
 
+@media (max-width: 900px) {
+  .page-head {
+    grid-template-columns: 1fr;
+    align-items: start;
+    gap: 14px;
+    padding-bottom: 16px;
+    margin-bottom: 14px;
+  }
+  .dailybrief {
+    gap: 10px;
+    font-size: 10px;
+    margin-bottom: 6px;
+  }
+  .page-title {
+    font-size: clamp(30px, 12vw, 48px);
+    line-height: 1.02;
+    letter-spacing: -0.035em;
+    max-width: 9ch;
+  }
+  .todays-line {
+    font-size: 12.5px;
+    line-height: 1.45;
+    margin-top: 8px;
+    max-width: 26ch;
+  }
+  .page-head__stats {
+    width: 100%;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    border-radius: 12px;
+  }
+  .stat {
+    min-width: 0;
+    padding: 10px 8px;
+  }
+  .stat__k {
+    font-size: 8.5px;
+    letter-spacing: 0.1em;
+  }
+  .stat__v {
+    font-size: 17px;
+  }
+}
+
 /* Real phone behavior can diverge from desktop emulation. */
 @media (hover: none) and (pointer: coarse) {
   body.has-sidebar {
