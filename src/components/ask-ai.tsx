@@ -5,15 +5,16 @@ import type { Incident } from "@/lib/incident-types";
 
 const ASK_TOPICS = [
   { id: "tldr", label: "TL;DR", hint: "60s read" },
-  { id: "impact", label: "Real-world impact", hint: "~2min · who & how" },
-  { id: "why", label: "Cantina security priority", hint: "~2min · priority signal" },
+  { id: "triage", label: "Cantina triage plan", hint: "~2min · owner + next steps" },
+  { id: "exec", label: "Exec update", hint: "~90s · leadership-ready" },
 ] as const;
 
 const ASK_PROMPTS: Record<string, string> = {
   tldr: "Give me a tight TL;DR of this incident in 3 short bullets. No fluff. Plain text, dashes for bullets.",
-  impact:
-    "Explain the real-world impact of this incident: who is affected, in what concrete ways, and over what timeframe. 4-6 sentences, plain text. Focus on practical outcomes from the brief and avoid commentary about labeling/classification quality.",
-  why: "For Cantina Security, how should we prioritize this incident right now? Include: urgency level (high/medium/low), who on the security team should own it first, likely blast radius if delayed, and the minimum response bar before we can downgrade urgency. 4-6 sentences, plain text.",
+  triage:
+    "For Cantina Security, produce a practical triage plan: immediate owner, urgency level (high/medium/low), top 3 actions for the next 24h, and a clear bar to downgrade urgency.",
+  exec:
+    "Write a leadership-safe executive update for Cantina Security in 6 lines max: what happened, who is affected, business risk if delayed, what the security team is doing now, and what decision/support is needed.",
 };
 
 const TICKER_STAGES = [
@@ -24,6 +25,13 @@ const TICKER_STAGES = [
 ];
 
 type Msg = { role: "user" | "ai"; text: string };
+type OutputMode = "brief" | "checklist" | "slack-ready";
+
+function formatInstructionForMode(mode: OutputMode): string {
+  if (mode === "checklist") return "Format as a checklist with dash bullets and clear owners/actions.";
+  if (mode === "slack-ready") return "Format as a compact Slack-ready message with short lines and actionable bullets.";
+  return "Format as a concise brief with short paragraphs and bullets where useful.";
+}
 
 function asSections(content: Incident["content"]): { h: string; p: string }[] {
   if (!Array.isArray(content)) return [];
@@ -38,6 +46,7 @@ export function AskAI({ incident }: { incident: Incident }) {
   const [tickerIdx, setTickerIdx] = useState(0);
   const [pressed, setPressed] = useState<string | null>(null);
   const [copiedIdx, setCopiedIdx] = useState<number | null>(null);
+  const [mode, setMode] = useState<OutputMode>("brief");
   const bodyRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -71,6 +80,12 @@ export function AskAI({ incident }: { incident: Incident }) {
       incident.cve ? `Tracking ID: ${incident.cve}` : "",
       `Mitigation status: ${incident.mitigationStatus}`,
       `Exploited in the wild: ${incident.exploited ? "yes" : "no"}`,
+      `Social mentions (24h): ${incident.socialMentions24h ?? "n/a"}`,
+      `Social trend: ${incident.socialTrend ?? "flat"}`,
+      `Social delta (24h %): ${incident.socialDelta24hPct ?? "n/a"}`,
+      incident.socialPlatformSplit
+        ? `Platform split: X ${incident.socialPlatformSplit.x}% · Reddit ${incident.socialPlatformSplit.reddit}% · GitHub ${incident.socialPlatformSplit.github}%`
+        : "",
       `Summary: ${incident.summary}`,
       "",
       "Full brief:",
@@ -80,14 +95,26 @@ export function AskAI({ incident }: { incident: Incident }) {
       .join("\n");
   }
 
-  async function ask(prompt: string, label?: string) {
+  async function ask(prompt: string, label?: string, modeOverride?: OutputMode) {
     setLoading(true);
     setMessages((m) => [...m, { role: "user", text: label || prompt }]);
     try {
       const ctx = buildContext();
+      const activeMode = modeOverride ?? mode;
+      const structureInstruction = prompt === ASK_PROMPTS.tldr
+        ? "Keep it crisp and factual."
+        : `Use this exact structure:
+- Risk in 1 line
+- What to do in next 24h
+- Who should own this
+- What would change this recommendation
+- Confidence: High/Medium/Low
+- Assumptions: 1-2 bullets`;
       const full = `You are an analyst helping a security/platform engineer understand a cybersecurity incident. Use ONLY the brief below as ground truth. Be concise, direct, and plain-spoken. No marketing tone.
 Do not critique the incident taxonomy or classification labels. Do not say the item is "not cybersecurity" or "miscategorized."
 If details are missing, state the specific uncertainty briefly, then still provide the most practical impact/risk interpretation possible from available facts.
+${formatInstructionForMode(activeMode)}
+${structureInstruction}
 
 --- INCIDENT BRIEF ---
 ${ctx}
@@ -117,7 +144,7 @@ Question: ${prompt}`;
     setTopic(t.id);
     setPressed(t.id);
     setTimeout(() => setPressed(null), 360);
-    ask(ASK_PROMPTS[t.id], t.label);
+    ask(ASK_PROMPTS[t.id], `${t.label} (${mode})`, mode);
   }
 
   function submit(e: React.FormEvent) {
@@ -174,6 +201,20 @@ Question: ${prompt}`;
           </button>
         ))}
       </div>
+      <div className="askai__topics" role="group" aria-label="Answer format">
+        {(["brief", "checklist", "slack-ready"] as OutputMode[]).map((option) => (
+          <button
+            key={option}
+            type="button"
+            className={"askai__topic" + (mode === option ? " is-active" : "")}
+            onClick={() => setMode(option)}
+            disabled={loading}
+          >
+            <span>{option}</span>
+            <span className="hint">output mode</span>
+          </button>
+        ))}
+      </div>
 
       <div className="askai__body" ref={bodyRef}>
         {messages.length === 0 && (
@@ -191,7 +232,7 @@ Question: ${prompt}`;
                   <svg className="check" viewBox="0 0 14 14" fill="none">
                     <path d="M2.5 7l3 3 6-6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
-                  based on {incident.sources.length} source{incident.sources.length === 1 ? "" : "s"} · 0 outside guesses
+                  based on {incident.sources.length} source{incident.sources.length === 1 ? "" : "s"} · uses severity/mitigation/social context
                   <button className={"send" + (copiedIdx === idx ? " is-copied" : "")} onClick={() => share(idx, m.text)}>
                     {copiedIdx === idx ? "copied ✓" : "send to team"}
                   </button>

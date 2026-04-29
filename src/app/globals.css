@@ -977,6 +977,37 @@ body.has-sidebar main.shell {
   color: var(--fg);
 }
 
+.sidebar__auth-cta {
+  display: block;
+  margin: 0 6px 6px;
+  padding: 8px 9px;
+  border-radius: 8px;
+  border: 1px solid color-mix(in srgb, var(--brand-orange) 20%, var(--border));
+  background: color-mix(in srgb, var(--brand-orange) 8%, white);
+  transition: background 160ms, border-color 160ms;
+}
+
+.sidebar__auth-cta:hover {
+  background: color-mix(in srgb, var(--brand-orange) 12%, white);
+  border-color: color-mix(in srgb, var(--brand-orange) 28%, var(--border));
+}
+
+.sidebar__auth-title {
+  display: block;
+  font: 11px var(--font-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--brand-orange) 76%, var(--fg));
+}
+
+.sidebar__auth-sub {
+  display: block;
+  margin-top: 4px;
+  font-size: 11.5px;
+  line-height: 1.35;
+  color: var(--fg-2);
+}
+
 .sidebar__section-label {
   font-family: var(--font-mono);
   font-size: 9.5px;

@@ -129,6 +129,12 @@ function SidebarBody({ counts, filters }: Props & { filters: UrlFilters }) {
         </span>
         <span className="sidebar__brand-wordmark">Cantina Security</span>
       </Link>
+      <Link href="/saved" className="sidebar__auth-cta">
+        <span className="sidebar__auth-title">{userEmail ? "sync enabled" : "optional login"}</span>
+        <span className="sidebar__auth-sub">
+          {userEmail ? `signed in as ${userEmail}` : "Sign in once to sync saved stories across devices."}
+        </span>
+      </Link>
 
       <div className="sidebar__section-label">workspace</div>
       <nav className="sidebar__nav" aria-label="Workspace">
@@ -221,11 +227,6 @@ function SidebarBody({ counts, filters }: Props & { filters: UrlFilters }) {
       <div className="sidebar__status">
         <span className="sidebar__status-dot" aria-hidden />
         <span>Powered by Cantina Security</span>
-      </div>
-      <div className="sidebar__receipts" style={{ marginTop: 10 }}>
-        {userEmail
-          ? `Synced as ${userEmail}`
-          : <Link href="/saved">Optional login on Saved to sync bookmarks</Link>}
       </div>
     </aside>
   );
