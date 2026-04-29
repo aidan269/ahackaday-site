@@ -586,6 +586,11 @@ main.shell { max-width: 1560px; margin: 0 auto; padding: 48px 40px 160px; positi
   gap: 8px 16px;
   margin-bottom: 8px;
 }
+.detail__grace-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
 .detail__grace.open-in-grace--disabled { align-self: center; }
 .detail__head { padding: 24px 0 32px; border-bottom: 1px solid var(--border); margin-bottom: 28px; }
 .detail__tags { display: flex; gap: 14px; align-items: center; font-size: 10.5px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--fg-3); margin-bottom: 18px; flex-wrap: wrap; }
@@ -1584,6 +1589,12 @@ body.has-sidebar .cal-side {
   align-self: end;
   transition: opacity 180ms, background-color 180ms, transform 180ms;
 }
+.open-in-grace--toggle {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+}
 .open-in-grace__icon {
   display: block;
   width: 22px;
@@ -1591,6 +1602,14 @@ body.has-sidebar .cal-side {
   flex-shrink: 0;
   border-radius: 50%;
   object-fit: cover;
+}
+.open-in-grace--toggle .open-in-grace__icon {
+  animation: open-in-grace-glow 2.3s ease-in-out infinite;
+}
+.open-in-grace--toggle[aria-expanded="true"] .open-in-grace__icon {
+  box-shadow:
+    0 0 10px 2px color-mix(in srgb, var(--brand-orange) 38%, transparent),
+    0 0 18px 6px color-mix(in srgb, var(--brand-orange) 14%, transparent);
 }
 a.open-in-grace .open-in-grace__icon {
   animation: open-in-grace-glow 2.5s ease-in-out infinite;
@@ -1920,11 +1939,26 @@ a.open-in-grace:focus-visible {
 /* ===== Detail page (verbatim spec) ===== */
 .detail-with-ai {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 380px;
+  grid-template-columns: minmax(0, 1fr) 0;
   gap: 32px;
   align-items: start;
+  transition: grid-template-columns 260ms var(--ease);
 }
 .detail-with-ai .detail { max-width: 100%; }
+.detail-with-ai.is-ask-open { grid-template-columns: minmax(0, 1fr) 380px; }
+
+.detail__ask-drawer {
+  width: 0;
+  overflow: hidden;
+  opacity: 0;
+  transform: translateX(24px);
+  transition: width 260ms var(--ease), opacity 220ms var(--ease), transform 260ms var(--ease);
+}
+.detail-with-ai.is-ask-open .detail__ask-drawer {
+  width: 380px;
+  opacity: 1;
+  transform: translateX(0);
+}
 
 .detail {
   max-width: 760px;
@@ -2530,7 +2564,14 @@ a.open-in-grace:focus-visible {
 .askai__form button:disabled { opacity: 0.5; cursor: not-allowed; }
 
 @media (max-width: 1180px) {
-  .detail-with-ai { grid-template-columns: 1fr; }
+  .detail-with-ai,
+  .detail-with-ai.is-ask-open { grid-template-columns: 1fr; }
+  .detail__ask-drawer,
+  .detail-with-ai.is-ask-open .detail__ask-drawer {
+    width: 100%;
+    opacity: 1;
+    transform: none;
+  }
   .askai { position: relative; top: 0; max-height: none; }
 }
 

@@ -1,4 +1,5 @@
 import { ToolkitDrawer } from "@/components/toolkit-drawer";
+import Link from "next/link";
 
 type FeedControlsProps = {
   query: string;
@@ -84,14 +85,9 @@ export function FeedControls({
         <button type="submit" name="layout" value="card" className={`layout-toggle__btn${layout === "card" ? " is-active" : ""}`}>
           card
         </button>
-        <button
-          type="submit"
-          name="window"
-          value="7"
-          className={`layout-toggle__btn${windowValue === "7" ? " is-active" : ""}`}
-        >
-          last 7d
-        </button>
+        <Link href="/saved" className="layout-toggle__btn" aria-label="View your starred incidents">
+          ☆ user stars
+        </Link>
       </div>
 
       <ToolkitDrawer />
