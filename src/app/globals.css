@@ -984,7 +984,7 @@ body.has-sidebar main.shell {
 
 .sidebar__auth-cta {
   display: block;
-  margin: 0 6px 6px;
+  margin: 8px 6px 6px;
   padding: 8px 9px;
   border-radius: 8px;
   border: 1px solid color-mix(in srgb, var(--brand-orange) 20%, var(--border));
@@ -1595,6 +1595,9 @@ body.has-sidebar .cal-side {
   padding: 0;
   cursor: pointer;
 }
+.open-in-grace--toggle:hover {
+  opacity: 0.92;
+}
 .open-in-grace__icon {
   display: block;
   width: 22px;
@@ -1605,6 +1608,14 @@ body.has-sidebar .cal-side {
 }
 .open-in-grace--toggle .open-in-grace__icon {
   animation: open-in-grace-glow 2.3s ease-in-out infinite;
+}
+.open-in-grace--toggle:hover .open-in-grace__icon {
+  transform: scale(1.06);
+  animation-duration: 1.6s;
+}
+.open-in-grace--toggle:focus-visible {
+  outline: 2px solid var(--brand-orange);
+  outline-offset: 2px;
 }
 .open-in-grace--toggle[aria-expanded="true"] .open-in-grace__icon {
   box-shadow:

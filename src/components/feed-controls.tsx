@@ -85,8 +85,8 @@ export function FeedControls({
         <button type="submit" name="layout" value="card" className={`layout-toggle__btn${layout === "card" ? " is-active" : ""}`}>
           card
         </button>
-        <Link href="/saved" className="layout-toggle__btn" aria-label="View your starred incidents">
-          ☆ user stars
+        <Link href="/saved" className="layout-toggle__btn" aria-label="View your starred incidents" title="Starred incidents">
+          ☆
         </Link>
       </div>
 

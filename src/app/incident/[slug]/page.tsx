@@ -5,7 +5,6 @@ import { notFound } from "next/navigation";
 
 import { AskAI } from "@/components/ask-ai";
 import { AskGraceDrawerToggle } from "@/components/ask-grace-drawer-toggle";
-import { OpenInGrace } from "@/components/open-in-grace";
 import { SocialPlatformGraph } from "@/components/social-platform-graph";
 import { getPublicSiteUrl } from "@/lib/ecosystem";
 import {
@@ -167,7 +166,6 @@ export default async function IncidentPage({ params }: IncidentPageProps) {
             <Link href="/" className="back-link">back to feed</Link>
             <div className="detail__grace-actions">
               <AskGraceDrawerToggle containerId="detail-with-ai-shell" className="detail__grace" />
-              <OpenInGrace incidentSlug={incident.slug} className="detail__grace" />
             </div>
           </div>
 
