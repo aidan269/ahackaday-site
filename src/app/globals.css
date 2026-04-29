@@ -1599,6 +1599,16 @@ body.has-sidebar .cal-side {
   body.has-sidebar {
     padding-left: 0;
   }
+  body.has-sidebar main.shell {
+    width: auto;
+    max-width: 1560px;
+    margin: 0 auto;
+    padding-left: 10px;
+    padding-right: 10px;
+  }
+  body.has-sidebar .site-header {
+    display: none;
+  }
   .sidebar {
     display: none;
   }
@@ -3412,6 +3422,19 @@ a.open-in-grace:focus-visible {
 
 /* Real phone behavior can diverge from desktop emulation. */
 @media (hover: none) and (pointer: coarse) {
+  body.has-sidebar {
+    padding-left: 0 !important;
+  }
+  body.has-sidebar main.shell {
+    width: auto !important;
+    max-width: 1560px;
+    margin: 0 auto;
+    padding-left: 10px;
+    padding-right: 10px;
+  }
+  .sidebar {
+    display: none !important;
+  }
   .feed-with-x { display: block; }
   .x-feed-rail { display: none; }
 
