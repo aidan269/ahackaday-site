@@ -41,6 +41,10 @@
 
 * { box-sizing: border-box; }
 html, body { margin: 0; padding: 0; overflow-x: hidden; }
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
 
 body {
   font-family: var(--font-mono);
@@ -50,7 +54,7 @@ body {
   line-height: 1.55;
   -webkit-font-smoothing: antialiased;
   position: relative;
-  min-height: 100vh;
+  min-height: 100dvh;
 }
 
 body::before {
@@ -3403,5 +3407,30 @@ a.open-in-grace:focus-visible {
     font-size: clamp(30px, 11.5vw, 42px);
     line-height: 1.03;
     letter-spacing: -0.04em;
+  }
+}
+
+/* Real phone behavior can diverge from desktop emulation. */
+@media (hover: none) and (pointer: coarse) {
+  .feed-with-x { display: block; }
+  .x-feed-rail { display: none; }
+
+  .askai__status,
+  .askai__hint,
+  .askai__combo,
+  .askai__tone {
+    display: none;
+  }
+
+  .askai__roles { grid-template-columns: 1fr 1fr; }
+  .askai__topics { grid-template-columns: 1fr; }
+  .askai__meta-label span:last-child { display: none; }
+  .askai__input-wrap kbd { display: none; }
+  .askai__input-wrap input { padding-right: 11px; }
+
+  .card:hover {
+    padding-left: 12px;
+    transform: none;
+    background: inherit;
   }
 }
