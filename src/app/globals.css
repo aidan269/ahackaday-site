@@ -916,6 +916,7 @@ main.shell { max-width: 1560px; margin: 0 auto; padding: 48px 40px 160px; positi
     position: static;
     order: -1;
     padding: 10px;
+    min-height: auto;
   }
   .x-feed-rail__list {
     max-height: none;
@@ -943,6 +944,65 @@ main.shell { max-width: 1560px; margin: 0 auto; padding: 48px 40px 160px; positi
   .card:hover {
     padding-left: 12px;
     transform: translateY(-1px);
+  }
+
+  .askai {
+    border-radius: 12px;
+  }
+  .askai__head {
+    padding: 12px;
+  }
+  .askai__head .label .sub {
+    display: block;
+    margin: 2px 0 0;
+    font-size: 11px;
+  }
+  .askai__meta-label {
+    margin-top: 8px;
+  }
+  .askai__roles {
+    grid-template-columns: 1fr 1fr;
+  }
+  .askai__topics {
+    grid-template-columns: 1fr;
+  }
+  .askai__tone {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+  }
+  .askai__tone-seg {
+    width: 100%;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .askai__tone-seg button {
+    text-align: center;
+    padding: 7px 6px;
+  }
+  .askai__body {
+    padding: 12px;
+  }
+  .askai__send-this {
+    display: grid;
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+  .askai__send-this button {
+    justify-self: stretch;
+    text-align: left;
+  }
+  .askai__input-wrap kbd {
+    display: none;
+  }
+  .askai__input-wrap input {
+    padding-right: 11px;
+  }
+  .askai__form {
+    grid-template-columns: 1fr;
+    padding: 10px;
+  }
+  .askai__form button {
+    height: 40px;
   }
   .card__title {
     font-size: 18px;
