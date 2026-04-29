@@ -48,6 +48,7 @@ export function AskAI({ incident }: { incident: Incident }) {
   const [copiedIdx, setCopiedIdx] = useState<number | null>(null);
   const [mode, setMode] = useState<OutputMode>("brief");
   const bodyRef = useRef<HTMLDivElement>(null);
+  const activeTopicLabel = ASK_TOPICS.find((t) => t.id === topic)?.label ?? "pick prompt";
 
   useEffect(() => {
     if (!loading) {
@@ -187,6 +188,7 @@ Question: ${prompt}`;
         )}
       </div>
 
+      <div className="askai__step-label">Step 1 - Pick your prompt</div>
       <div className="askai__topics">
         {ASK_TOPICS.map((t) => (
           <button
@@ -201,7 +203,13 @@ Question: ${prompt}`;
           </button>
         ))}
       </div>
-      <div className="askai__topics" role="group" aria-label="Answer format">
+      <div className="askai__step-link" aria-hidden>then choose format ↓</div>
+      <div className="askai__step-label">Step 2 - Pick output style</div>
+      <div
+        className={"askai__topics askai__topics--step2" + (topic ? " is-ready" : "")}
+        role="group"
+        aria-label="Answer format"
+      >
         {(["brief", "checklist", "slack-ready"] as OutputMode[]).map((option) => (
           <button
             key={option}
@@ -211,9 +219,12 @@ Question: ${prompt}`;
             disabled={loading}
           >
             <span>{option}</span>
-            <span className="hint">output mode</span>
+            <span className="hint">step 2</span>
           </button>
         ))}
+      </div>
+      <div className="askai__combo">
+        {activeTopicLabel} {"->"} {mode}
       </div>
 
       <div className="askai__body" ref={bodyRef}>

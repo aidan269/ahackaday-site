@@ -2351,6 +2351,42 @@ a.open-in-grace:focus-visible {
   gap: 6px;
   padding: 12px 12px 0;
 }
+.askai__step-label {
+  margin: 10px 12px 0;
+  font: 9.5px var(--font-mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--fg-muted);
+}
+.askai__step-link {
+  margin: 8px 12px 0;
+  padding: 6px 8px;
+  border-top: 1px dashed var(--border);
+  font: 10px var(--font-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--fg-muted) 92%, var(--brand-orange));
+}
+.askai__topics--step2 {
+  opacity: 0.6;
+  filter: saturate(0.72);
+  transition: opacity 140ms, filter 140ms;
+}
+.askai__topics--step2.is-ready {
+  opacity: 1;
+  filter: none;
+}
+.askai__combo {
+  margin: 8px 12px 2px;
+  padding: 7px 9px;
+  border-radius: 8px;
+  border: 1px solid color-mix(in srgb, var(--brand-orange) 24%, var(--border));
+  background: color-mix(in srgb, var(--brand-orange) 7%, white);
+  font: 10.5px var(--font-mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--fg) 80%, var(--brand-orange));
+}
 .askai__topic {
   position: relative; overflow: hidden;
   border: 1px solid var(--border);
