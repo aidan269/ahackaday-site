@@ -908,19 +908,8 @@ main.shell { max-width: 1560px; margin: 0 auto; padding: 48px 40px 160px; positi
     gap: 10px;
     border-top: 0;
   }
-  .feed-with-x {
-    grid-template-columns: 1fr;
-    gap: 10px;
-  }
-  .x-feed-rail {
-    position: static;
-    order: -1;
-    padding: 10px;
-    min-height: auto;
-  }
-  .x-feed-rail__list {
-    max-height: none;
-  }
+  .feed-with-x { display: block; }
+  .x-feed-rail { display: none; }
   .card {
     grid-template-columns: 1fr;
     gap: 14px;
@@ -949,6 +938,11 @@ main.shell { max-width: 1560px; margin: 0 auto; padding: 48px 40px 160px; positi
   .askai {
     border-radius: 12px;
   }
+  .askai__status,
+  .askai__hint,
+  .askai__combo {
+    display: none;
+  }
   .askai__head {
     padding: 12px;
   }
@@ -960,17 +954,16 @@ main.shell { max-width: 1560px; margin: 0 auto; padding: 48px 40px 160px; positi
   .askai__meta-label {
     margin-top: 8px;
   }
+  .askai__meta-label span:last-child {
+    display: none;
+  }
   .askai__roles {
     grid-template-columns: 1fr 1fr;
   }
   .askai__topics {
     grid-template-columns: 1fr;
   }
-  .askai__tone {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 6px;
-  }
+  .askai__tone { display: none; }
   .askai__tone-seg {
     width: 100%;
     grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -981,6 +974,7 @@ main.shell { max-width: 1560px; margin: 0 auto; padding: 48px 40px 160px; positi
   }
   .askai__body {
     padding: 12px;
+    gap: 10px;
   }
   .askai__send-this {
     display: grid;
@@ -1003,6 +997,17 @@ main.shell { max-width: 1560px; margin: 0 auto; padding: 48px 40px 160px; positi
   }
   .askai__form button {
     height: 40px;
+  }
+  .detail {
+    padding-top: 12px;
+  }
+  .detail__social-grid {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+  .detail__social-metric,
+  .detail__social-summary {
+    min-height: 0;
   }
   .card__title {
     font-size: 18px;
