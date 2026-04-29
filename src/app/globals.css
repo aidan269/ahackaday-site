@@ -2358,15 +2358,6 @@ a.open-in-grace:focus-visible {
   text-transform: uppercase;
   color: var(--fg-muted);
 }
-.askai__step-link {
-  margin: 8px 12px 0;
-  padding: 6px 8px;
-  border-top: 1px dashed var(--border);
-  font: 10px var(--font-mono);
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: color-mix(in srgb, var(--fg-muted) 92%, var(--brand-orange));
-}
 .askai__topics--step2 {
   opacity: 0.6;
   filter: saturate(0.72);

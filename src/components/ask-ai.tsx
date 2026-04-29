@@ -203,7 +203,6 @@ Question: ${prompt}`;
           </button>
         ))}
       </div>
-      <div className="askai__step-link" aria-hidden>then choose format ↓</div>
       <div className="askai__step-label">Step 2 - Pick output style</div>
       <div
         className={"askai__topics askai__topics--step2" + (topic ? " is-ready" : "")}
