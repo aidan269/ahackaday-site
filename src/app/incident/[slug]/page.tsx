@@ -157,6 +157,23 @@ export default async function IncidentPage({ params }: IncidentPageProps) {
     .map(normalizeKeywordForDisplay)
     .filter(Boolean)
     .slice(0, 3);
+  const xHeat = incident.xHeatScore ?? 0;
+  const xAuthors = incident.xUniqueAuthors24h ?? 0;
+  const xVerified = incident.xVerifiedMentions24h ?? 0;
+  const xRetweets = incident.xRetweetSum24h ?? 0;
+  const xLikes = incident.xLikeSum24h ?? 0;
+  const xReplies = incident.xReplySum24h ?? 0;
+  const xQuotes = incident.xQuoteSum24h ?? 0;
+  const xMentions = incident.xMentions24h ?? 0;
+  const xVerifiedPct = xMentions > 0 ? Math.round((xVerified / xMentions) * 100) : 0;
+  const xTrendLabel = incident.xHeatTrend ? `(${incident.xHeatTrend})` : "";
+  const xEngagementTotal = Math.max(1, xRetweets + xLikes + xReplies + xQuotes);
+  const xBars = [
+    { label: "likes", value: xLikes },
+    { label: "retweets", value: xRetweets },
+    { label: "replies", value: xReplies },
+    { label: "quotes", value: xQuotes },
+  ];
 
   return (
     <main className="shell">
@@ -235,6 +252,25 @@ export default async function IncidentPage({ params }: IncidentPageProps) {
                         <span key={keyword} className="detail__keyword-chip">{keyword}</span>
                       ))
                     : <span className="detail__keyword-chip">monitoring</span>}
+                </div>
+              </div>
+              <div className="detail__social-metric">
+                <span className="k">x analytics</span>
+                <span className="v">heat {xHeat} {xTrendLabel}</span>
+                <div className="detail__x-meta">
+                  <span>authors {xAuthors}</span>
+                  <span>verified {xVerifiedPct}%</span>
+                </div>
+                <div className="detail__x-bars">
+                  {xBars.map((bar) => (
+                    <div key={bar.label} className="detail__x-bar-row">
+                      <span className="detail__x-bar-label">{bar.label}</span>
+                      <span className="detail__x-bar-track">
+                        <span className="detail__x-bar-fill" style={{ width: `${Math.max(4, Math.round((bar.value / xEngagementTotal) * 100))}%` }} />
+                      </span>
+                      <span className="detail__x-bar-value">{bar.value}</span>
+                    </div>
+                  ))}
                 </div>
               </div>
               <div className="detail__social-summary">

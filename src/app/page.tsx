@@ -3,6 +3,7 @@ import { FeedControls } from "@/components/feed-controls";
 import { IncidentItem, IncidentTimelineItem } from "@/components/incident-item";
 import { QuietDayEmpty } from "@/components/quiet-day-empty";
 import { getAllIncidents, type IncidentType, type Severity } from "@/lib/incidents";
+import Link from "next/link";
 
 /** Refresh feed periodically (Supabase / markdown) so fixes and new rows surface without only redeploying. */
 export const revalidate = 120;
@@ -25,6 +26,12 @@ function getPlatformMentions(
   const share = incident.socialPlatformSplit?.[platform];
   if (typeof share !== "number" || share <= 0) return 0;
   return Math.round((incident.socialMentions24h * share) / 100);
+}
+
+function formatCompactNumber(value: number): string {
+  if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}m`;
+  if (value >= 1_000) return `${(value / 1_000).toFixed(1)}k`;
+  return String(value);
 }
 
 export default async function Home({ searchParams }: HomeProps) {
@@ -78,6 +85,18 @@ export default async function Home({ searchParams }: HomeProps) {
     acc[key].push(incident);
     return acc;
   }, {});
+  const xFeed = [...filtered]
+    .filter((incident) => {
+      const heat = incident.xHeatScore ?? 0;
+      const mentions = incident.xMentions24h ?? 0;
+      return heat > 0 || mentions > 0;
+    })
+    .sort((a, b) => {
+      const heatDiff = (b.xHeatScore ?? 0) - (a.xHeatScore ?? 0);
+      if (heatDiff !== 0) return heatDiff;
+      return (b.xMentions24h ?? 0) - (a.xMentions24h ?? 0);
+    })
+    .slice(0, 12);
 
   return (
     <main className="shell">
@@ -140,8 +159,46 @@ export default async function Home({ searchParams }: HomeProps) {
               ))}
             </div>
           ) : (
-            <div className="feed--card">
-              {filtered.map((i, idx) => <IncidentItem key={i.slug} incident={i} index={idx} />)}
+            <div className="feed-with-x">
+              <div className="feed--card">
+                {filtered.map((i, idx) => <IncidentItem key={i.slug} incident={i} index={idx} />)}
+              </div>
+              <aside className="x-feed-rail" aria-label="X incident feed">
+                <div className="x-feed-rail__head">
+                  <h3>X incident feed</h3>
+                  <span>live signal</span>
+                </div>
+                {xFeed.length === 0 ? (
+                  <p className="x-feed-rail__empty">No high-confidence X activity yet for this filter window.</p>
+                ) : (
+                  <div className="x-feed-rail__list">
+                    {xFeed.map((incident) => {
+                      const trend = incident.xHeatTrend ?? "flat";
+                      const hashtags = (incident.xTopHashtags ?? []).slice(0, 2);
+                      return (
+                        <Link key={incident.slug} href={`/incident/${incident.slug}`} className="x-feed-rail__item">
+                          <div className="x-feed-rail__row">
+                            <span className={`x-feed-rail__trend is-${trend}`}>{trend}</span>
+                            <span className="x-feed-rail__heat">heat {incident.xHeatScore ?? 0}</span>
+                          </div>
+                          <p className="x-feed-rail__title">{incident.title}</p>
+                          <div className="x-feed-rail__meta">
+                            <span>{formatCompactNumber(incident.xMentions24h ?? 0)} mentions</span>
+                            <span>{formatCompactNumber(incident.xUniqueAuthors24h ?? 0)} authors</span>
+                          </div>
+                          {hashtags.length > 0 && (
+                            <div className="x-feed-rail__tags">
+                              {hashtags.map((tag) => (
+                                <span key={`${incident.slug}-${tag}`}>#{tag.replace(/^#/, "")}</span>
+                              ))}
+                            </div>
+                          )}
+                        </Link>
+                      );
+                    })}
+                  </div>
+                )}
+              </aside>
             </div>
           )}
         </>

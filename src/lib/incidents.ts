@@ -52,6 +52,17 @@ type SupabaseSocialMetricRow = {
   social_delta_24h_pct: number | null;
   social_platform_split: unknown;
   social_keywords: string[] | null;
+  x_mentions_24h: number | null;
+  x_unique_authors_24h: number | null;
+  x_verified_mentions_24h: number | null;
+  x_retweet_sum_24h: number | null;
+  x_like_sum_24h: number | null;
+  x_quote_sum_24h: number | null;
+  x_reply_sum_24h: number | null;
+  x_heat_score: number | null;
+  x_heat_trend: SocialTrend | null;
+  x_top_hashtags: string[] | null;
+  x_top_terms: string[] | null;
 };
 
 type StructuredBriefing = {
@@ -359,6 +370,21 @@ function mapDbRowToIncident(row: SupabaseIncidentRow, socialMetrics?: SupabaseSo
     socialKeywords: Array.isArray(socialMetrics?.social_keywords)
       ? socialMetrics.social_keywords.map(normalizeDisplayText).filter(Boolean).slice(0, 5)
       : undefined,
+    xMentions24h: socialMetrics?.x_mentions_24h ?? undefined,
+    xUniqueAuthors24h: socialMetrics?.x_unique_authors_24h ?? undefined,
+    xVerifiedMentions24h: socialMetrics?.x_verified_mentions_24h ?? undefined,
+    xRetweetSum24h: socialMetrics?.x_retweet_sum_24h ?? undefined,
+    xLikeSum24h: socialMetrics?.x_like_sum_24h ?? undefined,
+    xQuoteSum24h: socialMetrics?.x_quote_sum_24h ?? undefined,
+    xReplySum24h: socialMetrics?.x_reply_sum_24h ?? undefined,
+    xHeatScore: socialMetrics?.x_heat_score ?? undefined,
+    xHeatTrend: normalizeSocialTrend(socialMetrics?.x_heat_trend) ?? undefined,
+    xTopHashtags: Array.isArray(socialMetrics?.x_top_hashtags)
+      ? socialMetrics.x_top_hashtags.map(normalizeDisplayText).filter(Boolean).slice(0, 6)
+      : undefined,
+    xTopTerms: Array.isArray(socialMetrics?.x_top_terms)
+      ? socialMetrics.x_top_terms.map(normalizeDisplayText).filter(Boolean).slice(0, 6)
+      : undefined,
   };
 }
 
@@ -618,7 +644,7 @@ async function getAllSupabaseIncidents(): Promise<Incident[]> {
   if (incidentIds.length > 0) {
     const { data: socialRows, error: socialError } = await client
       .from("incident_social_metrics")
-      .select("incident_id,social_mentions_24h,social_trend,social_summary,social_delta_24h_pct,social_platform_split,social_keywords")
+      .select("incident_id,social_mentions_24h,social_trend,social_summary,social_delta_24h_pct,social_platform_split,social_keywords,x_mentions_24h,x_unique_authors_24h,x_verified_mentions_24h,x_retweet_sum_24h,x_like_sum_24h,x_quote_sum_24h,x_reply_sum_24h,x_heat_score,x_heat_trend,x_top_hashtags,x_top_terms")
       .in("incident_id", incidentIds);
     if (socialError) {
       console.error("Failed loading social metrics from Supabase", socialError);

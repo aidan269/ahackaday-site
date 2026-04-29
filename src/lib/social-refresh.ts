@@ -13,6 +13,7 @@ type IncidentRow = {
 type ExistingSocialMetric = {
   incident_id: string;
   social_mentions_24h: number | null;
+  x_heat_score: number | null;
 };
 
 type GithubSearchResponse = {
@@ -33,9 +34,38 @@ type RedditSearchResponse = {
 };
 
 type XRecentSearchResponse = {
+  data?: Array<{
+    id?: string;
+    text?: string;
+    author_id?: string;
+    public_metrics?: {
+      retweet_count?: number;
+      reply_count?: number;
+      like_count?: number;
+      quote_count?: number;
+    };
+  }>;
+  includes?: {
+    users?: Array<{
+      id?: string;
+      verified?: boolean;
+    }>;
+  };
   meta?: {
     result_count?: number;
   };
+};
+
+type XSignal = {
+  mentions: number;
+  uniqueAuthors: number;
+  verifiedMentions: number;
+  retweetSum: number;
+  likeSum: number;
+  quoteSum: number;
+  replySum: number;
+  topHashtags: string[];
+  topTerms: string[];
 };
 
 const STOPWORDS = new Set([
@@ -46,6 +76,10 @@ const STOPWORDS = new Set([
 const NOISY_KEYWORD_TOKENS = new Set([
   "http", "https", "www", "com", "org", "net", "topic", "documents", "github", "weixin", "your",
   "their", "there", "which", "where", "when", "what", "then", "than", "were", "been", "over", "more",
+]);
+
+const X_NOISE_TOKENS = new Set([
+  "https", "http", "com", "news", "incident", "security", "cybersecurity", "attack", "breach", "today",
 ]);
 
 function getSupabaseAdminClient() {
@@ -227,13 +261,25 @@ async function fetchRedditMentions(incident: IncidentRow): Promise<number> {
   return 0;
 }
 
-async function fetchXMentions(incident: IncidentRow): Promise<number> {
+async function fetchXMentions(incident: IncidentRow): Promise<XSignal> {
   const bearerToken = process.env.X_BEARER_TOKEN ?? process.env.TWITTER_BEARER_TOKEN;
-  if (!bearerToken) return 0;
+  if (!bearerToken) {
+    return {
+      mentions: 0,
+      uniqueAuthors: 0,
+      verifiedMentions: 0,
+      retweetSum: 0,
+      likeSum: 0,
+      quoteSum: 0,
+      replySum: 0,
+      topHashtags: [],
+      topTerms: [],
+    };
+  }
   const { primary } = buildSocialQueryTerms(incident);
   const query = `${primary} lang:en -is:retweet`;
   const response = await fetch(
-    `https://api.x.com/2/tweets/search/recent?query=${encodeURIComponent(query)}&max_results=100`,
+    `https://api.x.com/2/tweets/search/recent?query=${encodeURIComponent(query)}&max_results=100&expansions=author_id&tweet.fields=public_metrics,created_at,lang&user.fields=verified`,
     {
       headers: {
         Authorization: `Bearer ${bearerToken}`,
@@ -250,7 +296,64 @@ async function fetchXMentions(incident: IncidentRow): Promise<number> {
     throw new Error(`X search failed (${response.status})`);
   }
   const data = await response.json() as XRecentSearchResponse;
-  return Math.max(0, data.meta?.result_count ?? 0);
+  const tweets = data.data ?? [];
+  const users = data.includes?.users ?? [];
+  const verifiedUserIds = new Set(
+    users.filter((user) => Boolean(user.id) && user.verified).map((user) => user.id as string),
+  );
+
+  let verifiedMentions = 0;
+  let retweetSum = 0;
+  let likeSum = 0;
+  let quoteSum = 0;
+  let replySum = 0;
+  const authorIds = new Set<string>();
+  const hashtagBucket = new Map<string, number>();
+  const termBucket = new Map<string, number>();
+
+  for (const tweet of tweets) {
+    if (tweet.author_id) {
+      authorIds.add(tweet.author_id);
+      if (verifiedUserIds.has(tweet.author_id)) verifiedMentions += 1;
+    }
+    const metrics = tweet.public_metrics;
+    retweetSum += metrics?.retweet_count ?? 0;
+    likeSum += metrics?.like_count ?? 0;
+    quoteSum += metrics?.quote_count ?? 0;
+    replySum += metrics?.reply_count ?? 0;
+
+    const text = (tweet.text ?? "").toLowerCase();
+    for (const match of text.matchAll(/#([a-z0-9_]+)/g)) {
+      const tag = `#${match[1]}`;
+      hashtagBucket.set(tag, (hashtagBucket.get(tag) ?? 0) + 1);
+    }
+
+    for (const token of text.replace(/[^a-z0-9\s]/g, " ").split(/\s+/)) {
+      if (token.length < 4 || X_NOISE_TOKENS.has(token)) continue;
+      termBucket.set(token, (termBucket.get(token) ?? 0) + 1);
+    }
+  }
+
+  const topHashtags = [...hashtagBucket.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5)
+    .map(([token]) => token);
+  const topTerms = [...termBucket.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5)
+    .map(([token]) => token);
+
+  return {
+    mentions: Math.max(0, data.meta?.result_count ?? tweets.length),
+    uniqueAuthors: authorIds.size,
+    verifiedMentions,
+    retweetSum,
+    likeSum,
+    quoteSum,
+    replySum,
+    topHashtags,
+    topTerms,
+  };
 }
 
 export async function refreshIncidentSocialMetrics(limit = 20): Promise<{
@@ -274,7 +377,7 @@ export async function refreshIncidentSocialMetrics(limit = 20): Promise<{
   const ids = rows.map((row) => row.id);
   const { data: existingRows } = await supabase
     .from("incident_social_metrics")
-    .select("incident_id,social_mentions_24h")
+    .select("incident_id,social_mentions_24h,x_heat_score")
     .in("incident_id", ids);
   const previous = new Map<string, ExistingSocialMetric>();
   for (const row of (existingRows as ExistingSocialMetric[] | null) ?? []) previous.set(row.incident_id, row);
@@ -285,27 +388,47 @@ export async function refreshIncidentSocialMetrics(limit = 20): Promise<{
     try {
       const githubSignal = await fetchGithubMentions(incident);
       let redditMentions = 0;
-      let xMentions = 0;
+      let xSignal: XSignal = {
+        mentions: 0,
+        uniqueAuthors: 0,
+        verifiedMentions: 0,
+        retweetSum: 0,
+        likeSum: 0,
+        quoteSum: 0,
+        replySum: 0,
+        topHashtags: [],
+        topTerms: [],
+      };
       try {
         redditMentions = await fetchRedditMentions(incident);
       } catch (error) {
         errors.push(`${incident.title}: ${error instanceof Error ? error.message : String(error)}`);
       }
       try {
-        xMentions = await fetchXMentions(incident);
+        xSignal = await fetchXMentions(incident);
       } catch (error) {
         errors.push(`${incident.title}: ${error instanceof Error ? error.message : String(error)}`);
       }
-      const mentions = githubSignal.mentions + redditMentions + xMentions;
+      const mentions = githubSignal.mentions + redditMentions + xSignal.mentions;
       const prevMentions = previous.get(incident.id)?.social_mentions_24h ?? null;
       const deltaPct = prevMentions && prevMentions > 0
         ? Math.round(((mentions - prevMentions) / prevMentions) * 100)
         : null;
       const trend = toTrend(mentions, prevMentions);
+      const xHeatScore = Math.round(
+        xSignal.mentions
+        + xSignal.uniqueAuthors * 0.5
+        + xSignal.verifiedMentions * 2
+        + xSignal.retweetSum * 0.2
+        + xSignal.quoteSum * 0.3
+        + xSignal.replySum * 0.15,
+      );
+      const previousXHeat = previous.get(incident.id)?.x_heat_score ?? null;
+      const xHeatTrend = toTrend(xHeatScore, previousXHeat);
       const observedSplit = toPlatformSplitFromObserved({
         github: githubSignal.mentions,
         reddit: redditMentions,
-        x: xMentions,
+        x: xSignal.mentions,
       });
       const split = mentions > 0
         ? observedSplit
@@ -326,6 +449,17 @@ export async function refreshIncidentSocialMetrics(limit = 20): Promise<{
         social_delta_24h_pct: deltaPct,
         social_platform_split: split,
         social_keywords: githubSignal.keywords,
+        x_mentions_24h: xSignal.mentions,
+        x_unique_authors_24h: xSignal.uniqueAuthors,
+        x_verified_mentions_24h: xSignal.verifiedMentions,
+        x_retweet_sum_24h: xSignal.retweetSum,
+        x_like_sum_24h: xSignal.likeSum,
+        x_quote_sum_24h: xSignal.quoteSum,
+        x_reply_sum_24h: xSignal.replySum,
+        x_heat_score: xHeatScore,
+        x_heat_trend: xHeatTrend,
+        x_top_hashtags: xSignal.topHashtags,
+        x_top_terms: xSignal.topTerms,
         source: "github+reddit+x",
         updated_at: new Date().toISOString(),
       }, { onConflict: "incident_id" });

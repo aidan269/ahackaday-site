@@ -28,6 +28,17 @@ export type IncidentFrontmatter = {
     github: number;
   };
   socialKeywords?: string[];
+  xMentions24h?: number;
+  xUniqueAuthors24h?: number;
+  xVerifiedMentions24h?: number;
+  xRetweetSum24h?: number;
+  xLikeSum24h?: number;
+  xQuoteSum24h?: number;
+  xReplySum24h?: number;
+  xHeatScore?: number;
+  xHeatTrend?: SocialTrend;
+  xTopHashtags?: string[];
+  xTopTerms?: string[];
 };
 
 export type IncidentEvidence = {
