@@ -108,7 +108,7 @@ function IconMitigated() {
 
 function SidebarBody({ counts, filters }: Props & { filters: UrlFilters }) {
   const pathname = usePathname();
-  const { reviewCount, savedCount } = useEmotionalPreferences();
+  const { reviewCount, savedCount, userEmail } = useEmotionalPreferences();
 
   const isFeed = pathname === "/";
   const isCalendar = pathname.startsWith("/calendar");
@@ -221,6 +221,11 @@ function SidebarBody({ counts, filters }: Props & { filters: UrlFilters }) {
       <div className="sidebar__status">
         <span className="sidebar__status-dot" aria-hidden />
         <span>Powered by Cantina Security</span>
+      </div>
+      <div className="sidebar__receipts" style={{ marginTop: 10 }}>
+        {userEmail
+          ? `Synced as ${userEmail}`
+          : <Link href="/saved">Optional login on Saved to sync bookmarks</Link>}
       </div>
     </aside>
   );
