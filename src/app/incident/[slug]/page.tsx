@@ -4,7 +4,6 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { AskAI } from "@/components/ask-ai";
-import { AskGraceDrawerToggle } from "@/components/ask-grace-drawer-toggle";
 import { SocialPlatformGraph } from "@/components/social-platform-graph";
 import { getPublicSiteUrl } from "@/lib/ecosystem";
 import {
@@ -177,13 +176,10 @@ export default async function IncidentPage({ params }: IncidentPageProps) {
 
   return (
     <main className="shell">
-      <div id="detail-with-ai-shell" className="detail-with-ai view-fade">
+      <div className="detail-with-ai view-fade">
         <article className={`detail ${incident.severity === "critical" ? "is-critical" : ""}`}>
           <div className="detail__bar">
             <Link href="/" className="back-link">back to feed</Link>
-            <div className="detail__grace-actions">
-              <AskGraceDrawerToggle containerId="detail-with-ai-shell" className="detail__grace" />
-            </div>
           </div>
 
           <div className="detail__head">

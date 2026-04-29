@@ -2075,25 +2075,14 @@ a.open-in-grace:focus-visible {
 /* ===== Detail page (verbatim spec) ===== */
 .detail-with-ai {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 0;
+  grid-template-columns: minmax(0, 1fr) 380px;
   gap: 32px;
   align-items: start;
-  transition: grid-template-columns 260ms var(--ease);
 }
 .detail-with-ai .detail { max-width: 100%; }
-.detail-with-ai.is-ask-open { grid-template-columns: minmax(0, 1fr) 380px; }
 
 .detail__ask-drawer {
-  width: 0;
-  overflow: hidden;
-  opacity: 0;
-  transform: translateX(24px);
-  transition: width 260ms var(--ease), opacity 220ms var(--ease), transform 260ms var(--ease);
-}
-.detail-with-ai.is-ask-open .detail__ask-drawer {
   width: 380px;
-  opacity: 1;
-  transform: translateX(0);
 }
 
 .detail {
