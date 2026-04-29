@@ -3500,3 +3500,80 @@ a.open-in-grace:focus-visible {
     background: inherit;
   }
 }
+
+/* ===== Mobile stability mode (phone-first hardening) ===== */
+@media (max-width: 900px) {
+  .dailybrief .pulse,
+  .exploited-chip::before {
+    animation: none;
+    box-shadow: none;
+  }
+
+  .page-head {
+    gap: 12px;
+  }
+  .page-head__stats {
+    grid-template-columns: 1fr;
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  .stat {
+    border-right: 0;
+    border-bottom: 1px solid var(--border);
+    padding: 10px 12px;
+  }
+  .stat:last-child {
+    border-bottom: 0;
+  }
+  .stat__k {
+    font-size: 8px;
+  }
+  .stat__v {
+    font-size: 20px;
+  }
+
+  .controls {
+    margin-bottom: 12px;
+  }
+  .controls .toolkit-launch {
+    width: 100%;
+    height: 42px;
+    border-radius: 10px;
+    font-size: 10px;
+  }
+
+  .card {
+    padding: 16px 12px;
+    gap: 12px;
+  }
+  .card__title {
+    line-height: 1.1;
+  }
+  .card__sum {
+    font-size: 15px;
+    line-height: 1.55;
+  }
+
+  .mobile-dock {
+    left: 8px;
+    right: 8px;
+    padding: 9px;
+    border-radius: 14px;
+  }
+  .mobile-dock__item {
+    min-height: 40px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .detail__social {
+    padding: 12px;
+    border-radius: 12px;
+  }
+  .detail__social-metric,
+  .detail__social-summary {
+    padding: 10px;
+    border-radius: 10px;
+  }
+}
