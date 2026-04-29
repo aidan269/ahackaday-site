@@ -2753,6 +2753,17 @@ a.open-in-grace:focus-visible {
   background: var(--bg-elev-3);
   box-shadow: 0 0 0 1px var(--border-strong) inset;
 }
+.layout-toggle__btn--star {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  padding: 0;
+  font-size: 16px;
+  letter-spacing: 0;
+  text-transform: none;
+  line-height: 1;
+}
 
 .apply-btn {
   height: 34px;
