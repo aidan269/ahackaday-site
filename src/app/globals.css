@@ -2018,6 +2018,7 @@ a.open-in-grace:focus-visible {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 10px;
+  align-items: start;
 }
 
 .detail__social-metric {
