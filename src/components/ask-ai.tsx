@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 
 import type { Incident } from "@/lib/incident-types";
+import { graceAvatarUrl } from "@/lib/ecosystem";
 
 const ROLES = ["SOC analyst", "Eng lead", "Exec", "Comms"] as const;
 const PROMPTS = [
@@ -247,7 +248,9 @@ ${incident.sources.join("\n")}`;
   return (
     <div className="askai">
       <div className="askai__head">
-        <span className={`askai__avatar ${status === "done" ? "is-done" : ""}`} aria-hidden>G</span>
+        <span className={`askai__avatar ${status === "done" ? "is-done" : ""}`} aria-hidden>
+          <img src={graceAvatarUrl()} alt="" className="askai__avatar-img" width={24} height={24} decoding="async" />
+        </span>
         <span className="label">Grace <span className="sub">{status === "thinking" ? "Working on it…" : status === "done" ? `For ${role} · ${promptTitle} · ${tone}` : "Your AI security intern"}</span></span>
         <span className={`askai__status askai__status--${status}`} aria-live="polite">
           <span className="dot" />
