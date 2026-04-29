@@ -2133,6 +2133,78 @@ a.open-in-grace:focus-visible {
   line-height: 1.2;
 }
 
+.social-graph {
+  margin-top: 10px;
+  padding-top: 9px;
+  border-top: 1px dashed color-mix(in srgb, var(--border) 80%, white);
+}
+
+.social-graph__tabs {
+  display: inline-flex;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.social-graph__tab {
+  border: 1px solid color-mix(in srgb, var(--border) 86%, white);
+  background: color-mix(in srgb, var(--bg-elev-1) 82%, white);
+  color: var(--fg-muted);
+  border-radius: 999px;
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 3px 7px;
+  cursor: pointer;
+}
+
+.social-graph__tab.is-active {
+  border-color: color-mix(in srgb, var(--brand-orange) 45%, var(--border));
+  color: color-mix(in srgb, var(--fg) 86%, var(--brand-orange));
+}
+
+.social-graph__bars {
+  display: grid;
+  gap: 5px;
+}
+
+.social-graph__row {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  text-decoration: none;
+}
+
+.social-graph__label {
+  font-size: 10px;
+  color: var(--fg-muted);
+  text-transform: lowercase;
+}
+
+.social-graph__track {
+  height: 7px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--border) 60%, white);
+  overflow: hidden;
+}
+
+.social-graph__fill {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--brand-orange) 75%, #ffdca5);
+}
+
+.social-graph__value {
+  font-size: 11px;
+  color: color-mix(in srgb, var(--fg) 90%, var(--brand-orange));
+}
+
+.social-graph__row.is-active .social-graph__label,
+.social-graph__row.is-active .social-graph__value {
+  color: color-mix(in srgb, var(--fg) 84%, var(--brand-orange));
+}
+
 .detail__body h3 {
   font-size: 11px;
   text-transform: uppercase;

@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 
 import { AskAI } from "@/components/ask-ai";
 import { OpenInGrace } from "@/components/open-in-grace";
+import { SocialPlatformGraph } from "@/components/social-platform-graph";
 import { getPublicSiteUrl } from "@/lib/ecosystem";
 import {
   formatIncidentDate,
@@ -139,6 +140,8 @@ export default async function IncidentPage({ params }: IncidentPageProps) {
   const trend = incident.socialTrend ?? "flat";
   const socialTrendLabel = `trend ${trend}`;
   const socialSummary = incident.socialSummary || "Signal collection in progress for this incident.";
+  const platformSplit = incident.socialPlatformSplit ?? { x: 47, reddit: 35, github: 18 };
+  const graphSearchTerm = trackingId ?? incident.title;
   const socialDetails = deriveSocialDetailSignals({
     slug: incident.slug,
     title: incident.title,
@@ -216,6 +219,11 @@ export default async function IncidentPage({ params }: IncidentPageProps) {
               <div className="detail__social-metric">
                 <span className="k">platform split</span>
                 <span className="v">{socialDetails.platformSplit}</span>
+                <SocialPlatformGraph
+                  totalMentions={incident.socialMentions24h ?? 0}
+                  split={platformSplit}
+                  searchTerm={graphSearchTerm}
+                />
               </div>
               <div className="detail__social-metric">
                 <span className="k">keywords</span>
