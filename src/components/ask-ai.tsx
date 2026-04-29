@@ -6,14 +6,14 @@ import type { Incident } from "@/lib/incident-types";
 const ASK_TOPICS = [
   { id: "tldr", label: "TL;DR", hint: "60s read" },
   { id: "impact", label: "Real-world impact", hint: "~2min · who & how" },
-  { id: "why", label: "Should my team care?", hint: "~2min · stakes" },
+  { id: "why", label: "Cantina security priority", hint: "~2min · priority signal" },
 ] as const;
 
 const ASK_PROMPTS: Record<string, string> = {
   tldr: "Give me a tight TL;DR of this incident in 3 short bullets. No fluff. Plain text, dashes for bullets.",
   impact:
     "Explain the real-world impact of this incident: who is affected, in what concrete ways, and over what timeframe. 4-6 sentences, plain text. Focus on practical outcomes from the brief and avoid commentary about labeling/classification quality.",
-  why: "Should this team care? Tell me the stakes if they ignore it, what could go wrong for their org, and what bar to clear before they can stop worrying. Address the reader as 'you' and 'your team'. 4-6 sentences, plain text. Focus on practical risk and avoid commentary about whether this 'counts' as cybersecurity.",
+  why: "For Cantina Security, how should we prioritize this incident right now? Include: urgency level (high/medium/low), who on the security team should own it first, likely blast radius if delayed, and the minimum response bar before we can downgrade urgency. 4-6 sentences, plain text.",
 };
 
 const TICKER_STAGES = [
@@ -151,7 +151,7 @@ Question: ${prompt}`;
           </svg>
         </span>
         <span className="label">
-          Ask AI <span className="sub">about this incident</span>
+          Ask Grace AI <span className="sub">about this incident</span>
         </span>
         {messages.length > 0 && (
           <button className="clear" onClick={clearChat}>
