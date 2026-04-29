@@ -80,17 +80,17 @@ export function FeedControls({
         </div>
       </div>
 
-      <div className="layout-toggle" role="group" aria-label="Layout">
+      <div className="layout-toggle" role="group" aria-label="Quick actions">
         <button type="submit" name="layout" value="card" className={`layout-toggle__btn${layout === "card" ? " is-active" : ""}`}>
           card
         </button>
         <button
           type="submit"
-          name="layout"
-          value="timeline"
-          className={`layout-toggle__btn${layout === "timeline" ? " is-active" : ""}`}
+          name="window"
+          value="7"
+          className={`layout-toggle__btn${windowValue === "7" ? " is-active" : ""}`}
         >
-          timeline
+          last 7d
         </button>
       </div>
 
