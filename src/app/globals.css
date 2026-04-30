@@ -434,13 +434,12 @@ main.shell { max-width: 1560px; margin: 0 auto; padding: 48px 40px 160px; positi
 }
 .reddit-feed-rail__logo {
   flex-shrink: 0;
-  width: 22px;
-  height: 22px;
+  width: 24px;
+  height: 24px;
   object-fit: contain;
-  object-position: left center;
-  border-radius: 6px;
-  background: #fff;
-  box-shadow: 0 0 0 1px color-mix(in srgb, #ff4500 12%, var(--border));
+  object-position: center;
+  border-radius: 5px;
+  background: #ff4500;
 }
 .x-feed-rail__head h3,
 .reddit-feed-rail__head h3 {

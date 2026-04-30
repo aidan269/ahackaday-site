@@ -243,8 +243,8 @@ export default async function Home({ searchParams }: HomeProps) {
                       <Image
                         src="/logos/reddit.png"
                         alt=""
-                        width={22}
-                        height={22}
+                        width={24}
+                        height={24}
                         className="reddit-feed-rail__logo"
                       />
                       <h3>Reddit pulse</h3>
