@@ -21,6 +21,11 @@ type GraphPoint = {
 type ZeroDayDashboard = {
   stats?: DashboardStat[];
   graphData?: GraphPoint[];
+  survivalData?: Array<{
+    year: number;
+    day: number;
+    pct_surviving: number;
+  }>;
 };
 
 function fmt(value: number, unit: string): string {
@@ -49,6 +54,7 @@ export default async function ZeroDayClockPage() {
   const data = await loadDashboard();
   const stats = data?.stats ?? [];
   const graphData = data?.graphData ?? [];
+  const survivalData = data?.survivalData ?? [];
   const pick = (key: string) => stats.find((s) => s.key === key);
 
   const headline = [
@@ -80,6 +86,40 @@ export default async function ZeroDayClockPage() {
     trendSeries.length > 1
       ? `${linePath} L ${xFor(trendSeries.length - 1, trendSeries.length)} ${zeroY} L ${xFor(0, trendSeries.length)} ${zeroY} Z`
       : "";
+  const survivalByYear = new Map<number, Array<{ day: number; pct: number }>>();
+  for (const row of survivalData) {
+    if (!Number.isFinite(row.year) || !Number.isFinite(row.day) || !Number.isFinite(row.pct_surviving)) continue;
+    const entries = survivalByYear.get(row.year) ?? [];
+    entries.push({ day: row.day, pct: row.pct_surviving });
+    survivalByYear.set(row.year, entries);
+  }
+  const survivalSeries = [...survivalByYear.entries()]
+    .sort((a, b) => a[0] - b[0])
+    .map(([year, points]) => ({
+      year,
+      points: points.sort((a, b) => a.day - b.day),
+    }))
+    .filter((s) => s.points.length > 1);
+  const maxDay = survivalSeries.reduce((mx, s) => Math.max(mx, s.points[s.points.length - 1]?.day ?? 0), 1);
+  const survivalChart = { width: 920, height: 330, padX: 56, padY: 28 };
+  const sx = (day: number) => survivalChart.padX + (day / maxDay) * (survivalChart.width - survivalChart.padX * 2);
+  const sy = (pct: number) =>
+    survivalChart.height - survivalChart.padY - (Math.max(0, Math.min(100, pct)) / 100) * (survivalChart.height - survivalChart.padY * 2);
+  const yearColors = new Map<number, string>();
+  const basePalette = [
+    "rgba(190,190,190,0.7)",
+    "rgba(170,170,170,0.72)",
+    "rgba(145,145,145,0.78)",
+    "#f59c6b",
+    "#f8733d",
+    "#ff4a33",
+    "#d10000",
+  ];
+  const allYears = survivalSeries.map((s) => s.year);
+  allYears.forEach((year, idx) => {
+    yearColors.set(year, basePalette[Math.min(idx, basePalette.length - 1)] ?? "#999");
+  });
+  const yearTicks = [0, 7, 14, 30, 60, 90].filter((d) => d <= maxDay);
 
   return (
     <main className="shell">
@@ -244,6 +284,120 @@ export default async function ZeroDayClockPage() {
                   0d baseline
                 </text>
               </svg>
+            )}
+          </div>
+
+          <div
+            style={{
+              border: "1px solid var(--border)",
+              borderRadius: 12,
+              background: "#fff",
+              padding: 18,
+              marginTop: 18,
+              boxShadow: "0 12px 28px rgba(16,16,16,0.06), 0 1px 2px rgba(16,16,16,0.06)",
+            }}
+          >
+            <h2 style={{ margin: "0 0 8px", fontSize: 22, letterSpacing: "-0.02em" }}>Exploit Survival Curve</h2>
+            <p style={{ margin: "0 0 10px", color: "var(--fg-2)", fontSize: 13 }}>
+              Of all CVEs that eventually get exploited, what percentage remain unexploited at each point after disclosure?
+            </p>
+            <div
+              style={{
+                borderRadius: 10,
+                padding: 12,
+                background: "rgba(0,0,0,0.03)",
+                marginBottom: 10,
+                color: "var(--fg-2)",
+                fontSize: 12,
+                lineHeight: 1.55,
+              }}
+            >
+              <strong style={{ color: "var(--fg)" }}>How to read:</strong> each line tracks one year&apos;s cohort. A steeper drop means
+              faster exploitation. When a line is near 50% by day 30, roughly half of eventually exploited CVEs were compromised in the
+              first month.
+            </div>
+            {survivalSeries.length < 2 ? (
+              <p style={{ margin: 0, fontSize: 12, color: "var(--fg-2)" }}>Not enough survival curve points yet.</p>
+            ) : (
+              <>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: "6px 14px", margin: "0 0 10px", fontSize: 11 }}>
+                  {survivalSeries.map((s) => (
+                    <span key={s.year} style={{ display: "inline-flex", alignItems: "center", gap: 6, color: "var(--fg-2)" }}>
+                      <i
+                        style={{
+                          width: 16,
+                          height: 2,
+                          background: yearColors.get(s.year),
+                          boxShadow: s.year >= 2025 ? "0 0 6px rgba(255,74,51,0.45)" : "none",
+                        }}
+                      />
+                      {s.year}
+                    </span>
+                  ))}
+                </div>
+                <svg
+                  className="zdc-chart"
+                  viewBox={`0 0 ${survivalChart.width} ${survivalChart.height}`}
+                  style={{ width: "100%", height: "auto", display: "block" }}
+                  aria-label="Exploit survival curve by year"
+                >
+                  <line x1={survivalChart.padX} x2={survivalChart.width - survivalChart.padX} y1={sy(0)} y2={sy(0)} stroke="var(--border)" />
+                  <line x1={survivalChart.padX} x2={survivalChart.width - survivalChart.padX} y1={sy(25)} y2={sy(25)} stroke="var(--border)" strokeDasharray="4 4" />
+                  <line x1={survivalChart.padX} x2={survivalChart.width - survivalChart.padX} y1={sy(50)} y2={sy(50)} stroke="var(--border)" strokeDasharray="4 4" />
+                  <line x1={survivalChart.padX} x2={survivalChart.width - survivalChart.padX} y1={sy(75)} y2={sy(75)} stroke="var(--border)" strokeDasharray="4 4" />
+                  <line x1={survivalChart.padX} x2={survivalChart.width - survivalChart.padX} y1={sy(100)} y2={sy(100)} stroke="var(--border)" strokeDasharray="4 4" />
+                  <line x1={survivalChart.padX} x2={survivalChart.padX} y1={survivalChart.padY} y2={sy(0)} stroke="var(--border)" />
+
+                  <line x1={sx(30)} x2={sx(30)} y1={survivalChart.padY} y2={sy(0)} stroke="rgba(0,0,0,0.12)" strokeDasharray="4 4" />
+                  <text x={sx(30)} y={survivalChart.padY + 12} textAnchor="middle" fontSize="10" fill="rgba(0,0,0,0.28)">
+                    30-day patch window
+                  </text>
+
+                  {survivalSeries.map((series) => {
+                    const d = series.points.map((p, idx) => `${idx === 0 ? "M" : "L"} ${sx(p.day)} ${sy(p.pct)}`).join(" ");
+                    const isHot = series.year >= 2025;
+                    return (
+                      <g key={series.year}>
+                        {isHot ? (
+                          <path
+                            d={d}
+                            fill="none"
+                            stroke={yearColors.get(series.year)}
+                            strokeWidth="6"
+                            opacity="0.22"
+                            filter="blur(1.8px)"
+                          />
+                        ) : null}
+                        <path
+                          d={d}
+                          fill="none"
+                          stroke={yearColors.get(series.year)}
+                          strokeWidth={isHot ? 3 : 2}
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      </g>
+                    );
+                  })}
+
+                  {[100, 75, 50, 25, 0].map((v) => (
+                    <text key={v} x={survivalChart.padX - 10} y={sy(v) + 3} textAnchor="end" fontSize="10" fill="var(--fg-2)">
+                      {v}%
+                    </text>
+                  ))}
+                  {yearTicks.map((d) => (
+                    <text key={d} x={sx(d)} y={survivalChart.height - 8} textAnchor="middle" fontSize="10" fill="var(--fg-2)">
+                      {d === 0 ? "0" : d === 7 ? "1w" : d === 14 ? "2w" : d === 30 ? "1m" : d === 60 ? "2m" : `${d}d`}
+                    </text>
+                  ))}
+                  <text x={survivalChart.padX - 36} y={(survivalChart.height + survivalChart.padY) / 2} fontSize="10" fill="var(--fg-2)" transform={`rotate(-90 ${survivalChart.padX - 36} ${(survivalChart.height + survivalChart.padY) / 2})`}>
+                    % still unexploited
+                  </text>
+                  <text x={survivalChart.width / 2} y={survivalChart.height - 2} textAnchor="middle" fontSize="10" fill="var(--fg-2)">
+                    Days after disclosure
+                  </text>
+                </svg>
+              </>
             )}
           </div>
         </>
