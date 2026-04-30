@@ -1,13 +1,13 @@
 ---
-description: Use mono branch for preview; main only when shipping to production
+description: Git push defaults for ahackaday-site
 alwaysApply: true
 ---
 
-# Git: preview vs production
+# Git: push targets
 
 For this repo (**`ahackaday-site`**):
 
-- **Default push target:** **`mono`** (Vercel preview deployments).
-- **Push to `main` only** when the user explicitly asks to deploy / ship to production.
+- **Default when the user says “push”:** push the **current branch** to `origin` (usually **`main`**). Do **not** automatically also push **`mono`** unless the user explicitly asks to update the preview branch.
+- Use **`mono`** only when the user wants preview-branch deploys or says to push `mono` / update preview.
 
-Workflow: work on `mono`, push `origin mono`. Merge **`mono` → `main`** when releasing.
+When releasing to production, they may still merge and push **`main`** as their normal flow.
