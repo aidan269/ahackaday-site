@@ -6,6 +6,7 @@ import { notFound } from "next/navigation";
 import { AskAI } from "@/components/ask-ai";
 import { SocialPlatformGraph } from "@/components/social-platform-graph";
 import { getPublicSiteUrl } from "@/lib/ecosystem";
+import type { SocialDataQuality } from "@/lib/incident-types";
 import {
   formatIncidentDate,
   getAllIncidents,
@@ -72,12 +73,6 @@ const SEV_COLOR = {
   low: "var(--sev-low)",
 } as const;
 
-function stableHash(input: string): number {
-  let hash = 7;
-  for (const ch of input) hash = (hash * 31 + ch.charCodeAt(0)) % 100_000;
-  return hash;
-}
-
 function deriveSocialDetailSignals(input: {
   slug: string;
   title: string;
@@ -88,36 +83,35 @@ function deriveSocialDetailSignals(input: {
   delta24hPct?: number;
   platformSplit?: { x: number; reddit: number; github: number };
   keywords?: string[];
+  socialDataQuality?: SocialDataQuality;
 }): { platformSplit: string; mentionsDelta: string; keywords: string[] } {
-  if (input.platformSplit && typeof input.delta24hPct === "number" && input.keywords?.length) {
-    const prefix = input.delta24hPct >= 0 ? "+" : "";
+  if (input.socialDataQuality === "live_measured" && input.platformSplit) {
+    const split = `X ${input.platformSplit.x}% · Reddit ${input.platformSplit.reddit}% · GitHub ${input.platformSplit.github}%`;
+    if (typeof input.delta24hPct === "number") {
+      const prefix = input.delta24hPct >= 0 ? "+" : "";
+      return {
+        platformSplit: split,
+        mentionsDelta: `${prefix}${input.delta24hPct}% vs prior snapshot`,
+        keywords: (input.keywords ?? []).slice(0, 4),
+      };
+    }
     return {
-      platformSplit: `X ${input.platformSplit.x}% · Reddit ${input.platformSplit.reddit}% · GitHub ${input.platformSplit.github}%`,
-      mentionsDelta: `${prefix}${input.delta24hPct}% vs yesterday`,
-      keywords: input.keywords.slice(0, 4),
+      platformSplit: split,
+      mentionsDelta: "n/a",
+      keywords: (input.keywords ?? []).slice(0, 4),
     };
   }
-  const seed = stableHash(`${input.slug} ${input.title} ${input.category}`);
-  const seedB = stableHash(`${input.summary} ${input.cve ?? ""}`);
-  const x = 45 + (seed % 31);
-  const reddit = 15 + (seedB % 20);
-  const github = Math.max(8, 100 - x - reddit);
-  const mentions = input.mentions24h ?? 300;
-  const signed = ((seedB % 23) - 11) + (mentions >= 700 ? 7 : mentions <= 220 ? -5 : 0);
-  const deltaPrefix = signed >= 0 ? "+" : "";
-  const mentionsDelta = `${deltaPrefix}${signed}% vs yesterday`;
-
-  const keywordPool = [input.category.replace(/-/g, " "), "vulnerability", "mitigation", "threat intel"];
-  if (input.cve) keywordPool.unshift(input.cve.toLowerCase());
-  if (/zero-day|0-day/i.test(`${input.title} ${input.summary}`)) keywordPool.unshift("zero-day");
-  if (/ransom/i.test(`${input.title} ${input.summary}`)) keywordPool.unshift("ransomware");
-  if (/identity|token|session|sso|mfa/i.test(`${input.title} ${input.summary}`)) keywordPool.unshift("identity");
-  const keywords = [...new Set(keywordPool)].slice(0, 3).map((k) => `#${k.replace(/\s+/g, "-")}`);
-
+  if (input.socialDataQuality === "live_zero") {
+    return {
+      platformSplit: "Last scan returned zero cross-platform mentions (splits not shown).",
+      mentionsDelta: "—",
+      keywords: (input.keywords ?? []).slice(0, 4),
+    };
+  }
   return {
-    platformSplit: `X ${x}% · Reddit ${reddit}% · GitHub ${github}%`,
-    mentionsDelta,
-    keywords,
+    platformSplit: "Live social scan not run yet — open the feed after the next /api/social/refresh.",
+    mentionsDelta: "—",
+    keywords: [],
   };
 }
 
@@ -133,13 +127,16 @@ export default async function IncidentPage({ params }: IncidentPageProps) {
   const sev = SEV_COLOR[incident.severity];
   const trackingId = incident.cve || incident.evidence.cves[0] || null;
   const sections = Array.isArray(incident.content) ? incident.content : [];
-  const socialMentionsLabel = typeof incident.socialMentions24h === "number"
-    ? String(incident.socialMentions24h)
-    : "n/a";
+  const socialMentionsLabel =
+    incident.socialDataQuality === "pending"
+      ? "pending scan"
+      : typeof incident.socialMentions24h === "number"
+        ? String(incident.socialMentions24h)
+        : "n/a";
   const trend = incident.socialTrend ?? "flat";
   const socialTrendLabel = `trend ${trend}`;
   const socialSummary = incident.socialSummary || "Signal collection in progress for this incident.";
-  const platformSplit = incident.socialPlatformSplit ?? { x: 47, reddit: 35, github: 18 };
+  const graphSplit = incident.socialDataQuality === "live_measured" ? incident.socialPlatformSplit : undefined;
   const graphSearchTerm = trackingId ?? incident.title;
   const socialDetails = deriveSocialDetailSignals({
     slug: incident.slug,
@@ -151,6 +148,7 @@ export default async function IncidentPage({ params }: IncidentPageProps) {
     delta24hPct: incident.socialDelta24hPct,
     platformSplit: incident.socialPlatformSplit,
     keywords: incident.socialKeywords,
+    socialDataQuality: incident.socialDataQuality,
   });
   const displayKeywords = socialDetails.keywords
     .map(normalizeKeywordForDisplay)
@@ -234,11 +232,13 @@ export default async function IncidentPage({ params }: IncidentPageProps) {
               <div className="detail__social-metric">
                 <span className="k">platform split</span>
                 <span className="v">{socialDetails.platformSplit}</span>
-                <SocialPlatformGraph
-                  totalMentions={incident.socialMentions24h ?? 0}
-                  split={platformSplit}
-                  searchTerm={graphSearchTerm}
-                />
+                {graphSplit ? (
+                  <SocialPlatformGraph
+                    totalMentions={incident.socialMentions24h ?? 0}
+                    split={graphSplit}
+                    searchTerm={graphSearchTerm}
+                  />
+                ) : null}
               </div>
               <div className="detail__social-metric">
                 <span className="k">keywords</span>

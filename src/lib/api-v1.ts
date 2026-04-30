@@ -37,6 +37,9 @@ export type ApiIncident = {
     github: number;
   };
   socialKeywords?: string[];
+  /** `live_measured` = refresh observed volume; `live_zero` = scanned, no volume; `pending` = no scan row. */
+  social_data_quality?: "live_measured" | "live_zero" | "pending";
+  social_metrics_updated_at?: string;
 };
 
 export type ApiIncidentDetail = ApiIncident & {
@@ -83,6 +86,8 @@ function toApiIncident(incident: Incident): ApiIncident {
     socialDelta24hPct: incident.socialDelta24hPct,
     socialPlatformSplit: incident.socialPlatformSplit,
     socialKeywords: incident.socialKeywords,
+    social_data_quality: incident.socialDataQuality,
+    social_metrics_updated_at: incident.socialMetricsUpdatedAt,
   };
 }
 

@@ -11,6 +11,7 @@ import type {
   IncidentEvidence,
   IncidentFrontmatter,
   IncidentType,
+  SocialDataQuality,
   SocialTrend,
   Severity,
 } from "./incident-types";
@@ -18,7 +19,7 @@ import { INCIDENT_TYPE_OPTIONS } from "./incident-types";
 import { decodeHtmlEntities, stripInvisibleUnicode } from "./html-entities";
 import { omitEditorialListingNoise } from "./editorial-listing-filter";
 
-export type { Incident, IncidentEvidence, IncidentFrontmatter, IncidentType, SocialTrend, Severity };
+export type { Incident, IncidentEvidence, IncidentFrontmatter, IncidentType, SocialDataQuality, SocialTrend, Severity };
 export { INCIDENT_TYPE_OPTIONS };
 export { formatIncidentDate } from "./format-incident-date";
 
@@ -52,6 +53,8 @@ type SupabaseSocialMetricRow = {
   social_delta_24h_pct: number | null;
   social_platform_split: unknown;
   social_keywords: string[] | null;
+  source: string | null;
+  updated_at: string | null;
   x_mentions_24h: number | null;
   x_unique_authors_24h: number | null;
   x_verified_mentions_24h: number | null;
@@ -297,6 +300,14 @@ function sanitizeArticleBody(body: string): string {
   return `${trimToCompleteSentence(head)}…`;
 }
 
+function classifySocialDataQuality(socialMetrics: SupabaseSocialMetricRow | undefined): SocialDataQuality {
+  if (!socialMetrics) return "pending";
+  const source = (socialMetrics.source ?? "").trim().toLowerCase();
+  if (source !== "github+reddit+x") return "pending";
+  const mentions = socialMetrics.social_mentions_24h ?? 0;
+  return mentions > 0 ? "live_measured" : "live_zero";
+}
+
 function mapDbRowToIncident(row: SupabaseIncidentRow, socialMetrics?: SupabaseSocialMetricRow): Incident {
   const cleanTitle = normalizeDisplayText(row.title);
   const rawSummaryFallback = normalizeDisplayText(
@@ -335,7 +346,10 @@ function mapDbRowToIncident(row: SupabaseIncidentRow, socialMetrics?: SupabaseSo
     category: incidentCategory,
     summary,
   });
-  const socialPlatformSplit = normalizeSocialPlatformSplit(socialMetrics?.social_platform_split);
+  const socialDataQuality = classifySocialDataQuality(socialMetrics);
+  const splitFromDb = normalizeSocialPlatformSplit(socialMetrics?.social_platform_split);
+  /** Only expose platform % when the refresh observed non-zero cross-platform volume (split is from APIs). */
+  const socialPlatformSplit = socialDataQuality === "live_measured" ? splitFromDb : undefined;
 
   return {
     slug: buildSlugFromDb(row),
@@ -358,33 +372,54 @@ function mapDbRowToIncident(row: SupabaseIncidentRow, socialMetrics?: SupabaseSo
     mitigationStatus: "Monitoring updates",
     sources: [row.source_url],
     content,
-    socialMentions24h: socialMetrics?.social_mentions_24h ?? socialPulse.socialMentions24h,
-    socialTrend: normalizeSocialTrend(socialMetrics?.social_trend) ?? socialPulse.socialTrend,
+    socialMentions24h:
+      socialDataQuality === "pending"
+        ? 0
+        : (socialMetrics?.social_mentions_24h ?? 0),
+    socialTrend:
+      socialDataQuality === "pending"
+        ? "flat"
+        : (normalizeSocialTrend(socialMetrics?.social_trend) ?? "flat"),
     socialSummary:
-      (typeof socialMetrics?.social_summary === "string"
-        ? normalizeDisplayText(socialMetrics.social_summary)
-        : undefined)
-      ?? socialPulse.socialSummary,
-    socialDelta24hPct: socialMetrics?.social_delta_24h_pct ?? undefined,
+      socialDataQuality === "pending"
+        ? "Social scan not run yet for this incident."
+        : (typeof socialMetrics?.social_summary === "string"
+          ? normalizeDisplayText(socialMetrics.social_summary)
+          : socialPulse.socialSummary),
+    socialDelta24hPct: socialDataQuality === "pending" ? undefined : socialMetrics?.social_delta_24h_pct ?? undefined,
     socialPlatformSplit,
-    socialKeywords: Array.isArray(socialMetrics?.social_keywords)
-      ? socialMetrics.social_keywords.map(normalizeDisplayText).filter(Boolean).slice(0, 5)
-      : undefined,
-    xMentions24h: socialMetrics?.x_mentions_24h ?? undefined,
-    xUniqueAuthors24h: socialMetrics?.x_unique_authors_24h ?? undefined,
-    xVerifiedMentions24h: socialMetrics?.x_verified_mentions_24h ?? undefined,
-    xRetweetSum24h: socialMetrics?.x_retweet_sum_24h ?? undefined,
-    xLikeSum24h: socialMetrics?.x_like_sum_24h ?? undefined,
-    xQuoteSum24h: socialMetrics?.x_quote_sum_24h ?? undefined,
-    xReplySum24h: socialMetrics?.x_reply_sum_24h ?? undefined,
-    xHeatScore: socialMetrics?.x_heat_score ?? undefined,
-    xHeatTrend: normalizeSocialTrend(socialMetrics?.x_heat_trend) ?? undefined,
-    xTopHashtags: Array.isArray(socialMetrics?.x_top_hashtags)
-      ? socialMetrics.x_top_hashtags.map(normalizeDisplayText).filter(Boolean).slice(0, 6)
-      : undefined,
-    xTopTerms: Array.isArray(socialMetrics?.x_top_terms)
-      ? socialMetrics.x_top_terms.map(normalizeDisplayText).filter(Boolean).slice(0, 6)
-      : undefined,
+    socialKeywords:
+      socialDataQuality === "pending"
+        ? undefined
+        : Array.isArray(socialMetrics?.social_keywords)
+          ? socialMetrics.social_keywords.map(normalizeDisplayText).filter(Boolean).slice(0, 5)
+          : undefined,
+    socialDataQuality,
+    socialMetricsUpdatedAt:
+      socialMetrics?.updated_at && typeof socialMetrics.updated_at === "string"
+        ? socialMetrics.updated_at
+        : undefined,
+    xMentions24h: socialDataQuality === "pending" ? undefined : socialMetrics?.x_mentions_24h ?? undefined,
+    xUniqueAuthors24h: socialDataQuality === "pending" ? undefined : socialMetrics?.x_unique_authors_24h ?? undefined,
+    xVerifiedMentions24h: socialDataQuality === "pending" ? undefined : socialMetrics?.x_verified_mentions_24h ?? undefined,
+    xRetweetSum24h: socialDataQuality === "pending" ? undefined : socialMetrics?.x_retweet_sum_24h ?? undefined,
+    xLikeSum24h: socialDataQuality === "pending" ? undefined : socialMetrics?.x_like_sum_24h ?? undefined,
+    xQuoteSum24h: socialDataQuality === "pending" ? undefined : socialMetrics?.x_quote_sum_24h ?? undefined,
+    xReplySum24h: socialDataQuality === "pending" ? undefined : socialMetrics?.x_reply_sum_24h ?? undefined,
+    xHeatScore: socialDataQuality === "pending" ? undefined : socialMetrics?.x_heat_score ?? undefined,
+    xHeatTrend: socialDataQuality === "pending" ? undefined : normalizeSocialTrend(socialMetrics?.x_heat_trend) ?? undefined,
+    xTopHashtags:
+      socialDataQuality === "pending"
+        ? undefined
+        : Array.isArray(socialMetrics?.x_top_hashtags)
+          ? socialMetrics.x_top_hashtags.map(normalizeDisplayText).filter(Boolean).slice(0, 6)
+          : undefined,
+    xTopTerms:
+      socialDataQuality === "pending"
+        ? undefined
+        : Array.isArray(socialMetrics?.x_top_terms)
+          ? socialMetrics.x_top_terms.map(normalizeDisplayText).filter(Boolean).slice(0, 6)
+          : undefined,
   };
 }
 
@@ -528,13 +563,6 @@ function getMarkdownIncidentBySlug(slug: string): Incident | null {
   const iocs = (data.iocs || []).map(normalizeDisplayText).filter(Boolean);
   const ambiguities = (data.ambiguities || []).map(normalizeDisplayText).filter(Boolean);
   const exploited = inferExploitedSignal(`${data.title} ${data.summary} ${parsed.content}`);
-  const socialPulse = deriveSocialPulse({
-    severity: data.severity,
-    exploited,
-    title: String(data.title || ""),
-    category: String(data.category || ""),
-    summary: String(data.summary || ""),
-  });
   return {
     ...data,
     title: normalizeDisplayText(String(data.title || "")),
@@ -553,16 +581,17 @@ function getMarkdownIncidentBySlug(slug: string): Incident | null {
     confidenceScore: typeof data.confidenceScore === "number" ? data.confidenceScore : 0.7,
     evidence: createEmptyEvidence(),
     exploited,
-    socialMentions24h: typeof data.socialMentions24h === "number" ? data.socialMentions24h : socialPulse.socialMentions24h,
-    socialTrend: normalizeSocialTrend(data.socialTrend) ?? socialPulse.socialTrend,
+    socialMentions24h: typeof data.socialMentions24h === "number" ? data.socialMentions24h : 0,
+    socialTrend: normalizeSocialTrend(data.socialTrend) ?? "flat",
     socialSummary:
       (typeof data.socialSummary === "string" ? normalizeDisplayText(data.socialSummary) : undefined)
-      ?? socialPulse.socialSummary,
+      ?? "Markdown preview: live social totals come from the production refresh pipeline.",
     socialDelta24hPct: typeof data.socialDelta24hPct === "number" ? data.socialDelta24hPct : undefined,
     socialPlatformSplit: normalizeSocialPlatformSplit(data.socialPlatformSplit),
     socialKeywords: Array.isArray(data.socialKeywords)
       ? data.socialKeywords.map(normalizeDisplayText).filter(Boolean).slice(0, 5)
       : undefined,
+    socialDataQuality: "pending",
   };
 }
 
@@ -595,6 +624,36 @@ function dedupeFingerprint(incident: Incident): string {
   return `${day}::${normalizeTitleFingerprint(incident.title)}::${evidenceTokens(incident)}`;
 }
 
+function socialQualityRank(q: SocialDataQuality | undefined): number {
+  if (q === "live_measured") return 3;
+  if (q === "live_zero") return 2;
+  return 1;
+}
+
+function pickSocialBlock(incident: Incident) {
+  return {
+    socialMentions24h: incident.socialMentions24h,
+    socialTrend: incident.socialTrend,
+    socialSummary: incident.socialSummary,
+    socialDelta24hPct: incident.socialDelta24hPct,
+    socialPlatformSplit: incident.socialPlatformSplit,
+    socialKeywords: incident.socialKeywords,
+    socialDataQuality: incident.socialDataQuality,
+    socialMetricsUpdatedAt: incident.socialMetricsUpdatedAt,
+    xMentions24h: incident.xMentions24h,
+    xUniqueAuthors24h: incident.xUniqueAuthors24h,
+    xVerifiedMentions24h: incident.xVerifiedMentions24h,
+    xRetweetSum24h: incident.xRetweetSum24h,
+    xLikeSum24h: incident.xLikeSum24h,
+    xQuoteSum24h: incident.xQuoteSum24h,
+    xReplySum24h: incident.xReplySum24h,
+    xHeatScore: incident.xHeatScore,
+    xHeatTrend: incident.xHeatTrend,
+    xTopHashtags: incident.xTopHashtags,
+    xTopTerms: incident.xTopTerms,
+  };
+}
+
 function mergeIncident(existing: Incident, incoming: Incident): Incident {
   const severity = severityRank[incoming.severity] > severityRank[existing.severity] ? incoming.severity : existing.severity;
   const confidenceScore = Math.max(existing.confidenceScore, incoming.confidenceScore);
@@ -602,6 +661,10 @@ function mergeIncident(existing: Incident, incoming: Incident): Incident {
   const iocs = Array.from(new Set([...existing.iocs, ...incoming.iocs]));
   const ambiguities = Array.from(new Set([...existing.ambiguities, ...incoming.ambiguities]));
   const actionItems = Array.from(new Set([...existing.actionItems, ...incoming.actionItems])).slice(0, 6);
+  const rIn = socialQualityRank(incoming.socialDataQuality);
+  const rEx = socialQualityRank(existing.socialDataQuality);
+  const socialBlock =
+    rIn > rEx ? pickSocialBlock(incoming) : rEx > rIn ? pickSocialBlock(existing) : pickSocialBlock(existing);
   return {
     ...existing,
     severity,
@@ -621,6 +684,7 @@ function mergeIncident(existing: Incident, incoming: Incident): Incident {
     whyCare: existing.confidenceScore >= incoming.confidenceScore ? existing.whyCare : incoming.whyCare,
     realWorldImpact:
       existing.confidenceScore >= incoming.confidenceScore ? existing.realWorldImpact : incoming.realWorldImpact,
+    ...socialBlock,
   };
 }
 
@@ -644,7 +708,7 @@ async function getAllSupabaseIncidents(): Promise<Incident[]> {
   if (incidentIds.length > 0) {
     const { data: socialRows, error: socialError } = await client
       .from("incident_social_metrics")
-      .select("incident_id,social_mentions_24h,social_trend,social_summary,social_delta_24h_pct,social_platform_split,social_keywords,x_mentions_24h,x_unique_authors_24h,x_verified_mentions_24h,x_retweet_sum_24h,x_like_sum_24h,x_quote_sum_24h,x_reply_sum_24h,x_heat_score,x_heat_trend,x_top_hashtags,x_top_terms")
+      .select("incident_id,social_mentions_24h,social_trend,social_summary,social_delta_24h_pct,social_platform_split,social_keywords,source,updated_at,x_mentions_24h,x_unique_authors_24h,x_verified_mentions_24h,x_retweet_sum_24h,x_like_sum_24h,x_quote_sum_24h,x_reply_sum_24h,x_heat_score,x_heat_trend,x_top_hashtags,x_top_terms")
       .in("incident_id", incidentIds);
     if (socialError) {
       console.error("Failed loading social metrics from Supabase", socialError);

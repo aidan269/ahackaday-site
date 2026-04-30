@@ -1,6 +1,15 @@
 export type Severity = "critical" | "high" | "medium" | "low";
 export type SocialTrend = "up" | "flat" | "down";
 
+/** Provenance for merged social metrics (Supabase + /api/social/refresh). */
+export type SocialDataQuality =
+  /** Refresh ran with total cross-platform mentions above zero — platform split is from observed API counts. */
+  | "live_measured"
+  /** Refresh ran but total mentions were 0 — do not treat platform % as measured. */
+  | "live_zero"
+  /** No refresh row yet, or row predates unified scanner — do not invent totals or splits. */
+  | "pending";
+
 export type IncidentFrontmatter = {
   title: string;
   date: string;
@@ -39,6 +48,9 @@ export type IncidentFrontmatter = {
   xHeatTrend?: SocialTrend;
   xTopHashtags?: string[];
   xTopTerms?: string[];
+  socialDataQuality?: SocialDataQuality;
+  /** ISO timestamp from `incident_social_metrics.updated_at` when a row exists. */
+  socialMetricsUpdatedAt?: string;
 };
 
 export type IncidentEvidence = {

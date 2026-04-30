@@ -3,7 +3,7 @@ import { FeedControls } from "@/components/feed-controls";
 import { IncidentItem, IncidentTimelineItem } from "@/components/incident-item";
 import { QuietDayEmpty } from "@/components/quiet-day-empty";
 import { getAllIncidents, type IncidentType, type Severity } from "@/lib/incidents";
-import { toPlatformSplit } from "@/lib/platform-split";
+import type { SocialDataQuality } from "@/lib/incident-types";
 import Image from "next/image";
 import Link from "next/link";
 
@@ -22,42 +22,88 @@ function readParam(v: string | string[] | undefined, fallback: string): string {
 
 type IncidentRow = Awaited<ReturnType<typeof getAllIncidents>>[number];
 
+const SEVERITY_ORDER: Record<Severity, number> = {
+  critical: 4,
+  high: 3,
+  medium: 2,
+  low: 1,
+};
+
 function getPlatformMentions(incident: IncidentRow, platform: "x" | "reddit" | "github"): number {
+  if (incident.socialDataQuality !== "live_measured") return 0;
   if (typeof incident.socialMentions24h !== "number") return 0;
   const share = incident.socialPlatformSplit?.[platform];
   if (typeof share !== "number" || share <= 0) return 0;
   return Math.round((incident.socialMentions24h * share) / 100);
 }
 
-/** When Supabase has not stored a split yet, match social-refresh’s synthetic split so rails still rank. */
-function effectivePlatformSplit(incident: IncidentRow) {
-  if (incident.socialPlatformSplit) return incident.socialPlatformSplit;
-  const m = typeof incident.socialMentions24h === "number" ? incident.socialMentions24h : 0;
-  return toPlatformSplit(Math.max(0, m), incident.slug);
-}
-
 function redditMentionsSortScore(incident: IncidentRow): number {
-  const total = typeof incident.socialMentions24h === "number" ? incident.socialMentions24h : 0;
-  const { reddit: share } = effectivePlatformSplit(incident);
+  if (incident.socialDataQuality !== "live_measured") return 0;
+  const total = incident.socialMentions24h ?? 0;
+  const share = incident.socialPlatformSplit?.reddit ?? 0;
   return (total * share) / 100;
 }
 
 function estimatedRedditMentions(incident: IncidentRow): number {
-  const total = typeof incident.socialMentions24h === "number" ? incident.socialMentions24h : 0;
-  const { reddit: share } = effectivePlatformSplit(incident);
+  if (incident.socialDataQuality !== "live_measured") return 0;
+  const total = incident.socialMentions24h ?? 0;
+  const share = incident.socialPlatformSplit?.reddit ?? 0;
   return Math.max(0, Math.round((total * share) / 100));
 }
 
 function githubMentionsSortScore(incident: IncidentRow): number {
-  const total = typeof incident.socialMentions24h === "number" ? incident.socialMentions24h : 0;
-  const { github: share } = effectivePlatformSplit(incident);
+  if (incident.socialDataQuality !== "live_measured") return 0;
+  const total = incident.socialMentions24h ?? 0;
+  const share = incident.socialPlatformSplit?.github ?? 0;
   return (total * share) / 100;
 }
 
 function estimatedGithubMentions(incident: IncidentRow): number {
-  const total = typeof incident.socialMentions24h === "number" ? incident.socialMentions24h : 0;
-  const { github: share } = effectivePlatformSplit(incident);
+  if (incident.socialDataQuality !== "live_measured") return 0;
+  const total = incident.socialMentions24h ?? 0;
+  const share = incident.socialPlatformSplit?.github ?? 0;
   return Math.max(0, Math.round((total * share) / 100));
+}
+
+function redditRailShareLabel(incident: IncidentRow): string {
+  const q = incident.socialDataQuality as SocialDataQuality | undefined;
+  if (q === "live_measured" && incident.socialPlatformSplit) return `${incident.socialPlatformSplit.reddit}% on reddit`;
+  if (q === "live_zero") return "scanned · 0 vol";
+  return "pending scan";
+}
+
+function githubRailShareLabel(incident: IncidentRow): string {
+  const q = incident.socialDataQuality as SocialDataQuality | undefined;
+  if (q === "live_measured" && incident.socialPlatformSplit) return `${incident.socialPlatformSplit.github}% on github`;
+  if (q === "live_zero") return "scanned · 0 vol";
+  return "pending scan";
+}
+
+function redditMentionsLine(incident: IncidentRow): string {
+  const q = incident.socialDataQuality as SocialDataQuality | undefined;
+  if (q === "pending") return "pending scan";
+  if (q === "live_zero") return "0 est. mentions";
+  const n = estimatedRedditMentions(incident);
+  return n > 0 ? `${formatCompactNumber(n)} est. mentions` : "<1 est. mentions";
+}
+
+function githubMentionsLine(incident: IncidentRow): string {
+  const q = incident.socialDataQuality as SocialDataQuality | undefined;
+  if (q === "pending") return "pending scan";
+  if (q === "live_zero") return "0 est. mentions";
+  const n = estimatedGithubMentions(incident);
+  return n > 0 ? `${formatCompactNumber(n)} est. mentions` : "<1 est. mentions";
+}
+
+function total24hLine(incident: IncidentRow): string {
+  if (incident.socialDataQuality === "pending") return "—";
+  return `${formatCompactNumber(incident.socialMentions24h ?? 0)} total 24h`;
+}
+
+function socialQualityRank(i: IncidentRow): number {
+  if (i.socialDataQuality === "live_measured") return 3;
+  if (i.socialDataQuality === "live_zero") return 2;
+  return 1;
 }
 
 function formatCompactNumber(value: number): string {
@@ -135,8 +181,8 @@ export default async function Home({ searchParams }: HomeProps) {
           .slice(0, 12)
       : [...filtered]
           .sort((a, b) => {
-            const xdiff = effectivePlatformSplit(b).x - effectivePlatformSplit(a).x;
-            if (xdiff !== 0) return xdiff;
+            const sev = SEVERITY_ORDER[b.severity] - SEVERITY_ORDER[a.severity];
+            if (sev !== 0) return sev;
             return parseIsoDay(b.date).localeCompare(parseIsoDay(a.date));
           })
           .slice(0, 12);
@@ -149,8 +195,8 @@ export default async function Home({ searchParams }: HomeProps) {
           .sort((a, b) => {
             const s = redditMentionsSortScore(b) - redditMentionsSortScore(a);
             if (s !== 0) return s;
-            const p = effectivePlatformSplit(b).reddit - effectivePlatformSplit(a).reddit;
-            if (p !== 0) return p;
+            const q = (socialQualityRank(b) - socialQualityRank(a));
+            if (q !== 0) return q;
             return parseIsoDay(b.date).localeCompare(parseIsoDay(a.date));
           })
           .slice(0, 12);
@@ -162,8 +208,8 @@ export default async function Home({ searchParams }: HomeProps) {
           .sort((a, b) => {
             const s = githubMentionsSortScore(b) - githubMentionsSortScore(a);
             if (s !== 0) return s;
-            const p = effectivePlatformSplit(b).github - effectivePlatformSplit(a).github;
-            if (p !== 0) return p;
+            const q = socialQualityRank(b) - socialQualityRank(a);
+            if (q !== 0) return q;
             return parseIsoDay(b.date).localeCompare(parseIsoDay(a.date));
           })
           .slice(0, 12);
@@ -284,13 +330,11 @@ export default async function Home({ searchParams }: HomeProps) {
                       />
                       <h3>Reddit pulse</h3>
                     </div>
-                    <span>r/all search · day</span>
+                    <span>measured after refresh</span>
                   </div>
                   <div className="reddit-feed-rail__list">
                     {redditFeed.map((incident) => {
                       const trend = incident.socialTrend ?? "flat";
-                      const split = effectivePlatformSplit(incident);
-                      const redditMentions = estimatedRedditMentions(incident);
                       const keywords = (incident.socialKeywords ?? []).slice(0, 2);
                       return (
                         <Link
@@ -300,16 +344,12 @@ export default async function Home({ searchParams }: HomeProps) {
                         >
                           <div className="reddit-feed-rail__row">
                             <span className={`reddit-feed-rail__trend is-${trend}`}>{trend}</span>
-                            <span className="reddit-feed-rail__share">{split.reddit}% on reddit</span>
+                            <span className="reddit-feed-rail__share">{redditRailShareLabel(incident)}</span>
                           </div>
                           <p className="reddit-feed-rail__title">{incident.title}</p>
                           <div className="reddit-feed-rail__meta">
-                            <span>
-                              {redditMentions > 0
-                                ? `${formatCompactNumber(redditMentions)} est. mentions`
-                                : "<1 est. mentions"}
-                            </span>
-                            <span>{formatCompactNumber(incident.socialMentions24h ?? 0)} total 24h</span>
+                            <span>{redditMentionsLine(incident)}</span>
+                            <span>{total24hLine(incident)}</span>
                           </div>
                           {keywords.length > 0 && (
                             <div className="reddit-feed-rail__tags">
@@ -335,13 +375,11 @@ export default async function Home({ searchParams }: HomeProps) {
                       />
                       <h3>GitHub pulse</h3>
                     </div>
-                    <span>issues search</span>
+                    <span>measured after refresh</span>
                   </div>
                   <div className="github-feed-rail__list">
                     {githubFeed.map((incident) => {
                       const trend = incident.socialTrend ?? "flat";
-                      const split = effectivePlatformSplit(incident);
-                      const githubMentions = estimatedGithubMentions(incident);
                       const keywords = (incident.socialKeywords ?? []).slice(0, 2);
                       return (
                         <Link
@@ -351,16 +389,12 @@ export default async function Home({ searchParams }: HomeProps) {
                         >
                           <div className="github-feed-rail__row">
                             <span className={`github-feed-rail__trend is-${trend}`}>{trend}</span>
-                            <span className="github-feed-rail__share">{split.github}% on github</span>
+                            <span className="github-feed-rail__share">{githubRailShareLabel(incident)}</span>
                           </div>
                           <p className="github-feed-rail__title">{incident.title}</p>
                           <div className="github-feed-rail__meta">
-                            <span>
-                              {githubMentions > 0
-                                ? `${formatCompactNumber(githubMentions)} est. mentions`
-                                : "<1 est. mentions"}
-                            </span>
-                            <span>{formatCompactNumber(incident.socialMentions24h ?? 0)} total 24h</span>
+                            <span>{githubMentionsLine(incident)}</span>
+                            <span>{total24hLine(incident)}</span>
                           </div>
                           {keywords.length > 0 && (
                             <div className="github-feed-rail__tags">
