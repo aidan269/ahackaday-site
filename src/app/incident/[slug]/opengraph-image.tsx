@@ -84,7 +84,7 @@ export default async function Image({ params }: Props) {
               maxWidth: "92%",
             }}
           >
-            {incident ? incident.summary : "Major cybersecurity incidents with broad implications."}
+            {incident ? incident.summary : "The next frontier in cyber crime social analytics."}
           </div>
         </div>
 

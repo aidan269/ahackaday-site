@@ -63,7 +63,7 @@ export default function Image() {
               maxWidth: "92%",
             }}
           >
-            Major cybersecurity incidents with broad implications.
+            The next frontier in cyber crime social analytics.
           </div>
         </div>
         <div

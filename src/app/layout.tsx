@@ -12,13 +12,13 @@ const siteUrl = getPublicSiteUrl();
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: "AHackaday",
-  description: "Major cybersecurity incidents with broad implications.",
+  description: "The next frontier in cyber crime social analytics.",
   alternates: {
     canonical: "/",
   },
   openGraph: {
     title: "AHackaday",
-    description: "Major cybersecurity incidents with broad implications.",
+    description: "The next frontier in cyber crime social analytics.",
     siteName: "AHackaday",
     type: "website",
     url: "/",
@@ -34,7 +34,7 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: "AHackaday",
-    description: "Major cybersecurity incidents with broad implications.",
+    description: "The next frontier in cyber crime social analytics.",
     images: ["/twitter-image"],
   },
 };
