@@ -3,6 +3,7 @@ import { FeedControls } from "@/components/feed-controls";
 import { IncidentItem, IncidentTimelineItem } from "@/components/incident-item";
 import { QuietDayEmpty } from "@/components/quiet-day-empty";
 import { getAllIncidents, type IncidentType, type Severity } from "@/lib/incidents";
+import Image from "next/image";
 import Link from "next/link";
 
 /** Refresh feed periodically (Supabase / markdown) so fixes and new rows surface without only redeploying. */
@@ -98,6 +99,13 @@ export default async function Home({ searchParams }: HomeProps) {
     })
     .slice(0, 12);
 
+  const redditFeed = [...filtered]
+    .map((incident) => ({ incident, redditMentions: getPlatformMentions(incident, "reddit") }))
+    .filter(({ redditMentions }) => redditMentions > 0)
+    .sort((a, b) => b.redditMentions - a.redditMentions)
+    .slice(0, 12)
+    .map(({ incident }) => incident);
+
   return (
     <main className="shell">
       <div className="page-head">
@@ -160,42 +168,106 @@ export default async function Home({ searchParams }: HomeProps) {
               <div className="feed--card">
                 {filtered.map((i, idx) => <IncidentItem key={i.slug} incident={i} index={idx} />)}
               </div>
-              <aside className="x-feed-rail" aria-label="X incident feed">
-                <div className="x-feed-rail__head">
-                  <h3>X incident feed</h3>
-                  <span>live signal</span>
-                </div>
-                {xFeed.length === 0 ? (
-                  <p className="x-feed-rail__empty">No high-confidence X activity yet for this filter window.</p>
-                ) : (
-                  <div className="x-feed-rail__list">
-                    {xFeed.map((incident) => {
-                      const trend = incident.xHeatTrend ?? "flat";
-                      const hashtags = (incident.xTopHashtags ?? []).slice(0, 2);
-                      return (
-                        <Link key={incident.slug} href={`/incident/${incident.slug}`} className="x-feed-rail__item">
-                          <div className="x-feed-rail__row">
-                            <span className={`x-feed-rail__trend is-${trend}`}>{trend}</span>
-                            <span className="x-feed-rail__heat">heat {incident.xHeatScore ?? 0}</span>
-                          </div>
-                          <p className="x-feed-rail__title">{incident.title}</p>
-                          <div className="x-feed-rail__meta">
-                            <span>{formatCompactNumber(incident.xMentions24h ?? 0)} mentions</span>
-                            <span>{formatCompactNumber(incident.xUniqueAuthors24h ?? 0)} authors</span>
-                          </div>
-                          {hashtags.length > 0 && (
-                            <div className="x-feed-rail__tags">
-                              {hashtags.map((tag) => (
-                                <span key={`${incident.slug}-${tag}`}>#{tag.replace(/^#/, "")}</span>
-                              ))}
-                            </div>
-                          )}
-                        </Link>
-                      );
-                    })}
+              <div className="feed-rails">
+                <aside className="x-feed-rail" aria-label="X incident feed">
+                  <div className="x-feed-rail__head">
+                    <div className="x-feed-rail__brand">
+                      <Image
+                        src="/logos/x.png"
+                        alt=""
+                        width={20}
+                        height={20}
+                        className="x-feed-rail__logo"
+                      />
+                      <h3>X incident feed</h3>
+                    </div>
+                    <span>live signal</span>
                   </div>
-                )}
-              </aside>
+                  {xFeed.length === 0 ? (
+                    <p className="x-feed-rail__empty">No high-confidence X activity yet for this filter window.</p>
+                  ) : (
+                    <div className="x-feed-rail__list">
+                      {xFeed.map((incident) => {
+                        const trend = incident.xHeatTrend ?? "flat";
+                        const hashtags = (incident.xTopHashtags ?? []).slice(0, 2);
+                        return (
+                          <Link key={incident.slug} href={`/incident/${incident.slug}`} className="x-feed-rail__item">
+                            <div className="x-feed-rail__row">
+                              <span className={`x-feed-rail__trend is-${trend}`}>{trend}</span>
+                              <span className="x-feed-rail__heat">heat {incident.xHeatScore ?? 0}</span>
+                            </div>
+                            <p className="x-feed-rail__title">{incident.title}</p>
+                            <div className="x-feed-rail__meta">
+                              <span>{formatCompactNumber(incident.xMentions24h ?? 0)} mentions</span>
+                              <span>{formatCompactNumber(incident.xUniqueAuthors24h ?? 0)} authors</span>
+                            </div>
+                            {hashtags.length > 0 && (
+                              <div className="x-feed-rail__tags">
+                                {hashtags.map((tag) => (
+                                  <span key={`${incident.slug}-${tag}`}>#{tag.replace(/^#/, "")}</span>
+                                ))}
+                              </div>
+                            )}
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  )}
+                </aside>
+                <aside className="reddit-feed-rail" aria-label="Reddit discussion pulse">
+                  <div className="reddit-feed-rail__head">
+                    <div className="reddit-feed-rail__brand">
+                      <Image
+                        src="/logos/reddit.png"
+                        alt=""
+                        width={20}
+                        height={20}
+                        className="reddit-feed-rail__logo"
+                      />
+                      <h3>Reddit pulse</h3>
+                    </div>
+                    <span>r/all search · day</span>
+                  </div>
+                  {redditFeed.length === 0 ? (
+                    <p className="reddit-feed-rail__empty">
+                      No Reddit-weighted discussion for this filter window yet.
+                    </p>
+                  ) : (
+                    <div className="reddit-feed-rail__list">
+                      {redditFeed.map((incident) => {
+                        const trend = incident.socialTrend ?? "flat";
+                        const redditMentions = getPlatformMentions(incident, "reddit");
+                        const share = incident.socialPlatformSplit?.reddit ?? 0;
+                        const keywords = (incident.socialKeywords ?? []).slice(0, 2);
+                        return (
+                          <Link
+                            key={`reddit-${incident.slug}`}
+                            href={`/incident/${incident.slug}`}
+                            className="reddit-feed-rail__item"
+                          >
+                            <div className="reddit-feed-rail__row">
+                              <span className={`reddit-feed-rail__trend is-${trend}`}>{trend}</span>
+                              <span className="reddit-feed-rail__share">{share}% on reddit</span>
+                            </div>
+                            <p className="reddit-feed-rail__title">{incident.title}</p>
+                            <div className="reddit-feed-rail__meta">
+                              <span>{formatCompactNumber(redditMentions)} est. mentions</span>
+                              <span>{formatCompactNumber(incident.socialMentions24h ?? 0)} total 24h</span>
+                            </div>
+                            {keywords.length > 0 && (
+                              <div className="reddit-feed-rail__tags">
+                                {keywords.map((kw) => (
+                                  <span key={`${incident.slug}-r-${kw}`}>{kw}</span>
+                                ))}
+                              </div>
+                            )}
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  )}
+                </aside>
+              </div>
             </div>
           )}
         </>
