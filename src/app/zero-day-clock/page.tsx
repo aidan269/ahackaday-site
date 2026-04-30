@@ -1,5 +1,12 @@
 import Link from "next/link";
 
+import {
+  getGraceOrigin,
+  getPublicSiteUrl,
+  graceAvatarUrl,
+  graceDeepLink,
+} from "@/lib/ecosystem";
+
 export const revalidate = 900;
 
 type DashboardStat = {
@@ -120,6 +127,10 @@ export default async function ZeroDayClockPage() {
     yearColors.set(year, basePalette[Math.min(idx, basePalette.length - 1)] ?? "#999");
   });
   const yearTicks = [0, 7, 14, 30, 60, 90].filter((d) => d <= maxDay);
+  const graceOrigin = getGraceOrigin();
+  const graceZeroDayHref = graceOrigin
+    ? graceDeepLink(new URL("/zero-day-clock", getPublicSiteUrl()).toString())
+    : "";
 
   return (
     <main className="shell">
@@ -141,6 +152,18 @@ export default async function ZeroDayClockPage() {
           <span className="dot">·</span>
           <Link href="/">back to feed</Link>
         </span>
+        {graceZeroDayHref ? (
+          <a
+            href={graceZeroDayHref}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="open-in-grace"
+            title="Open in Grace"
+            aria-label="Open in Grace"
+          >
+            <img className="open-in-grace__icon" src={graceAvatarUrl()} alt="" width={22} height={22} decoding="async" />
+          </a>
+        ) : null}
       </div>
 
       {!data ? (

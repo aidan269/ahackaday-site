@@ -3,6 +3,12 @@ import type { CSSProperties } from "react";
 
 import { CalendarDayActions } from "@/components/calendar-day-actions";
 import {
+  getGraceOrigin,
+  getPublicSiteUrl,
+  graceAvatarUrl,
+  graceDeepLink,
+} from "@/lib/ecosystem";
+import {
   getAllIncidents,
   type Incident,
   type IncidentType,
@@ -104,6 +110,17 @@ export default async function CalendarPage({ searchParams }: CalendarPageProps) 
   const nextMonth = new Date(year, monthNumber, 1);
   const markedDays = Array.from(byDay.keys()).filter((k) => k.startsWith(monthParam)).length;
   const todayKey = dayKeyLocal(now);
+  const graceOrigin = getGraceOrigin();
+  const currentCalendarPath = buildCalendarHref({
+    month: monthParam,
+    day: selectedDay,
+    severity: severityFilter,
+    type: typeFilter,
+    exploited: exploitedOnly,
+  });
+  const graceCalendarHref = graceOrigin
+    ? graceDeepLink(new URL(currentCalendarPath, getPublicSiteUrl()).toString())
+    : "";
 
   return (
     <main className="shell">
@@ -132,6 +149,21 @@ export default async function CalendarPage({ searchParams }: CalendarPageProps) 
           </div>
         </div>
       </div>
+      {graceCalendarHref ? (
+        <div className="feed-meta" style={{ marginBottom: 10 }}>
+          <span>launch current calendar context in Grace</span>
+          <a
+            href={graceCalendarHref}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="open-in-grace"
+            title="Open in Grace"
+            aria-label="Open in Grace"
+          >
+            <img className="open-in-grace__icon" src={graceAvatarUrl()} alt="" width={22} height={22} decoding="async" />
+          </a>
+        </div>
+      ) : null}
 
       <form className="cal-filters" method="get">
         <input type="hidden" name="month" value={monthParam} />
@@ -280,7 +312,7 @@ export default async function CalendarPage({ searchParams }: CalendarPageProps) 
           ) : (
             selectedIncidents.map((i) => (
               <Link key={i.slug} href={`/incident/${i.slug}`} className="cal-side__item">
-                <span className="sev-chip" style={{ ["--sev" as string]: SEV_COLOR[i.severity] } as React.CSSProperties}>
+                <span className="sev-chip" style={{ ["--sev" as string]: SEV_COLOR[i.severity] } as CSSProperties}>
                   {i.severity}
                 </span>
                 <div className="t">{i.title}</div>
