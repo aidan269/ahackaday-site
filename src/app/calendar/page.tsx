@@ -1,8 +1,11 @@
 import Link from "next/link";
+import type { CSSProperties } from "react";
 
+import { CalendarDayActions } from "@/components/calendar-day-actions";
 import {
   getAllIncidents,
   type Incident,
+  type IncidentType,
   type Severity,
 } from "@/lib/incidents";
 
@@ -36,9 +39,32 @@ function parseLocal(iso: string) {
   return new Date(y, m - 1, d);
 }
 
+function boolParam(v: string | undefined): boolean {
+  if (!v) return false;
+  const n = v.trim().toLowerCase();
+  return n === "1" || n === "true" || n === "yes";
+}
+
+function buildCalendarHref(input: {
+  month: string;
+  day?: string;
+  severity?: string;
+  type?: string;
+  exploited?: boolean;
+}): string {
+  const p = new URLSearchParams();
+  p.set("month", input.month);
+  if (input.day) p.set("day", input.day);
+  if (input.severity && input.severity !== "all") p.set("severity", input.severity);
+  if (input.type && input.type !== "all") p.set("type", input.type);
+  if (input.exploited) p.set("exploited", "1");
+  const qs = p.toString();
+  return qs ? `/calendar?${qs}` : "/calendar";
+}
+
 export default async function CalendarPage({ searchParams }: CalendarPageProps) {
   const params = await searchParams;
-  const incidents = await getAllIncidents();
+  const all = await getAllIncidents();
   const now = new Date();
 
   const monthParam = readParam(params.month) ?? toMonthKey(now);
@@ -47,6 +73,16 @@ export default async function CalendarPage({ searchParams }: CalendarPageProps) 
   const monthNumber = Number.parseInt(monthText ?? String(now.getMonth() + 1), 10);
   const currentMonth = new Date(year, monthNumber - 1, 1);
   const selectedDay = readParam(params.day);
+  const severityFilter = (readParam(params.severity) ?? "all") as "all" | Severity;
+  const typeFilter = (readParam(params.type) ?? "all") as "all" | IncidentType;
+  const exploitedOnly = boolParam(readParam(params.exploited));
+
+  const incidents = all.filter((incident) => {
+    if (severityFilter !== "all" && incident.severity !== severityFilter) return false;
+    if (typeFilter !== "all" && incident.category !== typeFilter) return false;
+    if (exploitedOnly && !incident.exploited) return false;
+    return true;
+  });
 
   const first = new Date(year, monthNumber - 1, 1);
   const grid = Array.from({ length: 42 }, (_, idx) => {
@@ -97,12 +133,77 @@ export default async function CalendarPage({ searchParams }: CalendarPageProps) 
         </div>
       </div>
 
+      <form className="cal-filters" method="get">
+        <input type="hidden" name="month" value={monthParam} />
+        <div className="cal-filter">
+          <label htmlFor="cal-severity">severity</label>
+          <select id="cal-severity" name="severity" defaultValue={severityFilter}>
+            <option value="all">all</option>
+            <option value="critical">critical</option>
+            <option value="high">high</option>
+            <option value="medium">medium</option>
+            <option value="low">low</option>
+          </select>
+        </div>
+        <div className="cal-filter">
+          <label htmlFor="cal-type">type</label>
+          <select id="cal-type" name="type" defaultValue={typeFilter}>
+            <option value="all">all</option>
+            <option value="zero-day">zero-day</option>
+            <option value="supply-chain">supply-chain</option>
+            <option value="breach">breach</option>
+            <option value="ransomware">ransomware</option>
+            <option value="identity">identity</option>
+            <option value="cloud">cloud</option>
+            <option value="web">web</option>
+            <option value="email">email</option>
+            <option value="critical-infrastructure">critical infrastructure</option>
+            <option value="exploitation">exploitation</option>
+            <option value="consumer-security">consumer security</option>
+            <option value="other">other</option>
+          </select>
+        </div>
+        <label className="cal-filter-check">
+          <input type="checkbox" name="exploited" value="1" defaultChecked={exploitedOnly} />
+          exploited only
+        </label>
+        <button type="submit" className="cal-filters__apply">apply</button>
+      </form>
+
+      <div className="cal-legend" aria-label="Calendar severity legend">
+        <span className="cal-legend__item"><i style={{ ["--sev" as string]: "var(--sev-critical)" } as CSSProperties} />critical</span>
+        <span className="cal-legend__item"><i style={{ ["--sev" as string]: "var(--sev-high)" } as CSSProperties} />high</span>
+        <span className="cal-legend__item"><i style={{ ["--sev" as string]: "var(--sev-medium)" } as CSSProperties} />medium</span>
+        <span className="cal-legend__item"><i style={{ ["--sev" as string]: "var(--sev-low)" } as CSSProperties} />low</span>
+        <span className="cal-legend__item"><i className="is-exploited" />exploited-in-the-wild</span>
+      </div>
+
       <div className="cal-nav">
-        <Link href={`/calendar?month=${toMonthKey(prevMonth)}`} className="cal-nav__btn">◀ prev</Link>
+        <Link
+          href={buildCalendarHref({
+            month: toMonthKey(prevMonth),
+            severity: severityFilter,
+            type: typeFilter,
+            exploited: exploitedOnly,
+          })}
+          className="cal-nav__btn"
+        >
+          ◀ prev
+        </Link>
         <span className="cal-nav__label">
           {currentMonth.toLocaleDateString("en-US", { month: "long", year: "numeric" })}
         </span>
-        <Link href={`/calendar?month=${toMonthKey(nextMonth)}`} className="cal-nav__btn">next ▶</Link>
+        <Link
+          href={buildCalendarHref({
+            month: toMonthKey(nextMonth),
+            severity: severityFilter,
+            type: typeFilter,
+            exploited: exploitedOnly,
+          })}
+          className="cal-nav__btn"
+        >
+          next ▶
+        </Link>
       </div>
 
       <div className="cal-wrap">
@@ -126,16 +227,25 @@ export default async function CalendarPage({ searchParams }: CalendarPageProps) 
             return (
               <Link
                 key={key}
-                href={`/calendar?month=${toMonthKey(currentMonth)}&day=${key}`}
+                href={buildCalendarHref({
+                  month: toMonthKey(currentMonth),
+                  day: key,
+                  severity: severityFilter,
+                  type: typeFilter,
+                  exploited: exploitedOnly,
+                })}
                 className={cls}
               >
                 <span className="cal-day__num">{day.getDate()}</span>
                 {dayIncidents.length > 0 && (
                   <>
                     <div className="cal-marks">
-                      {dayIncidents.slice(0, 5).map((i, j) => (
-                        <span key={j} className="cal-mark" style={{ ["--sev" as string]: SEV_COLOR[i.severity] } as React.CSSProperties} />
+                      {dayIncidents.slice(0, 4).map((i, j) => (
+                        <span key={j} className="cal-mark" style={{ ["--sev" as string]: SEV_COLOR[i.severity] } as CSSProperties} />
                       ))}
+                      {dayIncidents.length > 4 && (
+                        <span className="cal-mark cal-mark--more">+{dayIncidents.length - 4}</span>
+                      )}
                     </div>
                     <span className="cal-count">
                       {dayIncidents.length} incident{dayIncidents.length === 1 ? "" : "s"}
@@ -154,6 +264,12 @@ export default async function CalendarPage({ searchParams }: CalendarPageProps) 
               ? parseLocal(selectedDay).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })
               : "pick a day"}
           </div>
+          {selectedDay && selectedIncidents.length > 0 && (
+            <CalendarDayActions
+              dateLabel={parseLocal(selectedDay).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}
+              incidents={selectedIncidents.map((i) => ({ slug: i.slug, title: i.title, severity: i.severity }))}
+            />
+          )}
 
           {!selectedDay ? (
             <p style={{ color: "var(--fg-muted)", fontSize: 12 }}>
