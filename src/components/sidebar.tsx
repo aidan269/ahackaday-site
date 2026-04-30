@@ -13,6 +13,7 @@ type Props = { counts: SidebarCounts };
 
 type UrlFilters = {
   severity: string;
+  type: string;
   exploited: boolean;
   mitigated: boolean;
   window: string;
@@ -20,6 +21,7 @@ type UrlFilters = {
 
 const DEFAULT_FILTERS: UrlFilters = {
   severity: "all",
+  type: "all",
   exploited: false,
   mitigated: false,
   window: "30d",
@@ -30,6 +32,7 @@ function readFilters(search: URLSearchParams): UrlFilters {
   const mit = search.get("mitigated");
   return {
     severity: search.get("severity") ?? "all",
+    type: search.get("type") ?? "all",
     exploited: ex === "1" || ex?.toLowerCase() === "true",
     mitigated: mit === "1" || mit?.toLowerCase() === "true",
     window: search.get("window") ?? "30d",
@@ -81,27 +84,35 @@ function IconSaved() {
   );
 }
 
-function IconExploited() {
+function IconZeroDay() {
   return (
     <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden>
-      <path d="M7 2.5v7M7 9.5l-2.5 2M7 9.5l2.5 2" stroke="currentColor" strokeWidth="1.2" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+      <path
+        d="M8 1.5L6.2 5.4l-3.8 1.2 3.8 1.2L8 12.5l1.8-4.7 3.8-1.2-3.8-1.2L8 1.5z"
+        stroke="currentColor"
+        strokeWidth="1.2"
+        fill="none"
+        strokeLinejoin="round"
+      />
     </svg>
   );
 }
 
-function IconClock() {
+function IconRansomware() {
   return (
     <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden>
-      <circle cx="7" cy="7" r="4.5" stroke="currentColor" strokeWidth="1.2" fill="none" />
-      <path d="M7 4.5V7l2 1.2" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+      <rect x="4" y="6.5" width="6" height="6" rx="1" stroke="currentColor" strokeWidth="1.2" fill="none" />
+      <path d="M5 6.5V5a2 2 0 0 1 4 0v1.5" stroke="currentColor" strokeWidth="1.2" fill="none" strokeLinecap="round" />
+      <circle cx="7" cy="9.8" r="0.9" fill="currentColor" />
     </svg>
   );
 }
 
-function IconMitigated() {
+function IconBreach() {
   return (
     <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden>
-      <path d="M3 7.2l2.8 2.8L11 4.8" stroke="currentColor" strokeWidth="1.2" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M3 8.5h8M5 6l-1.5 2.5M9 6l1.5 2.5" stroke="currentColor" strokeWidth="1.2" fill="none" strokeLinecap="round" />
+      <rect x="4" y="4.5" width="6" height="3" rx="0.5" stroke="currentColor" strokeWidth="1.2" fill="none" />
     </svg>
   );
 }
@@ -116,10 +127,12 @@ function SidebarBody({ counts, filters }: Props & { filters: UrlFilters }) {
   const isSaved = pathname === "/saved";
 
   const feedHomeHref = buildFeedHref({});
-  const sevActive = (sev: string) => isFeed && filters.severity === sev && !filters.exploited && !filters.mitigated;
-  const exploitedActive = isFeed && filters.exploited;
-  const last7Active = isFeed && filters.window === "7d" && !filters.exploited && !filters.mitigated;
-  const mitigatedActive = isFeed && filters.mitigated;
+  const typeClear = filters.type === "all";
+  const sevActive = (sev: string) =>
+    isFeed && filters.severity === sev && !filters.exploited && !filters.mitigated && typeClear;
+  const zeroDayActive = isFeed && filters.type === "zero-day";
+  const ransomwareActive = isFeed && filters.type === "ransomware";
+  const breachActive = isFeed && filters.type === "breach";
 
   return (
     <aside className="sidebar" aria-label="Primary navigation">
@@ -187,28 +200,28 @@ function SidebarBody({ counts, filters }: Props & { filters: UrlFilters }) {
         </Link>
       </nav>
 
-      <div className="sidebar__section-label">filters</div>
-      <nav className="sidebar__nav" aria-label="Feed filters">
-        <Link href={buildFeedHref({ exploited: true })} className={`sidebar__item${exploitedActive ? " is-active" : ""}`}>
+      <div className="sidebar__section-label">focus</div>
+      <nav className="sidebar__nav" aria-label="Incident type shortcuts">
+        <Link href={buildFeedHref({ type: "zero-day" })} className={`sidebar__item${zeroDayActive ? " is-active" : ""}`}>
           <span className="sidebar__icon" aria-hidden>
-            <IconExploited />
+            <IconZeroDay />
           </span>
-          <span>exploited</span>
-          <span className="sidebar__count">{counts.exploited}</span>
+          <span>zero-day</span>
+          <span className="sidebar__count">{counts.zeroDay}</span>
         </Link>
-        <Link href={buildFeedHref({ window: "7d" })} className={`sidebar__item${last7Active ? " is-active" : ""}`}>
+        <Link href={buildFeedHref({ type: "ransomware" })} className={`sidebar__item${ransomwareActive ? " is-active" : ""}`}>
           <span className="sidebar__icon" aria-hidden>
-            <IconClock />
+            <IconRansomware />
           </span>
-          <span>last 7 days</span>
-          <span className="sidebar__count">{counts.last7d}</span>
+          <span>ransomware</span>
+          <span className="sidebar__count">{counts.ransomware}</span>
         </Link>
-        <Link href={buildFeedHref({ mitigated: true })} className={`sidebar__item${mitigatedActive ? " is-active" : ""}`}>
+        <Link href={buildFeedHref({ type: "breach" })} className={`sidebar__item${breachActive ? " is-active" : ""}`}>
           <span className="sidebar__icon" aria-hidden>
-            <IconMitigated />
+            <IconBreach />
           </span>
-          <span>mitigated</span>
-          <span className="sidebar__count">{counts.mitigated}</span>
+          <span>breach</span>
+          <span className="sidebar__count">{counts.breach}</span>
         </Link>
       </nav>
 

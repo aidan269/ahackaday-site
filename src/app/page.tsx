@@ -48,6 +48,18 @@ function estimatedRedditMentions(incident: IncidentRow): number {
   return Math.max(0, Math.round((total * share) / 100));
 }
 
+function githubMentionsSortScore(incident: IncidentRow): number {
+  const total = typeof incident.socialMentions24h === "number" ? incident.socialMentions24h : 0;
+  const { github: share } = effectivePlatformSplit(incident);
+  return (total * share) / 100;
+}
+
+function estimatedGithubMentions(incident: IncidentRow): number {
+  const total = typeof incident.socialMentions24h === "number" ? incident.socialMentions24h : 0;
+  const { github: share } = effectivePlatformSplit(incident);
+  return Math.max(0, Math.round((total * share) / 100));
+}
+
 function formatCompactNumber(value: number): string {
   if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}m`;
   if (value >= 1_000) return `${(value / 1_000).toFixed(1)}k`;
@@ -105,28 +117,55 @@ export default async function Home({ searchParams }: HomeProps) {
     acc[key].push(incident);
     return acc;
   }, {});
-  const xFeed = [...filtered]
-    .filter((incident) => {
-      const heat = incident.xHeatScore ?? 0;
-      const mentions = incident.xMentions24h ?? 0;
-      return heat > 0 || mentions > 0;
-    })
-    .sort((a, b) => {
-      const heatDiff = (b.xHeatScore ?? 0) - (a.xHeatScore ?? 0);
-      if (heatDiff !== 0) return heatDiff;
-      return (b.xMentions24h ?? 0) - (a.xMentions24h ?? 0);
-    })
-    .slice(0, 12);
+  const parseIsoDay = (date: string) => date.slice(0, 10);
 
-  const rankedByReddit = [...filtered]
-    .map((incident) => ({ incident, score: redditMentionsSortScore(incident) }))
-    .filter(({ score }) => score > 0)
-    .sort((a, b) => b.score - a.score);
-  const redditFeed =
-    rankedByReddit.length > 0
-      ? rankedByReddit.slice(0, 12).map(({ incident }) => incident)
+  const xWithSignal = [...filtered].filter((incident) => {
+    const heat = incident.xHeatScore ?? 0;
+    const mentions = incident.xMentions24h ?? 0;
+    return heat > 0 || mentions > 0;
+  });
+  const xFeed =
+    xWithSignal.length > 0
+      ? xWithSignal
+          .sort((a, b) => {
+            const heatDiff = (b.xHeatScore ?? 0) - (a.xHeatScore ?? 0);
+            if (heatDiff !== 0) return heatDiff;
+            return (b.xMentions24h ?? 0) - (a.xMentions24h ?? 0);
+          })
+          .slice(0, 12)
       : [...filtered]
-          .sort((a, b) => effectivePlatformSplit(b).reddit - effectivePlatformSplit(a).reddit)
+          .sort((a, b) => {
+            const xdiff = effectivePlatformSplit(b).x - effectivePlatformSplit(a).x;
+            if (xdiff !== 0) return xdiff;
+            return parseIsoDay(b.date).localeCompare(parseIsoDay(a.date));
+          })
+          .slice(0, 12);
+
+  /** Always fill rails when the main feed has rows: rank by estimated activity, then platform %, then recency. */
+  const redditFeed =
+    filtered.length === 0
+      ? []
+      : [...filtered]
+          .sort((a, b) => {
+            const s = redditMentionsSortScore(b) - redditMentionsSortScore(a);
+            if (s !== 0) return s;
+            const p = effectivePlatformSplit(b).reddit - effectivePlatformSplit(a).reddit;
+            if (p !== 0) return p;
+            return parseIsoDay(b.date).localeCompare(parseIsoDay(a.date));
+          })
+          .slice(0, 12);
+
+  const githubFeed =
+    filtered.length === 0
+      ? []
+      : [...filtered]
+          .sort((a, b) => {
+            const s = githubMentionsSortScore(b) - githubMentionsSortScore(a);
+            if (s !== 0) return s;
+            const p = effectivePlatformSplit(b).github - effectivePlatformSplit(a).github;
+            if (p !== 0) return p;
+            return parseIsoDay(b.date).localeCompare(parseIsoDay(a.date));
+          })
           .slice(0, 12);
 
   return (
@@ -206,36 +245,32 @@ export default async function Home({ searchParams }: HomeProps) {
                     </div>
                     <span>live signal</span>
                   </div>
-                  {xFeed.length === 0 ? (
-                    <p className="x-feed-rail__empty">No high-confidence X activity yet for this filter window.</p>
-                  ) : (
-                    <div className="x-feed-rail__list">
-                      {xFeed.map((incident) => {
-                        const trend = incident.xHeatTrend ?? "flat";
-                        const hashtags = (incident.xTopHashtags ?? []).slice(0, 2);
-                        return (
-                          <Link key={incident.slug} href={`/incident/${incident.slug}`} className="x-feed-rail__item">
-                            <div className="x-feed-rail__row">
-                              <span className={`x-feed-rail__trend is-${trend}`}>{trend}</span>
-                              <span className="x-feed-rail__heat">heat {incident.xHeatScore ?? 0}</span>
+                  <div className="x-feed-rail__list">
+                    {xFeed.map((incident) => {
+                      const trend = incident.xHeatTrend ?? "flat";
+                      const hashtags = (incident.xTopHashtags ?? []).slice(0, 2);
+                      return (
+                        <Link key={incident.slug} href={`/incident/${incident.slug}`} className="x-feed-rail__item">
+                          <div className="x-feed-rail__row">
+                            <span className={`x-feed-rail__trend is-${trend}`}>{trend}</span>
+                            <span className="x-feed-rail__heat">heat {incident.xHeatScore ?? 0}</span>
+                          </div>
+                          <p className="x-feed-rail__title">{incident.title}</p>
+                          <div className="x-feed-rail__meta">
+                            <span>{formatCompactNumber(incident.xMentions24h ?? 0)} mentions</span>
+                            <span>{formatCompactNumber(incident.xUniqueAuthors24h ?? 0)} authors</span>
+                          </div>
+                          {hashtags.length > 0 && (
+                            <div className="x-feed-rail__tags">
+                              {hashtags.map((tag) => (
+                                <span key={`${incident.slug}-${tag}`}>#{tag.replace(/^#/, "")}</span>
+                              ))}
                             </div>
-                            <p className="x-feed-rail__title">{incident.title}</p>
-                            <div className="x-feed-rail__meta">
-                              <span>{formatCompactNumber(incident.xMentions24h ?? 0)} mentions</span>
-                              <span>{formatCompactNumber(incident.xUniqueAuthors24h ?? 0)} authors</span>
-                            </div>
-                            {hashtags.length > 0 && (
-                              <div className="x-feed-rail__tags">
-                                {hashtags.map((tag) => (
-                                  <span key={`${incident.slug}-${tag}`}>#{tag.replace(/^#/, "")}</span>
-                                ))}
-                              </div>
-                            )}
-                          </Link>
-                        );
-                      })}
-                    </div>
-                  )}
+                          )}
+                        </Link>
+                      );
+                    })}
+                  </div>
                 </aside>
                 <aside className="reddit-feed-rail" aria-label="Reddit discussion pulse">
                   <div className="reddit-feed-rail__head">
@@ -251,48 +286,93 @@ export default async function Home({ searchParams }: HomeProps) {
                     </div>
                     <span>r/all search · day</span>
                   </div>
-                  {redditFeed.length === 0 ? (
-                    <p className="reddit-feed-rail__empty">
-                      No Reddit-weighted discussion for this filter window yet.
-                    </p>
-                  ) : (
-                    <div className="reddit-feed-rail__list">
-                      {redditFeed.map((incident) => {
-                        const trend = incident.socialTrend ?? "flat";
-                        const split = effectivePlatformSplit(incident);
-                        const redditMentions = estimatedRedditMentions(incident);
-                        const keywords = (incident.socialKeywords ?? []).slice(0, 2);
-                        return (
-                          <Link
-                            key={`reddit-${incident.slug}`}
-                            href={`/incident/${incident.slug}`}
-                            className="reddit-feed-rail__item"
-                          >
-                            <div className="reddit-feed-rail__row">
-                              <span className={`reddit-feed-rail__trend is-${trend}`}>{trend}</span>
-                              <span className="reddit-feed-rail__share">{split.reddit}% on reddit</span>
+                  <div className="reddit-feed-rail__list">
+                    {redditFeed.map((incident) => {
+                      const trend = incident.socialTrend ?? "flat";
+                      const split = effectivePlatformSplit(incident);
+                      const redditMentions = estimatedRedditMentions(incident);
+                      const keywords = (incident.socialKeywords ?? []).slice(0, 2);
+                      return (
+                        <Link
+                          key={`reddit-${incident.slug}`}
+                          href={`/incident/${incident.slug}`}
+                          className="reddit-feed-rail__item"
+                        >
+                          <div className="reddit-feed-rail__row">
+                            <span className={`reddit-feed-rail__trend is-${trend}`}>{trend}</span>
+                            <span className="reddit-feed-rail__share">{split.reddit}% on reddit</span>
+                          </div>
+                          <p className="reddit-feed-rail__title">{incident.title}</p>
+                          <div className="reddit-feed-rail__meta">
+                            <span>
+                              {redditMentions > 0
+                                ? `${formatCompactNumber(redditMentions)} est. mentions`
+                                : "<1 est. mentions"}
+                            </span>
+                            <span>{formatCompactNumber(incident.socialMentions24h ?? 0)} total 24h</span>
+                          </div>
+                          {keywords.length > 0 && (
+                            <div className="reddit-feed-rail__tags">
+                              {keywords.map((kw) => (
+                                <span key={`${incident.slug}-r-${kw}`}>{kw}</span>
+                              ))}
                             </div>
-                            <p className="reddit-feed-rail__title">{incident.title}</p>
-                            <div className="reddit-feed-rail__meta">
-                              <span>
-                                {redditMentions > 0
-                                  ? `${formatCompactNumber(redditMentions)} est. mentions`
-                                  : "<1 est. mentions"}
-                              </span>
-                              <span>{formatCompactNumber(incident.socialMentions24h ?? 0)} total 24h</span>
-                            </div>
-                            {keywords.length > 0 && (
-                              <div className="reddit-feed-rail__tags">
-                                {keywords.map((kw) => (
-                                  <span key={`${incident.slug}-r-${kw}`}>{kw}</span>
-                                ))}
-                              </div>
-                            )}
-                          </Link>
-                        );
-                      })}
+                          )}
+                        </Link>
+                      );
+                    })}
+                  </div>
+                </aside>
+                <aside className="github-feed-rail" aria-label="GitHub discussion pulse">
+                  <div className="github-feed-rail__head">
+                    <div className="github-feed-rail__brand">
+                      <Image
+                        src="/logos/github.png"
+                        alt=""
+                        width={24}
+                        height={24}
+                        className="github-feed-rail__logo"
+                      />
+                      <h3>GitHub pulse</h3>
                     </div>
-                  )}
+                    <span>issues search</span>
+                  </div>
+                  <div className="github-feed-rail__list">
+                    {githubFeed.map((incident) => {
+                      const trend = incident.socialTrend ?? "flat";
+                      const split = effectivePlatformSplit(incident);
+                      const githubMentions = estimatedGithubMentions(incident);
+                      const keywords = (incident.socialKeywords ?? []).slice(0, 2);
+                      return (
+                        <Link
+                          key={`github-${incident.slug}`}
+                          href={`/incident/${incident.slug}`}
+                          className="github-feed-rail__item"
+                        >
+                          <div className="github-feed-rail__row">
+                            <span className={`github-feed-rail__trend is-${trend}`}>{trend}</span>
+                            <span className="github-feed-rail__share">{split.github}% on github</span>
+                          </div>
+                          <p className="github-feed-rail__title">{incident.title}</p>
+                          <div className="github-feed-rail__meta">
+                            <span>
+                              {githubMentions > 0
+                                ? `${formatCompactNumber(githubMentions)} est. mentions`
+                                : "<1 est. mentions"}
+                            </span>
+                            <span>{formatCompactNumber(incident.socialMentions24h ?? 0)} total 24h</span>
+                          </div>
+                          {keywords.length > 0 && (
+                            <div className="github-feed-rail__tags">
+                              {keywords.map((kw) => (
+                                <span key={`${incident.slug}-gh-${kw}`}>{kw}</span>
+                              ))}
+                            </div>
+                          )}
+                        </Link>
+                      );
+                    })}
+                  </div>
                 </aside>
               </div>
             </div>

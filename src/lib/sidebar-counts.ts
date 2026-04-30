@@ -1,4 +1,3 @@
-import { mitigationStatusLooksMitigated } from "@/lib/incidents";
 import type { Incident } from "@/lib/incident-types";
 
 export type SidebarCounts = {
@@ -7,12 +6,10 @@ export type SidebarCounts = {
   high: number;
   medium: number;
   low: number;
-  exploited: number;
-  last7d: number;
-  mitigated: number;
+  zeroDay: number;
+  ransomware: number;
+  breach: number;
 };
-
-const MS_7D = 7 * 24 * 60 * 60 * 1000;
 
 export function computeSidebarCounts(all: Incident[]): SidebarCounts {
   const c: SidebarCounts = {
@@ -21,17 +18,15 @@ export function computeSidebarCounts(all: Incident[]): SidebarCounts {
     high: 0,
     medium: 0,
     low: 0,
-    exploited: 0,
-    last7d: 0,
-    mitigated: 0,
+    zeroDay: 0,
+    ransomware: 0,
+    breach: 0,
   };
-  const now = Date.now();
   for (const i of all) {
     c[i.severity] += 1;
-    if (i.exploited) c.exploited += 1;
-    const t = new Date(i.date).getTime();
-    if (!Number.isNaN(t) && now - t <= MS_7D) c.last7d += 1;
-    if (mitigationStatusLooksMitigated(i.mitigationStatus)) c.mitigated += 1;
+    if (i.category === "zero-day") c.zeroDay += 1;
+    if (i.category === "ransomware") c.ransomware += 1;
+    if (i.category === "breach") c.breach += 1;
   }
   return c;
 }

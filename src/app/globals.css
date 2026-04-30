@@ -403,14 +403,16 @@ main.shell { max-width: 1560px; margin: 0 auto; padding: 48px 40px 160px; positi
   min-width: 0;
 }
 .x-feed-rail,
-.reddit-feed-rail {
+.reddit-feed-rail,
+.github-feed-rail {
   border: 1px solid var(--border);
   border-radius: 12px;
   background: rgba(244, 244, 244, 0.96);
   padding: 10px;
 }
 .x-feed-rail__head,
-.reddit-feed-rail__head {
+.reddit-feed-rail__head,
+.github-feed-rail__head {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -420,7 +422,8 @@ main.shell { max-width: 1560px; margin: 0 auto; padding: 48px 40px 160px; positi
   margin-bottom: 8px;
 }
 .x-feed-rail__brand,
-.reddit-feed-rail__brand {
+.reddit-feed-rail__brand,
+.github-feed-rail__brand {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -441,30 +444,41 @@ main.shell { max-width: 1560px; margin: 0 auto; padding: 48px 40px 160px; positi
   border-radius: 5px;
   background: #ff4500;
 }
+.github-feed-rail__logo {
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
+  border-radius: 999px;
+}
 .x-feed-rail__head h3,
-.reddit-feed-rail__head h3 {
+.reddit-feed-rail__head h3,
+.github-feed-rail__head h3 {
   margin: 0;
   font-size: 12px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 .x-feed-rail__head span,
-.reddit-feed-rail__head span {
+.reddit-feed-rail__head span,
+.github-feed-rail__head span {
   font-size: 10px;
   color: var(--fg-muted);
   text-transform: uppercase;
   letter-spacing: 0.08em;
 }
 .x-feed-rail__list,
-.reddit-feed-rail__list {
+.reddit-feed-rail__list,
+.github-feed-rail__list {
   display: grid;
   gap: 7px;
-  max-height: min(42vh, 480px);
+  max-height: min(30vh, 400px);
   overflow: auto;
   padding-right: 2px;
 }
 .x-feed-rail__item,
-.reddit-feed-rail__item {
+.reddit-feed-rail__item,
+.github-feed-rail__item {
   border: 1px solid var(--border);
   border-radius: 10px;
   padding: 8px;
@@ -480,8 +494,13 @@ main.shell { max-width: 1560px; margin: 0 auto; padding: 48px 40px 160px; positi
   border-color: color-mix(in srgb, #ff4500 28%, var(--border));
   box-shadow: 0 6px 18px rgba(255, 69, 0, 0.07);
 }
+.github-feed-rail__item:hover {
+  border-color: color-mix(in srgb, #24292f 32%, var(--border));
+  box-shadow: 0 6px 18px rgba(36, 41, 47, 0.08);
+}
 .x-feed-rail__row,
-.reddit-feed-rail__row {
+.reddit-feed-rail__row,
+.github-feed-rail__row {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -489,34 +508,40 @@ main.shell { max-width: 1560px; margin: 0 auto; padding: 48px 40px 160px; positi
   margin-bottom: 4px;
 }
 .x-feed-rail__trend,
-.reddit-feed-rail__trend {
+.reddit-feed-rail__trend,
+.github-feed-rail__trend {
   font-size: 9px;
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--fg-3);
 }
 .x-feed-rail__trend.is-up,
-.reddit-feed-rail__trend.is-up {
+.reddit-feed-rail__trend.is-up,
+.github-feed-rail__trend.is-up {
   color: var(--brand-orange);
 }
 .x-feed-rail__trend.is-down,
-.reddit-feed-rail__trend.is-down {
+.reddit-feed-rail__trend.is-down,
+.github-feed-rail__trend.is-down {
   color: var(--fg-2);
 }
 .x-feed-rail__heat,
-.reddit-feed-rail__share {
+.reddit-feed-rail__share,
+.github-feed-rail__share {
   font-size: 10px;
   color: var(--fg-2);
 }
 .x-feed-rail__title,
-.reddit-feed-rail__title {
+.reddit-feed-rail__title,
+.github-feed-rail__title {
   margin: 0;
   font-size: 12px;
   line-height: 1.35;
   color: var(--fg);
 }
 .x-feed-rail__meta,
-.reddit-feed-rail__meta {
+.reddit-feed-rail__meta,
+.github-feed-rail__meta {
   margin-top: 5px;
   display: flex;
   gap: 8px;
@@ -525,7 +550,8 @@ main.shell { max-width: 1560px; margin: 0 auto; padding: 48px 40px 160px; positi
   color: var(--fg-2);
 }
 .x-feed-rail__tags,
-.reddit-feed-rail__tags {
+.reddit-feed-rail__tags,
+.github-feed-rail__tags {
   margin-top: 6px;
   display: flex;
   gap: 6px;
@@ -545,8 +571,16 @@ main.shell { max-width: 1560px; margin: 0 auto; padding: 48px 40px 160px; positi
   border-radius: 999px;
   padding: 2px 6px;
 }
+.github-feed-rail__tags span {
+  font-size: 9px;
+  border: 1px solid color-mix(in srgb, #24292f 22%, var(--border));
+  color: #24292f;
+  border-radius: 999px;
+  padding: 2px 6px;
+}
 .x-feed-rail__empty,
-.reddit-feed-rail__empty {
+.reddit-feed-rail__empty,
+.github-feed-rail__empty {
   margin: 0;
   font-size: 11px;
   color: var(--fg-2);

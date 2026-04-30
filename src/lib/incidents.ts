@@ -715,7 +715,7 @@ type IncidentFilter = {
   onlyMitigated?: boolean;
 };
 
-/** Shared with sidebar counts: “mitigated” filter bucket. */
+/** Label heuristic for “resolved enough” mitigation copy in summaries. */
 export function mitigationStatusLooksMitigated(status: string): boolean {
   return /mitigat|patch|fixed|resolved|remediat|vendor update|update available/i.test(status);
 }
