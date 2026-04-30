@@ -3598,6 +3598,69 @@ a.open-in-grace:focus-visible {
   }
 }
 
+.zdc-chart__area {
+  fill: url(#zdc-area-gradient);
+  opacity: 0;
+  animation: zdcAreaFade 520ms ease-out 220ms forwards;
+}
+.zdc-chart__line-glow {
+  fill: none;
+  stroke: rgba(250, 94, 6, 0.3);
+  stroke-width: 7;
+  filter: blur(2px);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: 0;
+  animation: zdcLineReveal 1100ms var(--ease) forwards;
+}
+.zdc-chart__line {
+  fill: none;
+  stroke: url(#zdc-line-gradient);
+  stroke-width: 2.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 1600;
+  stroke-dashoffset: 1600;
+  animation: zdcLineReveal 1100ms var(--ease) forwards;
+}
+.zdc-chart__point-halo {
+  fill: rgba(250, 94, 6, 0.24);
+  opacity: 0;
+  transform-origin: center;
+  animation: zdcPointIn 420ms var(--ease) 680ms forwards;
+}
+.zdc-chart__point {
+  fill: var(--brand-orange);
+  opacity: 0;
+  transform-origin: center;
+  animation: zdcPointIn 420ms var(--ease) 760ms forwards;
+}
+
+@keyframes zdcLineReveal {
+  from {
+    stroke-dashoffset: 1600;
+    opacity: 0.55;
+  }
+  to {
+    stroke-dashoffset: 0;
+    opacity: 1;
+  }
+}
+@keyframes zdcPointIn {
+  from {
+    opacity: 0;
+    transform: scale(0.35);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+@keyframes zdcAreaFade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
 /* ===== Mobile stability mode (phone-first hardening) ===== */
 @media (max-width: 900px) {
   .dailybrief .pulse,

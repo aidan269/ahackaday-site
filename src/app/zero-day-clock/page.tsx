@@ -76,6 +76,10 @@ export default async function ZeroDayClockPage() {
   const linePath = trendSeries
     .map((p, idx) => `${idx === 0 ? "M" : "L"} ${xFor(idx, trendSeries.length)} ${yFor(p.median_tte as number)}`)
     .join(" ");
+  const areaPath =
+    trendSeries.length > 1
+      ? `${linePath} L ${xFor(trendSeries.length - 1, trendSeries.length)} ${zeroY} L ${xFor(0, trendSeries.length)} ${zeroY} Z`
+      : "";
 
   return (
     <main className="shell">
@@ -180,10 +184,21 @@ export default async function ZeroDayClockPage() {
               <p style={{ margin: 0, fontSize: 12, color: "var(--fg-2)" }}>Not enough data points for a trend chart.</p>
             ) : (
               <svg
+                className="zdc-chart"
                 viewBox={`0 0 ${chart.width} ${chart.height}`}
                 style={{ width: "100%", height: "auto", display: "block" }}
                 aria-label="Median time-to-exploit trend"
               >
+                <defs>
+                  <linearGradient id="zdc-line-gradient" x1="0" y1="0" x2="1" y2="0">
+                    <stop offset="0%" stopColor="#FA5E06" />
+                    <stop offset="100%" stopColor="#ff8c42" />
+                  </linearGradient>
+                  <linearGradient id="zdc-area-gradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="rgba(250,94,6,0.22)" />
+                    <stop offset="100%" stopColor="rgba(250,94,6,0.02)" />
+                  </linearGradient>
+                </defs>
                 <line
                   x1={chart.padX}
                   x2={chart.width - chart.padX}
@@ -206,13 +221,19 @@ export default async function ZeroDayClockPage() {
                   y2={chart.height - chart.padY}
                   stroke="var(--border)"
                 />
-                <path d={linePath} fill="none" stroke="var(--brand-orange)" strokeWidth="2.5" />
+                {areaPath ? <path d={areaPath} className="zdc-chart__area" /> : null}
+                <path d={linePath} className="zdc-chart__line-glow" />
+                <path d={linePath} className="zdc-chart__line" />
                 {trendSeries.map((p, idx) => {
                   const x = xFor(idx, trendSeries.length);
                   const y = yFor(p.median_tte as number);
                   return (
                     <g key={p.label}>
-                      <circle cx={x} cy={y} r="3.5" fill="var(--brand-orange)" />
+                      <circle cx={x} cy={y} r="5.5" className="zdc-chart__point-halo" />
+                      <circle cx={x} cy={y} r="3.5" className="zdc-chart__point" />
+                      <text x={x} y={y - 10} textAnchor="middle" fontSize="10" fill="var(--fg-2)" opacity="0.9">
+                        {(p.median_tte as number).toFixed(2)}d
+                      </text>
                       <text x={x} y={chart.height - 7} textAnchor="middle" fontSize="10" fill="var(--fg-2)">
                         {p.label}
                       </text>
