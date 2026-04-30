@@ -62,6 +62,20 @@ export default async function ZeroDayClockPage() {
     .filter((p) => !p.is_prediction)
     .slice(-8)
     .reverse();
+  const trendSeries = [...recent].reverse().filter((p) => p.median_tte !== null);
+  const medians = trendSeries.map((p) => p.median_tte as number);
+  const minMedian = medians.length ? Math.min(...medians, 0) : 0;
+  const maxMedian = medians.length ? Math.max(...medians, 0) : 1;
+  const span = Math.max(maxMedian - minMedian, 1);
+  const chart = { width: 760, height: 240, padX: 44, padY: 24 };
+  const xFor = (idx: number, total: number) =>
+    chart.padX + (total <= 1 ? 0 : (idx * (chart.width - chart.padX * 2)) / (total - 1));
+  const yFor = (value: number) =>
+    chart.height - chart.padY - ((value - minMedian) / span) * (chart.height - chart.padY * 2);
+  const zeroY = yFor(0);
+  const linePath = trendSeries
+    .map((p, idx) => `${idx === 0 ? "M" : "L"} ${xFor(idx, trendSeries.length)} ${yFor(p.median_tte as number)}`)
+    .join(" ");
 
   return (
     <main className="shell">
@@ -133,6 +147,60 @@ export default async function ZeroDayClockPage() {
                 ))}
               </tbody>
             </table>
+          </div>
+
+          <div style={{ border: "1px solid var(--border)", borderRadius: 12, background: "#fff", padding: 12 }}>
+            <div style={{ fontSize: 12, color: "var(--fg-2)", marginBottom: 8 }}>
+              Median TTE trend (days, latest 8 observed years)
+            </div>
+            {trendSeries.length < 2 ? (
+              <p style={{ margin: 0, fontSize: 12, color: "var(--fg-2)" }}>Not enough data points for a trend chart.</p>
+            ) : (
+              <svg
+                viewBox={`0 0 ${chart.width} ${chart.height}`}
+                style={{ width: "100%", height: "auto", display: "block" }}
+                aria-label="Median time-to-exploit trend"
+              >
+                <line
+                  x1={chart.padX}
+                  x2={chart.width - chart.padX}
+                  y1={zeroY}
+                  y2={zeroY}
+                  stroke="rgba(250,94,6,0.5)"
+                  strokeDasharray="4 4"
+                />
+                <line
+                  x1={chart.padX}
+                  x2={chart.width - chart.padX}
+                  y1={chart.height - chart.padY}
+                  y2={chart.height - chart.padY}
+                  stroke="var(--border)"
+                />
+                <line
+                  x1={chart.padX}
+                  x2={chart.padX}
+                  y1={chart.padY}
+                  y2={chart.height - chart.padY}
+                  stroke="var(--border)"
+                />
+                <path d={linePath} fill="none" stroke="var(--brand-orange)" strokeWidth="2.5" />
+                {trendSeries.map((p, idx) => {
+                  const x = xFor(idx, trendSeries.length);
+                  const y = yFor(p.median_tte as number);
+                  return (
+                    <g key={p.label}>
+                      <circle cx={x} cy={y} r="3.5" fill="var(--brand-orange)" />
+                      <text x={x} y={chart.height - 7} textAnchor="middle" fontSize="10" fill="var(--fg-2)">
+                        {p.label}
+                      </text>
+                    </g>
+                  );
+                })}
+                <text x={10} y={zeroY - 4} fontSize="10" fill="var(--fg-2)">
+                  0d baseline
+                </text>
+              </svg>
+            )}
           </div>
         </>
       )}
