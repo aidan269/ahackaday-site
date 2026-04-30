@@ -3,6 +3,7 @@ import { FeedControls } from "@/components/feed-controls";
 import { IncidentItem, IncidentTimelineItem } from "@/components/incident-item";
 import { QuietDayEmpty } from "@/components/quiet-day-empty";
 import { getAllIncidents, type IncidentType, type Severity } from "@/lib/incidents";
+import { toPlatformSplit } from "@/lib/platform-split";
 import Image from "next/image";
 import Link from "next/link";
 
@@ -19,14 +20,32 @@ function readParam(v: string | string[] | undefined, fallback: string): string {
   return fallback;
 }
 
-function getPlatformMentions(
-  incident: Awaited<ReturnType<typeof getAllIncidents>>[number],
-  platform: "x" | "reddit" | "github",
-): number {
+type IncidentRow = Awaited<ReturnType<typeof getAllIncidents>>[number];
+
+function getPlatformMentions(incident: IncidentRow, platform: "x" | "reddit" | "github"): number {
   if (typeof incident.socialMentions24h !== "number") return 0;
   const share = incident.socialPlatformSplit?.[platform];
   if (typeof share !== "number" || share <= 0) return 0;
   return Math.round((incident.socialMentions24h * share) / 100);
+}
+
+/** When Supabase has not stored a split yet, match social-refresh’s synthetic split so rails still rank. */
+function effectivePlatformSplit(incident: IncidentRow) {
+  if (incident.socialPlatformSplit) return incident.socialPlatformSplit;
+  const m = typeof incident.socialMentions24h === "number" ? incident.socialMentions24h : 0;
+  return toPlatformSplit(Math.max(0, m), incident.slug);
+}
+
+function redditMentionsSortScore(incident: IncidentRow): number {
+  const total = typeof incident.socialMentions24h === "number" ? incident.socialMentions24h : 0;
+  const { reddit: share } = effectivePlatformSplit(incident);
+  return (total * share) / 100;
+}
+
+function estimatedRedditMentions(incident: IncidentRow): number {
+  const total = typeof incident.socialMentions24h === "number" ? incident.socialMentions24h : 0;
+  const { reddit: share } = effectivePlatformSplit(incident);
+  return Math.max(0, Math.round((total * share) / 100));
 }
 
 function formatCompactNumber(value: number): string {
@@ -99,12 +118,16 @@ export default async function Home({ searchParams }: HomeProps) {
     })
     .slice(0, 12);
 
-  const redditFeed = [...filtered]
-    .map((incident) => ({ incident, redditMentions: getPlatformMentions(incident, "reddit") }))
-    .filter(({ redditMentions }) => redditMentions > 0)
-    .sort((a, b) => b.redditMentions - a.redditMentions)
-    .slice(0, 12)
-    .map(({ incident }) => incident);
+  const rankedByReddit = [...filtered]
+    .map((incident) => ({ incident, score: redditMentionsSortScore(incident) }))
+    .filter(({ score }) => score > 0)
+    .sort((a, b) => b.score - a.score);
+  const redditFeed =
+    rankedByReddit.length > 0
+      ? rankedByReddit.slice(0, 12).map(({ incident }) => incident)
+      : [...filtered]
+          .sort((a, b) => effectivePlatformSplit(b).reddit - effectivePlatformSplit(a).reddit)
+          .slice(0, 12);
 
   return (
     <main className="shell">
@@ -220,8 +243,8 @@ export default async function Home({ searchParams }: HomeProps) {
                       <Image
                         src="/logos/reddit.png"
                         alt=""
-                        width={20}
-                        height={20}
+                        width={22}
+                        height={22}
                         className="reddit-feed-rail__logo"
                       />
                       <h3>Reddit pulse</h3>
@@ -236,8 +259,8 @@ export default async function Home({ searchParams }: HomeProps) {
                     <div className="reddit-feed-rail__list">
                       {redditFeed.map((incident) => {
                         const trend = incident.socialTrend ?? "flat";
-                        const redditMentions = getPlatformMentions(incident, "reddit");
-                        const share = incident.socialPlatformSplit?.reddit ?? 0;
+                        const split = effectivePlatformSplit(incident);
+                        const redditMentions = estimatedRedditMentions(incident);
                         const keywords = (incident.socialKeywords ?? []).slice(0, 2);
                         return (
                           <Link
@@ -247,11 +270,15 @@ export default async function Home({ searchParams }: HomeProps) {
                           >
                             <div className="reddit-feed-rail__row">
                               <span className={`reddit-feed-rail__trend is-${trend}`}>{trend}</span>
-                              <span className="reddit-feed-rail__share">{share}% on reddit</span>
+                              <span className="reddit-feed-rail__share">{split.reddit}% on reddit</span>
                             </div>
                             <p className="reddit-feed-rail__title">{incident.title}</p>
                             <div className="reddit-feed-rail__meta">
-                              <span>{formatCompactNumber(redditMentions)} est. mentions</span>
+                              <span>
+                                {redditMentions > 0
+                                  ? `${formatCompactNumber(redditMentions)} est. mentions`
+                                  : "<1 est. mentions"}
+                              </span>
                               <span>{formatCompactNumber(incident.socialMentions24h ?? 0)} total 24h</span>
                             </div>
                             {keywords.length > 0 && (
