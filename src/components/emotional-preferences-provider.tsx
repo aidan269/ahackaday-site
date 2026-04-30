@@ -20,6 +20,17 @@ import {
 } from "@/lib/emotional-storage";
 import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
 
+function getAuthRedirectUrl(): string | undefined {
+  const configured = process.env.NEXT_PUBLIC_SITE_URL?.trim();
+  if (configured) {
+    return configured.replace(/\/$/, "");
+  }
+  if (typeof window !== "undefined") {
+    return window.location.origin;
+  }
+  return undefined;
+}
+
 type EmotionalPreferencesValue = {
   readSet: Set<string>;
   savedSet: Set<string>;
@@ -161,7 +172,7 @@ export function EmotionalPreferencesProvider({ children }: { children: ReactNode
     const { error } = await supabase.auth.signInWithOtp({
       email: cleanEmail,
       options: {
-        emailRedirectTo: typeof window !== "undefined" ? window.location.origin : undefined,
+        emailRedirectTo: getAuthRedirectUrl(),
       },
     });
     if (error) return { ok: false, error: error.message };
