@@ -434,6 +434,7 @@ main.shell { max-width: 1560px; margin: 0 auto; padding: 48px 40px 160px; positi
   flex-shrink: 0;
   border-radius: 4px;
   object-fit: contain;
+  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.12)) drop-shadow(0 4px 8px rgba(0, 0, 0, 0.08));
 }
 .reddit-feed-rail__logo {
   flex-shrink: 0;
@@ -443,6 +444,8 @@ main.shell { max-width: 1560px; margin: 0 auto; padding: 48px 40px 160px; positi
   object-position: center;
   border-radius: 5px;
   background: #ff4500;
+  box-shadow: 0 6px 12px rgba(255, 69, 0, 0.22);
+  filter: drop-shadow(0 0 4px rgba(255, 69, 0, 0.24));
 }
 .github-feed-rail__logo {
   flex-shrink: 0;
@@ -450,6 +453,8 @@ main.shell { max-width: 1560px; margin: 0 auto; padding: 48px 40px 160px; positi
   height: 24px;
   object-fit: contain;
   border-radius: 999px;
+  box-shadow: 0 6px 12px rgba(36, 41, 47, 0.2);
+  filter: drop-shadow(0 0 4px rgba(36, 41, 47, 0.2));
 }
 .x-feed-rail__head h3,
 .reddit-feed-rail__head h3,

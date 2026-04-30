@@ -112,13 +112,19 @@ export default async function ZeroDayClockPage() {
               display: "grid",
               gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))",
               gap: 10,
-              marginBottom: 10,
+              marginBottom: 16,
             }}
           >
             {headline.map((stat) => (
               <div
                 key={stat.key}
-                style={{ border: "1px solid var(--border)", borderRadius: 12, background: "#fff", padding: 12 }}
+                style={{
+                  border: "1px solid var(--border)",
+                  borderRadius: 12,
+                  background: "#fff",
+                  padding: 12,
+                  boxShadow: "0 10px 24px rgba(16,16,16,0.05), 0 1px 2px rgba(16,16,16,0.06)",
+                }}
               >
                 <div style={{ fontSize: 11, color: "var(--fg-2)", marginBottom: 6 }}>{stat.label}</div>
                 <div style={{ fontSize: 20, fontWeight: 700 }}>{fmt(stat.value, stat.unit)}</div>
@@ -126,7 +132,16 @@ export default async function ZeroDayClockPage() {
             ))}
           </div>
 
-          <div style={{ border: "1px solid var(--border)", borderRadius: 12, background: "#fff", overflow: "hidden" }}>
+          <div
+            style={{
+              border: "1px solid var(--border)",
+              borderRadius: 12,
+              background: "#fff",
+              overflow: "hidden",
+              marginBottom: 18,
+              boxShadow: "0 10px 24px rgba(16,16,16,0.05), 0 1px 2px rgba(16,16,16,0.06)",
+            }}
+          >
             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
               <thead>
                 <tr style={{ background: "rgba(0,0,0,0.03)", textAlign: "left" }}>
@@ -149,7 +164,15 @@ export default async function ZeroDayClockPage() {
             </table>
           </div>
 
-          <div style={{ border: "1px solid var(--border)", borderRadius: 12, background: "#fff", padding: 12 }}>
+          <div
+            style={{
+              border: "1px solid var(--border)",
+              borderRadius: 12,
+              background: "#fff",
+              padding: 14,
+              boxShadow: "0 12px 28px rgba(16,16,16,0.06), 0 1px 2px rgba(16,16,16,0.06)",
+            }}
+          >
             <div style={{ fontSize: 12, color: "var(--fg-2)", marginBottom: 8 }}>
               Median TTE trend (days, latest 8 observed years)
             </div>
