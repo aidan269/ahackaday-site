@@ -63,9 +63,9 @@ function IconCalendar() {
 function IconRss() {
   return (
     <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden>
-      <path d="M3 10a7 7 0 0 1 7-7" stroke="currentColor" strokeWidth="1.2" fill="none" strokeLinecap="round" />
-      <path d="M3 6a4 4 0 0 1 4-4" stroke="currentColor" strokeWidth="1.2" fill="none" strokeLinecap="round" />
-      <circle cx="3.5" cy="10.5" r="1.2" fill="currentColor" />
+      <circle cx="7" cy="7" r="4.8" stroke="currentColor" strokeWidth="1.2" fill="none" />
+      <path d="M7 4.1V7l2.2 1.3" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+      <circle cx="7" cy="7" r="0.7" fill="currentColor" />
     </svg>
   );
 }
