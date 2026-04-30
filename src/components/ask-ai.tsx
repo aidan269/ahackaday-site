@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 
 import type { Incident } from "@/lib/incident-types";
 import { graceAvatarUrl } from "@/lib/ecosystem";
+import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
 
 const ROLES = ["SOC analyst", "Eng lead", "Exec", "Comms"] as const;
 const PROMPTS = [
@@ -34,18 +35,8 @@ type GraceState =
   | { kind: "thinking"; promptId: PromptId | null; role: Role; tone: OutputMode; startedAt: number }
   | { kind: "answered"; promptId: PromptId | null; role: Role; tone: OutputMode; answer: string; durationMs: number };
 
-function formatInstructionForMode(mode: OutputMode): string {
-  if (mode === "checklist") return "Format as a checklist with dash bullets and clear owners/actions.";
-  if (mode === "slack-ready") return "Format as a compact Slack-ready message with short lines and actionable bullets.";
-  return "Format as a concise brief with short paragraphs and bullets where useful.";
-}
-
-function asSections(content: Incident["content"]): { h: string; p: string }[] {
-  if (!Array.isArray(content)) return [];
-  return content.filter((s): s is { h: string; p: string } => Boolean(s && typeof s.h === "string" && typeof s.p === "string"));
-}
-
 export function AskAI({ incident }: { incident: Incident }) {
+  const supabase = getSupabaseBrowserClient();
   const [role, setRole] = useState<Role>("SOC analyst");
   const [promptId, setPromptId] = useState<PromptId | null>(null);
   const [tone, setTone] = useState<OutputMode>("brief");
@@ -109,39 +100,6 @@ export function AskAI({ incident }: { incident: Incident }) {
     bodyRef.current.scrollTop = 0;
   }, [state.kind, state.kind === "answered" ? state.answer : ""]);
 
-  function buildContext() {
-    const body = asSections(incident.content)
-      .map((s) => `${s.h}: ${s.p}`)
-      .join("\n\n");
-    return [
-      `Incident title: ${incident.title}`,
-      `Severity: ${incident.severity}`,
-      `Category: ${incident.category}`,
-      `Affected: ${incident.affected}`,
-      incident.cve ? `Tracking ID: ${incident.cve}` : "",
-      `Mitigation status: ${incident.mitigationStatus}`,
-      `Exploited in the wild: ${incident.exploited ? "yes" : "no"}`,
-      `Social mentions (24h): ${incident.socialMentions24h ?? "n/a"}`,
-      `Social trend: ${incident.socialTrend ?? "flat"}`,
-      `Social delta (24h %): ${incident.socialDelta24hPct ?? "n/a"}`,
-      incident.socialPlatformSplit
-        ? `Platform split: X ${incident.socialPlatformSplit.x}% · Reddit ${incident.socialPlatformSplit.reddit}% · GitHub ${incident.socialPlatformSplit.github}%`
-        : "",
-      `X mentions (24h): ${incident.xMentions24h ?? 0}`,
-      `X unique authors (24h): ${incident.xUniqueAuthors24h ?? 0}`,
-      `X verified mentions (24h): ${incident.xVerifiedMentions24h ?? 0}`,
-      `X heat score: ${incident.xHeatScore ?? 0}`,
-      `X heat trend: ${incident.xHeatTrend ?? "flat"}`,
-      `X top hashtags: ${(incident.xTopHashtags ?? []).slice(0, 5).join(", ") || "n/a"}`,
-      `Summary: ${incident.summary}`,
-      "",
-      "Full brief:",
-      body,
-    ]
-      .filter(Boolean)
-      .join("\n");
-  }
-
   async function onGenerate() {
     const freeText = input.trim();
     const effectivePrompt = freeText || (promptId ? PROMPT_TEXT[promptId] : "");
@@ -153,33 +111,31 @@ export function AskAI({ incident }: { incident: Incident }) {
     reqIdRef.current = reqId;
     setState({ kind: "thinking", promptId, role, tone, startedAt });
     try {
-      const ctx = buildContext();
-      const structureInstruction = promptId === "tldr"
-        ? "Keep it crisp and factual."
-        : `Use this exact structure:
-- What changed
-- Why it matters
-- Next 30 minutes
-- Owner
-- Decision call
-- Confidence and unknowns`;
-      const full = `You are an analyst helping a security/platform engineer understand a cybersecurity incident. Use ONLY the brief below as ground truth. Be concise, direct, and plain-spoken. No marketing tone.
-Do not critique the incident taxonomy or classification labels. Do not say the item is "not cybersecurity" or "miscategorized."
-If details are missing, state the specific uncertainty briefly, then still provide the most practical impact/risk interpretation possible from available facts.
-Role mode: ${role}.
-${formatInstructionForMode(tone)}
-${structureInstruction}
-Always include "Confidence: <high|medium|low>" and "Unknowns: <bullet list>" at the end for non-TL;DR responses.
-
---- INCIDENT BRIEF ---
-${ctx}
---- END BRIEF ---
-
-Question: ${effectivePrompt}`;
+      if (!supabase) {
+        setState({ kind: "resting" });
+        setError("Ask AI auth is unavailable. Missing Supabase public env.");
+        return;
+      }
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData.session?.access_token;
+      if (!accessToken) {
+        setState({ kind: "resting" });
+        setError("Sign in to use Ask AI.");
+        return;
+      }
       const r = await fetch("/api/ask-ai", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt: full }),
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({
+          incidentSlug: incident.slug,
+          role,
+          tone,
+          promptId,
+          question: freeText || undefined,
+        }),
       });
       const json = (await r.json()) as { text?: string; error?: string };
       const text = (json.text || "").trim();

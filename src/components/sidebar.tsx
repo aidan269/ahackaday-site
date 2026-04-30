@@ -123,7 +123,7 @@ function SidebarBody({ counts, filters }: Props & { filters: UrlFilters }) {
 
   const isFeed = pathname === "/";
   const isCalendar = pathname.startsWith("/calendar");
-  const isRss = pathname === "/feed.xml";
+  const isRss = pathname === "/zero-day-clock";
   const isSaved = pathname === "/saved";
 
   const feedHomeHref = buildFeedHref({});
@@ -158,11 +158,11 @@ function SidebarBody({ counts, filters }: Props & { filters: UrlFilters }) {
           </span>
           <span>calendar</span>
         </Link>
-        <Link href="/feed.xml" className={`sidebar__item${isRss ? " is-active" : ""}`}>
+        <Link href="/zero-day-clock" className={`sidebar__item${isRss ? " is-active" : ""}`}>
           <span className="sidebar__icon" aria-hidden>
             <IconRss />
           </span>
-          <span>rss</span>
+          <span>zero-day clock</span>
         </Link>
         <Link href="/saved" className={`sidebar__item${isSaved ? " is-active" : ""}`}>
           <span className="sidebar__icon" aria-hidden>

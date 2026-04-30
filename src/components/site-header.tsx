@@ -15,7 +15,7 @@ export function SiteHeader() {
         <nav className="site-nav">
           <Link href="/" className="nav-link">feed</Link>
           <Link href="/calendar" className="nav-link">calendar</Link>
-          <Link href="/feed.xml" className="nav-link">rss</Link>
+          <Link href="/zero-day-clock" className="nav-link">zero-day clock</Link>
         </nav>
       </div>
     </header>
