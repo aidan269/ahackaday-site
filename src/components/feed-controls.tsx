@@ -6,6 +6,7 @@ type FeedControlsProps = {
   severity: string;
   typeValue: string;
   socialValue: string;
+  voteValue: string;
   windowValue: "7" | "30d" | "90d" | "all";
   layout: "card" | "timeline";
 };
@@ -15,12 +16,14 @@ export function FeedControls({
   severity,
   typeValue,
   socialValue,
+  voteValue,
   windowValue,
   layout,
 }: FeedControlsProps) {
   return (
     <form className="controls">
       <input type="hidden" name="severity" value={severity} />
+      <input type="hidden" name="type" value={typeValue} />
       <div className="ctrl">
         <label htmlFor="f-q">Search</label>
         <div className="ctrl__box">
@@ -61,21 +64,13 @@ export function FeedControls({
       </div>
 
       <div className="ctrl">
-        <label htmlFor="f-type">Type</label>
+        <label htmlFor="f-votes">Votes</label>
         <div className="ctrl__box">
-          <select id="f-type" name="type" defaultValue={typeValue}>
-            <option value="all">all types</option>
-            <option value="zero-day">zero-day</option>
-            <option value="supply-chain">supply chain</option>
-            <option value="breach">breach</option>
-            <option value="ransomware">ransomware</option>
-            <option value="identity">identity</option>
-            <option value="cloud">cloud</option>
-            <option value="web">web</option>
-            <option value="email">email</option>
-            <option value="critical-infrastructure">critical infra</option>
-            <option value="exploitation">exploitation</option>
-            <option value="consumer-security">consumer</option>
+          <select id="f-votes" name="votes" defaultValue={voteValue}>
+            <option value="all">all vote states</option>
+            <option value="upvoted">upvoted</option>
+            <option value="downvoted">downvoted</option>
+            <option value="controversial">controversial</option>
           </select>
           <span className="chev">▾</span>
         </div>

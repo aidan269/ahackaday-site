@@ -3,6 +3,7 @@ import { FeedControls } from "@/components/feed-controls";
 import { IncidentItem, IncidentTimelineItem } from "@/components/incident-item";
 import { QuietDayEmpty } from "@/components/quiet-day-empty";
 import { matchesFocusLens, type FocusLens } from "@/lib/focus-lenses";
+import { getIncidentVoteSummaryMap } from "@/lib/incident-votes";
 import { getAllIncidents, type IncidentType, type Severity } from "@/lib/incidents";
 import type { SocialDataQuality } from "@/lib/incident-types";
 import Image from "next/image";
@@ -120,6 +121,7 @@ export default async function Home({ searchParams }: HomeProps) {
   const typeValue = readParam(params.type, "all");
   const socialValue = readParam(params.social, "all");
   const focusValue = readParam(params.focus, "all");
+  const voteValue = readParam(params.votes, "all");
   const windowValue = readParam(params.window, "30d");
   const layoutParam = readParam(params.layout, "card");
   const layout = (layoutParam === "timeline" ? "timeline" : "card") as "card" | "timeline";
@@ -129,6 +131,7 @@ export default async function Home({ searchParams }: HomeProps) {
   const win = (windowValue === "7d" ? "7" : windowValue) as "7" | "30d" | "90d" | "all";
 
   const all = await getAllIncidents();
+  const voteSummaryMap = await getIncidentVoteSummaryMap(all.map((incident) => incident.slug));
   const now = new Date();
   const qq = query.trim().toLowerCase();
   const days = win === "all" ? null : parseInt(win, 10);
@@ -141,6 +144,10 @@ export default async function Home({ searchParams }: HomeProps) {
     if (severityValue !== "all" && i.severity !== severityValue) return false;
     if (typeFilter !== "all" && i.category !== typeFilter) return false;
     if (!matchesFocusLens(i, focusFilter)) return false;
+    const voteSummary = voteSummaryMap.get(i.slug) ?? { upvotes: 0, downvotes: 0, score: 0 };
+    if (voteValue === "upvoted" && voteSummary.score <= 0) return false;
+    if (voteValue === "downvoted" && voteSummary.score >= 0) return false;
+    if (voteValue === "controversial" && (voteSummary.upvotes === 0 || voteSummary.downvotes === 0)) return false;
     if (days) {
       const age = (now.getTime() - parseLocal(i.date).getTime()) / 86400000;
       if (age > days) return false;
@@ -251,6 +258,7 @@ export default async function Home({ searchParams }: HomeProps) {
         severity={severity}
         typeValue={typeValue}
         socialValue={socialValue}
+          voteValue={voteValue}
         windowValue={win}
         layout={layout}
       />

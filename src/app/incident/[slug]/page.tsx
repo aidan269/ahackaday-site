@@ -4,6 +4,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { AskAI } from "@/components/ask-ai";
+import { IncidentVoteControls } from "@/components/incident-vote-controls";
 import { SocialPlatformGraph } from "@/components/social-platform-graph";
 import { getPublicSiteUrl } from "@/lib/ecosystem";
 import type { SocialDataQuality } from "@/lib/incident-types";
@@ -178,6 +179,7 @@ export default async function IncidentPage({ params }: IncidentPageProps) {
         <article className={`detail ${incident.severity === "critical" ? "is-critical" : ""}`}>
           <div className="detail__bar">
             <Link href="/" className="back-link">back to feed</Link>
+            <IncidentVoteControls incidentSlug={incident.slug} />
           </div>
 
           <div className="detail__head">
