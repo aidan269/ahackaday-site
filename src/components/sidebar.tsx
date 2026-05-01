@@ -257,7 +257,7 @@ function SidebarBody({ counts, filters }: Props & { filters: UrlFilters }) {
       <Link href="/saved" className="sidebar__auth-cta">
         <span className="sidebar__auth-title">{userEmail ? "sync enabled" : "optional login"}</span>
         <span className="sidebar__auth-sub">
-          {userEmail ? `signed in as ${userEmail}` : "Sign in once to sync saved stories across devices."}
+          {userEmail ? `signed in as ${userEmail}` : "Sign in once to save stories and vote across devices."}
         </span>
       </Link>
 

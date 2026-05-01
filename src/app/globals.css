@@ -608,7 +608,15 @@ main.shell { max-width: 1560px; margin: 0 auto; padding: 48px 40px 160px; positi
   opacity: 0.84;
 }
 
-.card__date { font-size: 11.5px; color: var(--fg-3); line-height: 1.3; padding-top: 4px; }
+.card__date {
+  font-size: 11.5px;
+  color: var(--fg-3);
+  line-height: 1.3;
+  padding-top: 4px;
+  display: grid;
+  gap: 6px;
+  align-content: start;
+}
 .card__date .rel { display: block; font-size: 10px; color: var(--fg-muted); margin-top: 2px; }
 .card__main { min-width: 0; }
 .card__tagline { display: flex; gap: 10px; align-items: center; font-size: 10.5px; color: var(--fg-3); margin-bottom: 8px; flex-wrap: wrap; }
@@ -841,6 +849,26 @@ main.shell { max-width: 1560px; margin: 0 auto; padding: 48px 40px 160px; positi
 .vote-controls__score {
   color: var(--fg);
   font-weight: 600;
+}
+.vote-controls--compact {
+  display: grid;
+  gap: 4px;
+  padding: 5px;
+  border-radius: 8px;
+}
+.vote-controls--compact .vote-controls__buttons {
+  justify-content: flex-start;
+}
+.vote-controls--compact .vote-controls__btn {
+  width: 22px;
+  height: 20px;
+  font-size: 9px;
+}
+.vote-controls--compact .vote-controls__meta {
+  display: grid;
+  gap: 2px;
+  letter-spacing: 0.06em;
+  font-size: 8.5px;
 }
 .detail__grace-actions {
   display: inline-flex;

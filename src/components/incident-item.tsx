@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useState, type CSSProperties, type MouseEvent } from "react";
 
 import { useEmotionalPreferences } from "@/components/emotional-preferences-provider";
+import { IncidentVoteControls } from "@/components/incident-vote-controls";
 import { OpenInGrace } from "@/components/open-in-grace";
 import { formatIncidentDate } from "@/lib/format-incident-date";
 import type { Incident, Severity } from "@/lib/incident-types";
@@ -74,11 +75,12 @@ export function IncidentItem({ incident }: Props) {
       className={`card card--${incident.severity}${read ? " is-read" : ""}`}
       style={style}
     >
+      <div className="card__date">
+        {fmtShort(incident.date)}
+        <span className="rel">{rel(incident.date)}</span>
+        <IncidentVoteControls incidentSlug={incident.slug} compact />
+      </div>
       <Link href={`/incident/${incident.slug}`} className="card__link" prefetch style={{ display: "contents" }}>
-        <div className="card__date">
-          {fmtShort(incident.date)}
-          <span className="rel">{rel(incident.date)}</span>
-        </div>
         <div className="card__main">
           <div className="card__tagline">
             <span className={`sev-chip sev-${incident.severity}`} style={style}>{incident.severity}</span>
