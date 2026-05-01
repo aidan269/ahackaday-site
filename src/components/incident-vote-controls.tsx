@@ -138,10 +138,16 @@ export function IncidentVoteControls({
           ▼
         </button>
       </div>
-      <div className="vote-controls__meta">
-        <span className="vote-controls__score">score {state.score >= 0 ? `+${state.score}` : state.score}</span>
-        <span className="vote-controls__counts">{statusLabel}</span>
-      </div>
+      {compact ? (
+        <div className="vote-controls__compact-score" aria-label={statusLabel}>
+          {loading ? "…" : state.score >= 0 ? `+${state.score}` : String(state.score)}
+        </div>
+      ) : (
+        <div className="vote-controls__meta">
+          <span className="vote-controls__score">score {state.score >= 0 ? `+${state.score}` : state.score}</span>
+          <span className="vote-controls__counts">{statusLabel}</span>
+        </div>
+      )}
     </div>
   );
 }

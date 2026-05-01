@@ -851,8 +851,9 @@ main.shell { max-width: 1560px; margin: 0 auto; padding: 48px 40px 160px; positi
   font-weight: 600;
 }
 .vote-controls--compact {
-  display: grid;
-  gap: 4px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   padding: 5px;
   border-radius: 8px;
 }
@@ -869,6 +870,14 @@ main.shell { max-width: 1560px; margin: 0 auto; padding: 48px 40px 160px; positi
   gap: 2px;
   letter-spacing: 0.06em;
   font-size: 8.5px;
+}
+.vote-controls__compact-score {
+  min-width: 28px;
+  text-align: center;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: var(--fg);
 }
 .detail__grace-actions {
   display: inline-flex;
