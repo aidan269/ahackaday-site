@@ -4,6 +4,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { AskAI } from "@/components/ask-ai";
+import { IncidentComments } from "@/components/incident-comments";
 import { IncidentVoteControls } from "@/components/incident-vote-controls";
 import { SocialPlatformGraph } from "@/components/social-platform-graph";
 import { getPublicSiteUrl } from "@/lib/ecosystem";
@@ -277,6 +278,8 @@ export default async function IncidentPage({ params }: IncidentPageProps) {
               </div>
             </div>
           </div>
+
+          <IncidentComments incidentSlug={incident.slug} />
 
           <div className="detail__body">
             {sections.map((sec, idx) => (
