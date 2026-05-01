@@ -118,35 +118,57 @@ export function IncidentVoteControls({
 
   return (
     <div className={`vote-controls${compact ? " vote-controls--compact" : ""}`}>
-      <div className="vote-controls__buttons">
-        <button
-          type="button"
-          className={`vote-controls__btn${state.viewerVote === 1 ? " is-active is-up" : ""}`}
-          onClick={() => void mutateVote(state.viewerVote === 1 ? null : 1)}
-          disabled={saving || !userEmail}
-          title={userEmail ? "Mark helpful" : "Sign in to vote"}
-        >
-          ▲
-        </button>
-        <button
-          type="button"
-          className={`vote-controls__btn${state.viewerVote === -1 ? " is-active is-down" : ""}`}
-          onClick={() => void mutateVote(state.viewerVote === -1 ? null : -1)}
-          disabled={saving || !userEmail}
-          title={userEmail ? "Mark not helpful" : "Sign in to vote"}
-        >
-          ▼
-        </button>
-      </div>
       {compact ? (
-        <div className="vote-controls__compact-score" aria-label={statusLabel}>
-          {loading ? "…" : state.score >= 0 ? `+${state.score}` : String(state.score)}
-        </div>
+        <>
+          <button
+            type="button"
+            className={`vote-controls__btn${state.viewerVote === 1 ? " is-active is-up" : ""}`}
+            onClick={() => void mutateVote(state.viewerVote === 1 ? null : 1)}
+            disabled={saving || !userEmail}
+            title={userEmail ? "Mark helpful" : "Sign in to vote"}
+          >
+            ▲
+          </button>
+          <div className="vote-controls__compact-score" aria-label={statusLabel}>
+            {loading ? "…" : state.score >= 0 ? `+${state.score}` : String(state.score)}
+          </div>
+          <button
+            type="button"
+            className={`vote-controls__btn${state.viewerVote === -1 ? " is-active is-down" : ""}`}
+            onClick={() => void mutateVote(state.viewerVote === -1 ? null : -1)}
+            disabled={saving || !userEmail}
+            title={userEmail ? "Mark not helpful" : "Sign in to vote"}
+          >
+            ▼
+          </button>
+        </>
       ) : (
-        <div className="vote-controls__meta">
-          <span className="vote-controls__score">score {state.score >= 0 ? `+${state.score}` : state.score}</span>
-          <span className="vote-controls__counts">{statusLabel}</span>
+        <>
+          <div className="vote-controls__buttons">
+            <button
+              type="button"
+              className={`vote-controls__btn${state.viewerVote === 1 ? " is-active is-up" : ""}`}
+              onClick={() => void mutateVote(state.viewerVote === 1 ? null : 1)}
+              disabled={saving || !userEmail}
+              title={userEmail ? "Mark helpful" : "Sign in to vote"}
+            >
+              ▲
+            </button>
+            <button
+              type="button"
+              className={`vote-controls__btn${state.viewerVote === -1 ? " is-active is-down" : ""}`}
+              onClick={() => void mutateVote(state.viewerVote === -1 ? null : -1)}
+              disabled={saving || !userEmail}
+              title={userEmail ? "Mark not helpful" : "Sign in to vote"}
+            >
+              ▼
+            </button>
         </div>
+          <div className="vote-controls__meta">
+            <span className="vote-controls__score">score {state.score >= 0 ? `+${state.score}` : state.score}</span>
+            <span className="vote-controls__counts">{statusLabel}</span>
+          </div>
+        </>
       )}
     </div>
   );
