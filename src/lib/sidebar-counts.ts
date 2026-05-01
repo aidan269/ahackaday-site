@@ -1,4 +1,5 @@
 import type { Incident } from "@/lib/incident-types";
+import { isAiIncident, isGovernmentIncident } from "@/lib/focus-lenses";
 
 export type SidebarCounts = {
   all: number;
@@ -8,7 +9,8 @@ export type SidebarCounts = {
   low: number;
   zeroDay: number;
   ransomware: number;
-  breach: number;
+  ai: number;
+  government: number;
 };
 
 export function computeSidebarCounts(all: Incident[]): SidebarCounts {
@@ -20,13 +22,15 @@ export function computeSidebarCounts(all: Incident[]): SidebarCounts {
     low: 0,
     zeroDay: 0,
     ransomware: 0,
-    breach: 0,
+    ai: 0,
+    government: 0,
   };
   for (const i of all) {
     c[i.severity] += 1;
     if (i.category === "zero-day") c.zeroDay += 1;
     if (i.category === "ransomware") c.ransomware += 1;
-    if (i.category === "breach") c.breach += 1;
+    if (isAiIncident(i)) c.ai += 1;
+    if (isGovernmentIncident(i)) c.government += 1;
   }
   return c;
 }

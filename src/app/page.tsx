@@ -2,6 +2,7 @@ import { DailyBriefHead } from "@/components/daily-brief-head";
 import { FeedControls } from "@/components/feed-controls";
 import { IncidentItem, IncidentTimelineItem } from "@/components/incident-item";
 import { QuietDayEmpty } from "@/components/quiet-day-empty";
+import { matchesFocusLens, type FocusLens } from "@/lib/focus-lenses";
 import { getAllIncidents, type IncidentType, type Severity } from "@/lib/incidents";
 import type { SocialDataQuality } from "@/lib/incident-types";
 import Image from "next/image";
@@ -118,11 +119,13 @@ export default async function Home({ searchParams }: HomeProps) {
   const severity = readParam(params.severity, "all");
   const typeValue = readParam(params.type, "all");
   const socialValue = readParam(params.social, "all");
+  const focusValue = readParam(params.focus, "all");
   const windowValue = readParam(params.window, "30d");
   const layoutParam = readParam(params.layout, "card");
   const layout = (layoutParam === "timeline" ? "timeline" : "card") as "card" | "timeline";
   const severityValue = severity as "all" | Severity;
   const typeFilter = typeValue as "all" | IncidentType;
+  const focusFilter = (focusValue === "ai" || focusValue === "government" ? focusValue : "all") as FocusLens;
   const win = (windowValue === "7d" ? "7" : windowValue) as "7" | "30d" | "90d" | "all";
 
   const all = await getAllIncidents();
@@ -137,6 +140,7 @@ export default async function Home({ searchParams }: HomeProps) {
   const filtered = all.filter((i) => {
     if (severityValue !== "all" && i.severity !== severityValue) return false;
     if (typeFilter !== "all" && i.category !== typeFilter) return false;
+    if (!matchesFocusLens(i, focusFilter)) return false;
     if (days) {
       const age = (now.getTime() - parseLocal(i.date).getTime()) / 86400000;
       if (age > days) return false;

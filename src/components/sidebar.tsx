@@ -14,6 +14,7 @@ type Props = { counts: SidebarCounts };
 type UrlFilters = {
   severity: string;
   type: string;
+  focus: string;
   exploited: boolean;
   mitigated: boolean;
   window: string;
@@ -22,6 +23,7 @@ type UrlFilters = {
 const DEFAULT_FILTERS: UrlFilters = {
   severity: "all",
   type: "all",
+  focus: "all",
   exploited: false,
   mitigated: false,
   window: "30d",
@@ -33,6 +35,7 @@ function readFilters(search: URLSearchParams): UrlFilters {
   return {
     severity: search.get("severity") ?? "all",
     type: search.get("type") ?? "all",
+    focus: search.get("focus") ?? "all",
     exploited: ex === "1" || ex?.toLowerCase() === "true",
     mitigated: mit === "1" || mit?.toLowerCase() === "true",
     window: search.get("window") ?? "30d",
@@ -108,11 +111,24 @@ function IconRansomware() {
   );
 }
 
-function IconBreach() {
+function IconAI() {
   return (
     <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden>
-      <path d="M3 8.5h8M5 6l-1.5 2.5M9 6l1.5 2.5" stroke="currentColor" strokeWidth="1.2" fill="none" strokeLinecap="round" />
-      <rect x="4" y="4.5" width="6" height="3" rx="0.5" stroke="currentColor" strokeWidth="1.2" fill="none" />
+      <rect x="4" y="4" width="6" height="6" rx="1.2" stroke="currentColor" strokeWidth="1.2" fill="none" />
+      <circle cx="6.2" cy="6.5" r="0.7" fill="currentColor" />
+      <circle cx="8.8" cy="6.5" r="0.7" fill="currentColor" />
+      <path d="M6 8.3h2" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+      <path d="M7 2v1.2M11 7h1.2M1.8 7H3M9.8 3.2l.9-.9M3.3 10.7l.9-.9" stroke="currentColor" strokeWidth="1" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function IconGovernment() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden>
+      <path d="M2 5.2L7 2.4l5 2.8v.8H2v-.8z" stroke="currentColor" strokeWidth="1.2" fill="none" strokeLinejoin="round" />
+      <path d="M3.4 6.2v3.4M5.8 6.2v3.4M8.2 6.2v3.4M10.6 6.2v3.4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+      <path d="M2.6 10.6h8.8" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
     </svg>
   );
 }
@@ -132,7 +148,8 @@ function SidebarBody({ counts, filters }: Props & { filters: UrlFilters }) {
     isFeed && filters.severity === sev && !filters.exploited && !filters.mitigated && typeClear;
   const zeroDayActive = isFeed && filters.type === "zero-day";
   const ransomwareActive = isFeed && filters.type === "ransomware";
-  const breachActive = isFeed && filters.type === "breach";
+  const aiActive = isFeed && filters.focus === "ai";
+  const governmentActive = isFeed && filters.focus === "government";
 
   return (
     <aside className="sidebar" aria-label="Primary navigation">
@@ -216,12 +233,19 @@ function SidebarBody({ counts, filters }: Props & { filters: UrlFilters }) {
           <span>ransomware</span>
           <span className="sidebar__count">{counts.ransomware}</span>
         </Link>
-        <Link href={buildFeedHref({ type: "breach" })} className={`sidebar__item${breachActive ? " is-active" : ""}`}>
+        <Link href={buildFeedHref({ focus: "ai" })} className={`sidebar__item${aiActive ? " is-active" : ""}`}>
           <span className="sidebar__icon" aria-hidden>
-            <IconBreach />
+            <IconAI />
           </span>
-          <span>breach</span>
-          <span className="sidebar__count">{counts.breach}</span>
+          <span>ai</span>
+          <span className="sidebar__count">{counts.ai}</span>
+        </Link>
+        <Link href={buildFeedHref({ focus: "government" })} className={`sidebar__item${governmentActive ? " is-active" : ""}`}>
+          <span className="sidebar__icon" aria-hidden>
+            <IconGovernment />
+          </span>
+          <span>government</span>
+          <span className="sidebar__count">{counts.government}</span>
         </Link>
       </nav>
 
