@@ -55,6 +55,14 @@ export function IncidentItem({ incident }: Props) {
     ? `X ${incident.socialPlatformSplit.x}% · Reddit ${incident.socialPlatformSplit.reddit}% · GitHub ${incident.socialPlatformSplit.github}%`
     : null;
   const socialPreviewText = platformSplitPreview ?? socialPreviewParts.join(" · ");
+  const iocCount = Array.from(
+    new Set([
+      ...incident.iocs,
+      ...incident.evidence.cves,
+      ...incident.evidence.packages,
+    ].map((v) => v.trim()).filter(Boolean)),
+  ).length;
+  const opsLine = `${iocCount} ioc · sgm · yra`;
 
   const saved = isSaved(incident.slug);
   const read = isRead(incident.slug);
@@ -91,8 +99,8 @@ export function IncidentItem({ incident }: Props) {
           <h2 className="card__title">{incident.title}</h2>
           <p className="card__sum">{incident.summary}</p>
           <div className="card__line">
-            <span className="k">affected</span>
-            <span className="card__line-v">{truncateForDisplay(incident.affected, 140)}</span>
+            <span className="k">ops</span>
+            <span className="card__line-v">{opsLine}</span>
             {socialPreviewText && (
               <>
                 <span className="card__meta-sep" aria-hidden>·</span>

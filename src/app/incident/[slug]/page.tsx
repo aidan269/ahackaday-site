@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 
 import { AskAI } from "@/components/ask-ai";
 import { IncidentComments } from "@/components/incident-comments";
+import { IncidentOpsPack } from "@/components/incident-ops-pack";
 import { IncidentVoteControls } from "@/components/incident-vote-controls";
 import { SocialPlatformGraph } from "@/components/social-platform-graph";
 import { getPublicSiteUrl } from "@/lib/ecosystem";
@@ -217,7 +218,43 @@ export default async function IncidentPage({ params }: IncidentPageProps) {
             </div>
           </div>
 
-          <div className="detail__social">
+          <IncidentOpsPack incident={incident} />
+
+          <IncidentComments incidentSlug={incident.slug} />
+
+          <div className="detail__body">
+            {sections.map((sec, idx) => (
+              <div key={idx}>
+                <h3>{sec.h}</h3>
+                <p>{sec.p}</p>
+              </div>
+            ))}
+          </div>
+
+          <div className="detail__sources">
+            <h3>sources</h3>
+            <ul>
+              {incident.sources.map((sourceUrl) => (
+                <li key={sourceUrl}>
+                  <a href={sourceUrl} target="_blank" rel="noreferrer">{sourceUrl}</a>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <div className="signoff">
+            <em>
+              Curated {formatIncidentDate(incident.date)} by the ahackaday team.
+              <span className="sep">/</span>
+              Sources verified.
+              <span className="sep">/</span>
+              Brief grounded in {incident.sources.length} source{incident.sources.length === 1 ? "" : "s"}.
+            </em>
+          </div>
+        </article>
+        <div className="detail__ask-drawer">
+          <AskAI incident={incident} />
+          <div className="detail__social detail__social--rail">
             <h3>social pulse</h3>
             <div className="detail__social-grid">
               <div className="detail__social-metric">
@@ -278,41 +315,6 @@ export default async function IncidentPage({ params }: IncidentPageProps) {
               </div>
             </div>
           </div>
-
-          <IncidentComments incidentSlug={incident.slug} />
-
-          <div className="detail__body">
-            {sections.map((sec, idx) => (
-              <div key={idx}>
-                <h3>{sec.h}</h3>
-                <p>{sec.p}</p>
-              </div>
-            ))}
-          </div>
-
-          <div className="detail__sources">
-            <h3>sources</h3>
-            <ul>
-              {incident.sources.map((sourceUrl) => (
-                <li key={sourceUrl}>
-                  <a href={sourceUrl} target="_blank" rel="noreferrer">{sourceUrl}</a>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          <div className="signoff">
-            <em>
-              Curated {formatIncidentDate(incident.date)} by the ahackaday team.
-              <span className="sep">/</span>
-              Sources verified.
-              <span className="sep">/</span>
-              Brief grounded in {incident.sources.length} source{incident.sources.length === 1 ? "" : "s"}.
-            </em>
-          </div>
-        </article>
-        <div className="detail__ask-drawer">
-          <AskAI incident={incident} />
         </div>
       </div>
     </main>
