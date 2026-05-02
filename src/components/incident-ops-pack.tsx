@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 
-import { buildOpsIocValues } from "@/lib/ops-iocs";
+import { buildOpsIocRows } from "@/lib/ops-iocs";
 
 type OpsPackProps = {
   incident: {
@@ -24,6 +24,8 @@ type IocType = "cve" | "ip" | "domain" | "url" | "hash" | "package" | "other";
 type TypedIoc = {
   type: IocType;
   value: string;
+  confidence: "high" | "mid" | "low";
+  score: number;
 };
 
 function classifyIoc(value: string): IocType {
@@ -45,8 +47,12 @@ function toTxt(rows: TypedIoc[]) {
 export function IncidentOpsPack({ incident }: OpsPackProps) {
   const [activeTab, setActiveTab] = useState<"all" | "network" | "vuln" | "packages">("all");
   const typedIocs = useMemo(() => {
-    const raw = buildOpsIocValues(incident);
-    return raw.map((value) => ({ value, type: classifyIoc(value) }));
+    return buildOpsIocRows(incident).map((row) => ({
+      value: row.value,
+      type: classifyIoc(row.value),
+      confidence: row.confidence,
+      score: row.score,
+    }));
   }, [incident]);
 
   const tabRows = useMemo(() => {
@@ -64,6 +70,14 @@ export function IncidentOpsPack({ incident }: OpsPackProps) {
     const packages = typedIocs.filter((r) => r.type === "package").length;
     return { all: typedIocs.length, network, vuln, packages };
   }, [typedIocs]);
+
+  const averageScore = useMemo(() => {
+    if (typedIocs.length === 0) return 0;
+    return Math.round(typedIocs.reduce((sum, row) => sum + row.score, 0) / typedIocs.length);
+  }, [typedIocs]);
+
+  const sigmaCoverage = Math.max(12, Math.min(95, Math.round(averageScore * 0.88)));
+  const yaraCoverage = Math.max(12, Math.min(95, Math.round(averageScore * 0.8)));
 
   const sigmaRule = useMemo(() => {
     const indicators = typedIocs.slice(0, 30).map((r) => `      - "${r.value.replace(/"/g, '\\"')}"`).join("\n");
@@ -120,12 +134,6 @@ export function IncidentOpsPack({ incident }: OpsPackProps) {
     a.download = filename;
     a.click();
     URL.revokeObjectURL(url);
-  }
-
-  function confidenceClass(type: IocType): "high" | "mid" | "low" {
-    if (type === "cve" || type === "hash" || type === "ip" || type === "url") return "high";
-    if (type === "domain" || type === "package") return "mid";
-    return "low";
   }
 
   function iconTypeClass(type: IocType): "h" | "d" | "i" {
@@ -191,7 +199,7 @@ export function IncidentOpsPack({ incident }: OpsPackProps) {
                     <span className={`ioc-row__type ${iconTypeClass(row.type)}`}>{row.type[0]}</span>
                     <span className="ioc-row__val">{row.value}</span>
                     <span className="ioc-row__conf">
-                      <span className={`conf-bar ${confidenceClass(row.type)}`}>
+                      <span className={`conf-bar ${row.confidence}`}>
                         <i /><i /><i />
                       </span>
                     </span>
@@ -256,7 +264,7 @@ export function IncidentOpsPack({ incident }: OpsPackProps) {
               <div className="rule-card__foot">
                 <div className="rule-readiness">
                   coverage
-                  <span className="bar"><i style={{ width: "42%" }} /></span>
+                  <span className="bar"><i style={{ width: `${sigmaCoverage}%` }} /></span>
                 </div>
               </div>
             </article>
@@ -273,7 +281,7 @@ export function IncidentOpsPack({ incident }: OpsPackProps) {
               <div className="rule-card__foot">
                 <div className="rule-readiness">
                   coverage
-                  <span className="bar"><i style={{ width: "38%" }} /></span>
+                  <span className="bar"><i style={{ width: `${yaraCoverage}%` }} /></span>
                 </div>
               </div>
             </article>

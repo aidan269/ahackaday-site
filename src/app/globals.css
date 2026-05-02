@@ -3650,6 +3650,76 @@ a.open-in-grace:focus-visible {
   font-size: 9px;
   color: var(--fg-muted);
 }
+
+/* Ask Grace palette aligned with Ops Pack */
+.detail__ask-drawer .askai {
+  --ask-paper: #FFFFFF;
+  --ask-bg: #FBF8F1;
+  --ask-line: #E8E2D2;
+  --ask-line-2: #F0EBDC;
+  --ask-ink: #1A1815;
+  --ask-ink-2: #3B372F;
+  --ask-ink-3: #6B6558;
+  --ask-orange: #FA5E06;
+  --ask-orange-soft: #FFE5D2;
+  --ask-orange-tint: #FFF1E4;
+  border-color: var(--ask-line);
+  background: var(--ask-paper);
+  box-shadow: 0 1px 0 rgba(26, 24, 21, 0.04), 0 12px 28px rgba(26, 24, 21, 0.06), 0 24px 60px rgba(26, 24, 21, 0.05);
+}
+.detail__ask-drawer .askai__head {
+  background: linear-gradient(180deg, var(--ask-orange-tint), var(--ask-paper));
+  border-bottom-color: var(--ask-line);
+}
+.detail__ask-drawer .askai__head .label { color: var(--ask-ink); }
+.detail__ask-drawer .askai__head .label .sub { color: var(--ask-ink-3); }
+.detail__ask-drawer .askai__hint {
+  border-color: var(--ask-orange-soft);
+  background: var(--ask-orange-tint);
+  color: var(--ask-ink-2);
+}
+.detail__ask-drawer .askai__role,
+.detail__ask-drawer .askai__topic,
+.detail__ask-drawer .askai__artifact {
+  border-color: var(--ask-line);
+  background: var(--ask-bg);
+  color: var(--ask-ink-2);
+}
+.detail__ask-drawer .askai__role.is-active,
+.detail__ask-drawer .askai__topic.is-active {
+  background: var(--ask-orange-tint);
+  border-color: var(--ask-orange-soft);
+  color: var(--ask-orange);
+  box-shadow: 0 0 0 1px rgba(250, 94, 6, 0.16) inset;
+}
+.detail__ask-drawer .askai__combo {
+  border-color: var(--ask-orange-soft);
+  background: var(--ask-orange-tint);
+  color: var(--ask-ink-2);
+}
+.detail__ask-drawer .askai__msg.is-user .bubble {
+  background: var(--ask-bg);
+  border-color: var(--ask-line);
+}
+.detail__ask-drawer .askai__form {
+  border-top-color: var(--ask-line);
+  background: var(--ask-bg);
+}
+.detail__ask-drawer .askai__form input {
+  border-color: var(--ask-line);
+  color: var(--ask-ink);
+}
+.detail__ask-drawer .askai__form input:focus {
+  border-color: color-mix(in srgb, var(--ask-orange) 55%, var(--ask-line));
+  box-shadow: 0 0 0 3px rgba(250, 94, 6, 0.12);
+}
+.detail__ask-drawer .askai__form button {
+  background: var(--ask-orange);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.2) inset, 0 4px 10px rgba(250, 94, 6, 0.28);
+}
+.detail__ask-drawer .askai__form button:hover {
+  background: color-mix(in srgb, var(--ask-orange) 92%, #000);
+}
 .askai__tone {
   margin: 10px 12px 0;
   display: flex;
