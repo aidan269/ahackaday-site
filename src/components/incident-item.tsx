@@ -8,6 +8,7 @@ import { IncidentVoteControls } from "@/components/incident-vote-controls";
 import { OpenInGrace } from "@/components/open-in-grace";
 import { formatIncidentDate } from "@/lib/format-incident-date";
 import type { Incident, Severity } from "@/lib/incident-types";
+import { buildOpsIocValues } from "@/lib/ops-iocs";
 import { truncateForDisplay } from "@/lib/truncate-display";
 
 const SEV_COLOR: Record<Severity, string> = {
@@ -55,13 +56,7 @@ export function IncidentItem({ incident }: Props) {
     ? `X ${incident.socialPlatformSplit.x}% · Reddit ${incident.socialPlatformSplit.reddit}% · GitHub ${incident.socialPlatformSplit.github}%`
     : null;
   const socialPreviewText = platformSplitPreview ?? socialPreviewParts.join(" · ");
-  const iocCount = Array.from(
-    new Set([
-      ...incident.iocs,
-      ...incident.evidence.cves,
-      ...incident.evidence.packages,
-    ].map((v) => v.trim()).filter(Boolean)),
-  ).length;
+  const iocCount = buildOpsIocValues(incident).length;
   const opsLine = `${iocCount} ioc · sgm · yra`;
 
   const saved = isSaved(incident.slug);

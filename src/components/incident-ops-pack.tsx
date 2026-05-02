@@ -2,6 +2,8 @@
 
 import { useMemo } from "react";
 
+import { buildOpsIocValues } from "@/lib/ops-iocs";
+
 type OpsPackProps = {
   incident: {
     slug: string;
@@ -36,23 +38,15 @@ function classifyIoc(value: string): IocType {
   return "other";
 }
 
-function unique(values: string[]): string[] {
-  return Array.from(new Set(values.map((v) => v.trim()).filter(Boolean)));
-}
-
 function toTxt(rows: TypedIoc[]) {
   return rows.map((r) => `[${r.type}] ${r.value}`).join("\n");
 }
 
 export function IncidentOpsPack({ incident }: OpsPackProps) {
   const typedIocs = useMemo(() => {
-    const raw = unique([
-      ...incident.iocs,
-      ...incident.evidence.cves,
-      ...incident.evidence.packages,
-    ]);
+    const raw = buildOpsIocValues(incident);
     return raw.map((value) => ({ value, type: classifyIoc(value) }));
-  }, [incident.evidence.cves, incident.evidence.packages, incident.iocs]);
+  }, [incident]);
 
   const grouped = useMemo(() => {
     const map = new Map<IocType, string[]>();
