@@ -178,18 +178,20 @@ export default async function IncidentPage({ params }: IncidentPageProps) {
         <article className={`detail ${incident.severity === "critical" ? "is-critical" : ""}`}>
           <div className="detail__bar">
             <Link href="/" className="back-link">back to feed</Link>
-            <div className="detail__bar-stack">
-              <IncidentTrackControls incidentSlug={incident.slug} />
-              <IncidentVoteControls incidentSlug={incident.slug} />
-            </div>
           </div>
 
           <div className="detail__head">
-            <div className="detail__tags">
-              <span style={{ color: "var(--fg-2)" }}>{formatIncidentDate(incident.date)}</span>
-              <SeverityChipExplainer severity={incident.severity} rationale={incident.severityInference ?? []} />
-              <span>{incident.category}</span>
-              {incident.exploited && <span className="exploited-chip">exploited in the wild</span>}
+            <div className="detail__head-top">
+              <div className="detail__tags">
+                <span style={{ color: "var(--fg-2)" }}>{formatIncidentDate(incident.date)}</span>
+                <SeverityChipExplainer severity={incident.severity} rationale={incident.severityInference ?? []} />
+                <span>{incident.category}</span>
+                {incident.exploited && <span className="exploited-chip">exploited in the wild</span>}
+              </div>
+              <div className="detail__bar-stack">
+                <IncidentTrackControls incidentSlug={incident.slug} />
+                <IncidentVoteControls incidentSlug={incident.slug} />
+              </div>
             </div>
             <h1 className="detail__title">{incident.title}</h1>
             <p className="detail__lead">{incident.summary}</p>

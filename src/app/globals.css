@@ -896,16 +896,30 @@ main.shell { max-width: 1560px; margin: 0 auto; padding: 48px 40px 160px; positi
 .detail__bar {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px 16px;
+  margin-bottom: 10px;
+}
+.detail__head-top {
+  display: flex;
+  flex-wrap: wrap;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 8px 16px;
-  margin-bottom: 8px;
+  gap: 12px 20px;
+  margin-bottom: 18px;
+}
+.detail__head-top .detail__tags {
+  margin-bottom: 0;
+  flex: 1 1 auto;
+  min-width: 0;
 }
 .detail__bar-stack {
   display: flex;
   flex-direction: column;
   align-items: flex-end;
   gap: 8px;
+  flex-shrink: 0;
 }
 .vote-controls {
   display: inline-flex;
@@ -2603,7 +2617,6 @@ a.open-in-grace:focus-visible {
   text-transform: uppercase;
   letter-spacing: 0.1em;
   color: var(--fg-3);
-  margin-bottom: 32px;
 }
 
 .detail__head {
