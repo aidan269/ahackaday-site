@@ -4497,3 +4497,197 @@ a.open-in-grace:focus-visible {
     gap: 8px;
   }
 }
+
+/* ===== v3 moat: provenance, social explainers, community signal ===== */
+.detail__bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
+.sev-chip--tip {
+  cursor: help;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.sev-chip__hint {
+  font-size: 9px;
+  opacity: 0.65;
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  padding: 0 4px;
+  line-height: 1.2;
+}
+.detail__social-rail-hd {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.social-expl {
+  position: relative;
+  font-size: 10px;
+}
+.social-expl__chip {
+  border: 1px solid var(--border);
+  background: var(--bg-elev-1);
+  border-radius: 999px;
+  padding: 4px 10px;
+  cursor: pointer;
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+}
+.social-expl__q {
+  color: var(--brand-orange);
+  text-transform: lowercase;
+}
+.social-expl__panel {
+  margin-top: 8px;
+  padding: 10px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--bg-elev-1);
+  display: grid;
+  gap: 8px;
+}
+.social-expl__row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 10px;
+}
+.social-expl__row .k { color: var(--fg-3); }
+.social-expl__row .v { text-align: right; max-width: 62%; }
+.social-expl__muted {
+  font-size: 9px;
+  color: var(--fg-3);
+  margin: 0;
+  line-height: 1.45;
+}
+.track-controls {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  font-size: 10px;
+}
+.track-controls__alert {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--fg-3);
+}
+.track-controls__alert input {
+  width: 88px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 4px 6px;
+  background: var(--bg);
+  color: var(--fg);
+}
+.prov-grid {
+  display: grid;
+  gap: 12px;
+  margin-top: 8px;
+}
+.prov-card {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 12px;
+  background: var(--bg-elev-1);
+}
+.prov-card__title {
+  margin: 0 0 4px;
+  font-size: 12px;
+  text-transform: lowercase;
+}
+.prov-card__sub {
+  margin: 0 0 8px;
+  font-size: 10px;
+  color: var(--fg-3);
+  line-height: 1.4;
+}
+.prov-empty {
+  font-size: 10px;
+  color: var(--fg-3);
+  margin: 0;
+}
+.claim-list, .rev-list, .src-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+.claim-row {
+  border-top: 1px solid var(--border);
+  padding-top: 8px;
+  font-size: 10px;
+}
+.claim-row__hd {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  margin-bottom: 4px;
+}
+.claim-field {
+  font-weight: 600;
+  text-transform: lowercase;
+}
+.claim-src {
+  font-size: 9px;
+  border-radius: 4px;
+  padding: 1px 4px;
+  border: 1px solid var(--border);
+  text-transform: lowercase;
+}
+.claim-src--source { color: var(--sev-low); }
+.claim-src--model { color: var(--sev-medium); }
+.claim-src--heuristic { color: var(--fg-3); }
+.claim-conf { font-size: 9px; color: var(--fg-3); }
+.claim-val { line-height: 1.45; }
+.claim-link { color: var(--brand-orange); word-break: break-all; }
+.claim-snippet {
+  margin: 6px 0 0;
+  padding: 6px 8px;
+  border-left: 2px solid var(--border-strong);
+  color: var(--fg-2);
+}
+.rev-row {
+  font-size: 10px;
+  border-top: 1px solid var(--border);
+  padding-top: 6px;
+}
+.rev-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  color: var(--fg-3);
+  font-size: 9px;
+}
+.rev-fields { margin-top: 4px; }
+.rev-note { margin-top: 4px; color: var(--fg-2); }
+.social-q-chip {
+  font-size: 9px;
+  text-transform: lowercase;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 2px 8px;
+  color: var(--fg-3);
+}
+.practitioner-badge {
+  font-size: 9px;
+  text-transform: lowercase;
+  border-radius: 999px;
+  padding: 2px 8px;
+  border: 1px solid rgba(250, 94, 6, 0.35);
+  color: var(--brand-orange);
+}
+.btn-quiet.is-on {
+  border-color: rgba(250, 94, 6, 0.55);
+  color: var(--brand-orange);
+}

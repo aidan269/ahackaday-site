@@ -9,6 +9,8 @@ type FeedControlsProps = {
   voteValue: string;
   windowValue: "7" | "30d" | "90d" | "all";
   layout: "card" | "timeline";
+  focusValue: string;
+  sortValue: string;
 };
 
 export function FeedControls({
@@ -19,6 +21,8 @@ export function FeedControls({
   voteValue,
   windowValue,
   layout,
+  focusValue,
+  sortValue,
 }: FeedControlsProps) {
   return (
     <form className="controls">
@@ -71,6 +75,30 @@ export function FeedControls({
             <option value="upvoted">upvoted</option>
             <option value="downvoted">downvoted</option>
             <option value="comments">comments</option>
+          </select>
+          <span className="chev">▾</span>
+        </div>
+      </div>
+
+      <div className="ctrl">
+        <label htmlFor="f-focus">Lens</label>
+        <div className="ctrl__box">
+          <select id="f-focus" name="focus" defaultValue={focusValue}>
+            <option value="all">all lenses</option>
+            <option value="ai">AI / agents</option>
+            <option value="government">government / kev</option>
+            <option value="missed">stories you&apos;d miss on X</option>
+          </select>
+          <span className="chev">▾</span>
+        </div>
+      </div>
+
+      <div className="ctrl">
+        <label htmlFor="f-sort">Sort</label>
+        <div className="ctrl__box">
+          <select id="f-sort" name="sort" defaultValue={sortValue}>
+            <option value="date">newest / severity</option>
+            <option value="community">community signal</option>
           </select>
           <span className="chev">▾</span>
         </div>

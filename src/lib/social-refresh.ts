@@ -353,6 +353,7 @@ export async function refreshIncidentSocialMetrics(limit = 20): Promise<{
   let updated = 0;
   const errors: string[] = [];
   for (const incident of rows) {
+    const scanStartedAt = Date.now();
     try {
       const githubSignal = await fetchGithubMentions(incident);
       let redditMentions = 0;
@@ -401,6 +402,33 @@ export async function refreshIncidentSocialMetrics(limit = 20): Promise<{
       const split = mentions > 0
         ? observedSplit
         : toPlatformSplit(mentions, `${incident.id}:${incident.title}`);
+      const scanFinishedAt = Date.now();
+      const scanLatencyMs = Math.max(0, scanFinishedAt - scanStartedAt);
+      const socialMetricExplainers = {
+        window_hours: 24,
+        scan_started_at: new Date(scanStartedAt).toISOString(),
+        scan_finished_at: new Date(scanFinishedAt).toISOString(),
+        scan_latency_ms: scanLatencyMs,
+        platforms: {
+          github: {
+            raw_count: githubSignal.mentions,
+            partial_scan: false,
+            rate_limited: false,
+          },
+          reddit: {
+            raw_count: redditMentions,
+            partial_scan: false,
+            rate_limited: false,
+          },
+          x: {
+            raw_count: xSignal.mentions,
+            partial_scan: false,
+            rate_limited: false,
+          },
+        },
+        total_observed: mentions,
+        split_source: mentions > 0 ? ("observed_counts" as const) : ("synthetic_when_zero" as const),
+      };
       const exploited = inferExploitedSignal(`${incident.title} ${incident.claude_summary}`);
       const slug = buildIncidentSlug(incident.published_at, incident.title, incident.id);
       const summary = exploited || trend === "up"
@@ -417,6 +445,7 @@ export async function refreshIncidentSocialMetrics(limit = 20): Promise<{
         social_delta_24h_pct: deltaPct,
         social_platform_split: split,
         social_keywords: githubSignal.keywords,
+        social_metric_explainers: socialMetricExplainers,
         x_mentions_24h: xSignal.mentions,
         x_unique_authors_24h: xSignal.uniqueAuthors,
         x_verified_mentions_24h: xSignal.verifiedMentions,

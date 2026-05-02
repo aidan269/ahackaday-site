@@ -4,7 +4,12 @@ import { IncidentItem, IncidentTimelineItem } from "@/components/incident-item";
 import { QuietDayEmpty } from "@/components/quiet-day-empty";
 import { graceAvatarUrl } from "@/lib/ecosystem";
 import { matchesFocusLens, type FocusLens } from "@/lib/focus-lenses";
-import { getIncidentCommentCountMap, getIncidentVoteSummaryMap } from "@/lib/incident-votes";
+import { computeCommunityScore, practitionerBadgeEligible } from "@/lib/community-score";
+import {
+  getIncidentCommentCountMap,
+  getIncidentSaveCountMap,
+  getIncidentVoteSummaryMap,
+} from "@/lib/incident-votes";
 import { getAllIncidents, type IncidentType, type Severity } from "@/lib/incidents";
 import type { SocialDataQuality } from "@/lib/incident-types";
 import Image from "next/image";
@@ -273,12 +278,15 @@ export default async function Home({ searchParams }: HomeProps) {
   const socialValue = readParam(params.social, "all");
   const focusValue = readParam(params.focus, "all");
   const voteValue = readParam(params.votes, "all");
+  const sortValue = readParam(params.sort, "date");
   const windowValue = readParam(params.window, "30d");
   const layoutParam = readParam(params.layout, "card");
   const layout = (layoutParam === "timeline" ? "timeline" : "card") as "card" | "timeline";
   const severityValue = severity as "all" | Severity;
   const typeFilter = typeValue as "all" | IncidentType;
-  const focusFilter = (focusValue === "ai" || focusValue === "government" ? focusValue : "all") as FocusLens;
+  const focusFilter = (
+    focusValue === "ai" || focusValue === "government" || focusValue === "missed" ? focusValue : "all"
+  ) as FocusLens;
   const win = (windowValue === "7d" ? "7" : windowValue) as "7" | "30d" | "90d" | "all";
 
   const githubUsername = process.env.GITHUB_USERNAME || process.env.NEXT_PUBLIC_GITHUB_USERNAME || "aidan269";
@@ -287,10 +295,24 @@ export default async function Home({ searchParams }: HomeProps) {
     getGracePluginFeed(githubUsername),
   ]);
   const allSlugs = all.map((incident) => incident.slug);
-  const [voteSummaryMap, commentCountMap] = await Promise.all([
+  const [voteSummaryMap, commentCountMap, saveCountMap] = await Promise.all([
     getIncidentVoteSummaryMap(allSlugs),
     getIncidentCommentCountMap(allSlugs),
+    getIncidentSaveCountMap(allSlugs),
   ]);
+  const communityMap = new Map<string, number>();
+  const practitionerMap = new Map<string, boolean>();
+  for (const slug of allSlugs) {
+    const votes = voteSummaryMap.get(slug) ?? { upvotes: 0, downvotes: 0, score: 0 };
+    const comments = commentCountMap.get(slug) ?? 0;
+    const saves = saveCountMap.get(slug) ?? 0;
+    const score = computeCommunityScore({ voteScore: votes.score, commentCount: comments, saveCount: saves });
+    communityMap.set(slug, score);
+    practitionerMap.set(
+      slug,
+      practitionerBadgeEligible({ communityScore: score, upvotes: votes.upvotes }),
+    );
+  }
   const now = new Date();
   const qq = query.trim().toLowerCase();
   const days = win === "all" ? null : parseInt(win, 10);
@@ -302,7 +324,7 @@ export default async function Home({ searchParams }: HomeProps) {
   const filtered = all.filter((i) => {
     if (severityValue !== "all" && i.severity !== severityValue) return false;
     if (typeFilter !== "all" && i.category !== typeFilter) return false;
-    if (!matchesFocusLens(i, focusFilter)) return false;
+    if (!matchesFocusLens(i, focusFilter, communityMap.get(i.slug) ?? 0)) return false;
     const voteSummary = voteSummaryMap.get(i.slug) ?? { upvotes: 0, downvotes: 0, score: 0 };
     const commentCount = commentCountMap.get(i.slug) ?? 0;
     if (voteValue === "upvoted" && voteSummary.score <= 0) return false;
@@ -327,14 +349,26 @@ export default async function Home({ searchParams }: HomeProps) {
     exploited: filtered.filter((i) => i.exploited).length,
   };
   const dateStr = now.toLocaleDateString("en-GB", { day: "2-digit", month: "short" }).toLowerCase();
+  const parseIsoDay = (date: string) => date.slice(0, 10);
 
-  const groupedByDate = filtered.reduce<Record<string, typeof filtered>>((acc, incident) => {
+  const sortMode = sortValue === "community" ? "community" : "date";
+  const sortedFiltered = [...filtered].sort((a, b) => {
+    if (sortMode === "community") {
+      const ca = communityMap.get(a.slug) ?? 0;
+      const cb = communityMap.get(b.slug) ?? 0;
+      if (cb !== ca) return cb - ca;
+    }
+    const dayCmp = parseIsoDay(b.date).localeCompare(parseIsoDay(a.date));
+    if (dayCmp !== 0) return dayCmp;
+    return SEVERITY_ORDER[b.severity] - SEVERITY_ORDER[a.severity];
+  });
+
+  const groupedByDate = sortedFiltered.reduce<Record<string, typeof sortedFiltered>>((acc, incident) => {
     const key = incident.date.slice(0, 10);
     if (!acc[key]) acc[key] = [];
     acc[key].push(incident);
     return acc;
   }, {});
-  const parseIsoDay = (date: string) => date.slice(0, 10);
 
   const xWithSignal = [...filtered].filter((incident) => {
     const heat = incident.xHeatScore ?? 0;
@@ -418,15 +452,18 @@ export default async function Home({ searchParams }: HomeProps) {
         severity={severity}
         typeValue={typeValue}
         socialValue={socialValue}
-          voteValue={voteValue}
+        voteValue={voteValue}
         windowValue={win}
         layout={layout}
+        focusValue={focusValue}
+        sortValue={sortValue}
       />
 
       <div className="feed-meta">
         <span>
           showing <span style={{ color: "var(--fg)" }}>{filtered.length}</span> of {all.length}
-          <span className="dot">·</span>sorted by date desc
+          <span className="dot">·</span>
+          sorted by {sortMode === "community" ? "community signal" : "newest activity"}
         </span>
       </div>
 
@@ -446,7 +483,17 @@ export default async function Home({ searchParams }: HomeProps) {
           ) : (
             <div className="feed-with-x">
               <div className="feed--card">
-                {filtered.map((i, idx) => <IncidentItem key={i.slug} incident={i} index={idx} />)}
+                {sortedFiltered.map((i, idx) => (
+                  <IncidentItem
+                    key={i.slug}
+                    incident={{
+                      ...i,
+                      communityScore: communityMap.get(i.slug) ?? 0,
+                    }}
+                    practitionerBadge={practitionerMap.get(i.slug) ?? false}
+                    index={idx}
+                  />
+                ))}
               </div>
               <div className="feed-rails">
                 <aside className="x-feed-rail" aria-label="X incident feed">

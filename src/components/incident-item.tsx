@@ -7,7 +7,7 @@ import { useEmotionalPreferences } from "@/components/emotional-preferences-prov
 import { IncidentVoteControls } from "@/components/incident-vote-controls";
 import { OpenInGrace } from "@/components/open-in-grace";
 import { formatIncidentDate } from "@/lib/format-incident-date";
-import type { Incident, Severity } from "@/lib/incident-types";
+import type { Incident, Severity, SocialDataQuality } from "@/lib/incident-types";
 import { buildOpsIocValues } from "@/lib/ops-iocs";
 import { truncateForDisplay } from "@/lib/truncate-display";
 
@@ -34,9 +34,15 @@ function rel(iso: string) {
   return `${Math.round(days / 30)}mo ago`;
 }
 
-type Props = { incident: Incident; index?: number };
+type Props = { incident: Incident; index?: number; practitionerBadge?: boolean };
 
-export function IncidentItem({ incident }: Props) {
+function socialQualityChip(q?: SocialDataQuality): string {
+  if (q === "live_measured") return "live measured";
+  if (q === "live_zero") return "live · zero";
+  return "pending scan";
+}
+
+export function IncidentItem({ incident, practitionerBadge }: Props) {
   const { toggleSaved, isSaved, isRead } = useEmotionalPreferences();
   const sev = SEV_COLOR[incident.severity];
   const style = { ["--sev" as string]: sev } as CSSProperties;
@@ -88,6 +94,17 @@ export function IncidentItem({ incident }: Props) {
           <div className="card__tagline">
             <span className={`sev-chip sev-${incident.severity}`} style={style}>{incident.severity}</span>
             <span className="cat-chip">{incident.category}</span>
+            <span className="social-q-chip" title="Social data confidence band">
+              {socialQualityChip(incident.socialDataQuality)}
+            </span>
+            {practitionerBadge ? (
+              <span
+                className="practitioner-badge"
+                title="Community score + upvotes crossed practitioner thresholds"
+              >
+                practitioners
+              </span>
+            ) : null}
             {isExploited && <span className="card__flag">exploited in the wild</span>}
             {read && <span className="read-check">✓ read</span>}
           </div>

@@ -12,6 +12,7 @@ import type {
   IncidentFrontmatter,
   IncidentType,
   SocialDataQuality,
+  SocialMetricExplainers,
   SocialTrend,
   Severity,
 } from "./incident-types";
@@ -35,6 +36,9 @@ const severityRank: Record<Severity, number> = {
 
 type SupabaseIncidentRow = {
   id: string;
+  canonical_id?: string;
+  canonical_version?: number;
+  merged_from?: string[] | null;
   title: string;
   source_url: string;
   source_name: string;
@@ -55,6 +59,7 @@ type SupabaseSocialMetricRow = {
   social_keywords: string[] | null;
   source: string | null;
   updated_at: string | null;
+  social_metric_explainers: unknown;
   x_mentions_24h: number | null;
   x_unique_authors_24h: number | null;
   x_verified_mentions_24h: number | null;
@@ -90,6 +95,55 @@ function maxSeverity(a: Severity, b: Severity): Severity {
   return severityRank[a] >= severityRank[b] ? a : b;
 }
 
+export type SeverityInferenceResult = {
+  severity: Severity;
+  /** Human-readable rationale for auto-uplift beyond stored severity / briefing. */
+  rationale: string[];
+  baseSeverity: Severity;
+};
+
+export function inferSeverityFromSignalsWithRationale(input: {
+  title: string;
+  summary: string;
+  raw: string;
+  category: string;
+  exploited: boolean;
+  evidence: IncidentEvidence;
+  base: Severity;
+}): SeverityInferenceResult {
+  const text = `${input.title} ${input.summary} ${input.raw} ${input.category}`.toLowerCase();
+  let severity = input.base;
+  const rationale: string[] = [];
+
+  const hasCve = input.evidence.cves.length > 0 || /\bcve-\d{4}-\d+\b/i.test(text);
+  const hasRansomware = /ransomware|double extortion|lockbit|cl0p|ryuk|blackcat|akira/i.test(text);
+  const hasActiveExploit = input.exploited || inferExploitedSignal(text) || /in the wild|active exploitation|weaponized/i.test(text);
+  const hasZeroDay = /zero-day|0-day|unpatched zero day|0day/i.test(text);
+  const hasMassImpact = /mass exploitation|widespread|internet-facing|public exploit|critical infrastructure|hospital|utility|government/i.test(text);
+
+  if (hasCve) {
+    severity = maxSeverity(severity, "high");
+    rationale.push("CVE or advisory identifiers detected — floor raised to at least high.");
+  }
+  if (hasActiveExploit) {
+    severity = maxSeverity(severity, "high");
+    rationale.push("Active exploitation / in-the-wild language detected — floor raised to at least high.");
+  }
+  if (hasRansomware) {
+    severity = maxSeverity(severity, "high");
+    rationale.push("Ransomware campaign indicators detected — floor raised to at least high.");
+  }
+  if ((hasZeroDay && hasActiveExploit) || (hasRansomware && hasMassImpact)) {
+    severity = "critical";
+    rationale.push("Combined zero-day/exploit + ransomware/mass-impact signals → critical.");
+  } else if (hasMassImpact && hasActiveExploit) {
+    severity = maxSeverity(severity, "critical");
+    rationale.push("Mass-impact scope with confirmed exploitation → uplift toward critical.");
+  }
+
+  return { severity, rationale, baseSeverity: input.base };
+}
+
 function inferSeverityFromSignals(input: {
   title: string;
   summary: string;
@@ -99,25 +153,23 @@ function inferSeverityFromSignals(input: {
   evidence: IncidentEvidence;
   base: Severity;
 }): Severity {
-  const text = `${input.title} ${input.summary} ${input.raw} ${input.category}`.toLowerCase();
-  let severity = input.base;
+  return inferSeverityFromSignalsWithRationale(input).severity;
+}
 
-  const hasCve = input.evidence.cves.length > 0 || /\bcve-\d{4}-\d+\b/i.test(text);
-  const hasRansomware = /ransomware|double extortion|lockbit|cl0p|ryuk|blackcat|akira/i.test(text);
-  const hasActiveExploit = input.exploited || inferExploitedSignal(text) || /in the wild|active exploitation|weaponized/i.test(text);
-  const hasZeroDay = /zero-day|0-day|unpatched zero day|0day/i.test(text);
-  const hasMassImpact = /mass exploitation|widespread|internet-facing|public exploit|critical infrastructure|hospital|utility|government/i.test(text);
-
-  if (hasCve) severity = maxSeverity(severity, "high");
-  if (hasActiveExploit) severity = maxSeverity(severity, "high");
-  if (hasRansomware) severity = maxSeverity(severity, "high");
-  if ((hasZeroDay && hasActiveExploit) || (hasRansomware && hasMassImpact)) {
-    severity = "critical";
-  } else if (hasMassImpact && hasActiveExploit) {
-    severity = maxSeverity(severity, "critical");
-  }
-
-  return severity;
+function parseSocialMetricExplainers(raw: unknown): SocialMetricExplainers | undefined {
+  if (!raw || typeof raw !== "object") return undefined;
+  const o = raw as Partial<SocialMetricExplainers>;
+  if (typeof o.window_hours !== "number") return undefined;
+  return {
+    window_hours: o.window_hours,
+    scan_started_at: typeof o.scan_started_at === "string" ? o.scan_started_at : undefined,
+    scan_finished_at: typeof o.scan_finished_at === "string" ? o.scan_finished_at : undefined,
+    scan_latency_ms: typeof o.scan_latency_ms === "number" ? o.scan_latency_ms : undefined,
+    platforms: o.platforms,
+    total_observed: typeof o.total_observed === "number" ? o.total_observed : undefined,
+    split_source: o.split_source,
+    notes: Array.isArray(o.notes) ? o.notes.filter((n): n is string => typeof n === "string") : undefined,
+  };
 }
 
 function slugify(value: string): string {
@@ -378,7 +430,7 @@ function mapDbRowToIncident(row: SupabaseIncidentRow, socialMetrics?: SupabaseSo
   const incidentSeverityBase = normalizeSeverity(parsedBriefing?.severity ?? row.severity);
   const incidentExploited = parsedBriefing?.exploited ?? inferredExploited;
   const incidentCategory = classifyIncidentType(row);
-  const incidentSeverity = inferSeverityFromSignals({
+  const severityPack = inferSeverityFromSignalsWithRationale({
     title: cleanTitle,
     summary,
     raw: row.raw_content,
@@ -387,6 +439,7 @@ function mapDbRowToIncident(row: SupabaseIncidentRow, socialMetrics?: SupabaseSo
     evidence: parsedBriefing?.evidence || createEmptyEvidence(),
     base: incidentSeverityBase,
   });
+  const incidentSeverity = severityPack.severity;
   const socialPulse = deriveSocialPulse({
     severity: incidentSeverity,
     exploited: incidentExploited,
@@ -398,11 +451,16 @@ function mapDbRowToIncident(row: SupabaseIncidentRow, socialMetrics?: SupabaseSo
   const splitFromDb = normalizeSocialPlatformSplit(socialMetrics?.social_platform_split);
   /** Only expose platform % when the refresh observed non-zero cross-platform volume (split is from APIs). */
   const socialPlatformSplit = socialDataQuality === "live_measured" ? splitFromDb : undefined;
+  const explainers = parseSocialMetricExplainers(socialMetrics?.social_metric_explainers);
 
   return {
     slug: buildSlugFromDb(row),
     title: cleanTitle,
     date: row.published_at,
+    canonicalId: row.canonical_id ?? row.id,
+    canonicalVersion: typeof row.canonical_version === "number" ? row.canonical_version : 1,
+    sourceRowIds: [row.id],
+    severityInference: severityPack.rationale,
     severity: incidentSeverity,
     affected: normalizeDisplayText(String(impacted ?? "")),
     summary,
@@ -443,6 +501,7 @@ function mapDbRowToIncident(row: SupabaseIncidentRow, socialMetrics?: SupabaseSo
           ? socialMetrics.social_keywords.map(normalizeDisplayText).filter(Boolean).slice(0, 5)
           : undefined,
     socialDataQuality,
+    socialMetricExplainers: explainers,
     socialMetricsUpdatedAt:
       socialMetrics?.updated_at && typeof socialMetrics.updated_at === "string"
         ? socialMetrics.updated_at
@@ -611,12 +670,24 @@ function getMarkdownIncidentBySlug(slug: string): Incident | null {
   const iocs = (data.iocs || []).map(normalizeDisplayText).filter(Boolean);
   const ambiguities = (data.ambiguities || []).map(normalizeDisplayText).filter(Boolean);
   const exploited = inferExploitedSignal(`${data.title} ${data.summary} ${parsed.content}`);
+  const mdCategory = normalizeDisplayText(String(data.category ?? ""));
+  const mdTitle = normalizeDisplayText(String(data.title || ""));
+  const severityPackMd = inferSeverityFromSignalsWithRationale({
+    title: mdTitle,
+    summary: tldr,
+    raw: parsed.content,
+    category: mdCategory || "other",
+    exploited,
+    evidence: createEmptyEvidence(),
+    base: normalizeSeverity(data.severity),
+  });
   return {
     ...data,
-    title: normalizeDisplayText(String(data.title || "")),
+    title: mdTitle,
     affected: normalizeDisplayText(String(data.affected ?? "")),
-    category: normalizeDisplayText(String(data.category ?? "")),
+    category: mdCategory,
     mitigationStatus: normalizeDisplayText(String(data.mitigationStatus ?? "")),
+    severity: severityPackMd.severity,
     summary: tldr,
     slug,
     content: normalizeDisplayText(parsed.content.trim()),
@@ -640,6 +711,9 @@ function getMarkdownIncidentBySlug(slug: string): Incident | null {
       ? data.socialKeywords.map(normalizeDisplayText).filter(Boolean).slice(0, 5)
       : undefined,
     socialDataQuality: "pending",
+    sourceRowIds: [],
+    canonicalVersion: 1,
+    severityInference: severityPackMd.rationale,
   };
 }
 
@@ -687,6 +761,7 @@ function pickSocialBlock(incident: Incident) {
     socialPlatformSplit: incident.socialPlatformSplit,
     socialKeywords: incident.socialKeywords,
     socialDataQuality: incident.socialDataQuality,
+    socialMetricExplainers: incident.socialMetricExplainers,
     socialMetricsUpdatedAt: incident.socialMetricsUpdatedAt,
     xMentions24h: incident.xMentions24h,
     xUniqueAuthors24h: incident.xUniqueAuthors24h,
@@ -713,8 +788,18 @@ function mergeIncident(existing: Incident, incoming: Incident): Incident {
   const rEx = socialQualityRank(existing.socialDataQuality);
   const socialBlock =
     rIn > rEx ? pickSocialBlock(incoming) : rEx > rIn ? pickSocialBlock(existing) : pickSocialBlock(existing);
+  const canonicalId = existing.canonicalId ?? incoming.canonicalId;
+  const canonicalVersion = Math.max(existing.canonicalVersion ?? 1, incoming.canonicalVersion ?? 1);
+  const sourceRowIds = Array.from(new Set([...(existing.sourceRowIds ?? []), ...(incoming.sourceRowIds ?? [])]));
+  const severityInference = Array.from(
+    new Set([...(existing.severityInference ?? []), ...(incoming.severityInference ?? [])]),
+  );
   return {
     ...existing,
+    canonicalId,
+    canonicalVersion,
+    sourceRowIds,
+    severityInference,
     severity,
     confidenceScore,
     sources,
@@ -742,7 +827,9 @@ async function getAllSupabaseIncidents(): Promise<Incident[]> {
 
   const { data, error } = await client
     .from("incidents")
-    .select("id,title,source_url,source_name,raw_content,claude_summary,severity,published_at,created_at")
+    .select(
+      "id,canonical_id,canonical_version,merged_from,title,source_url,source_name,raw_content,claude_summary,severity,published_at,created_at",
+    )
     .order("published_at", { ascending: false })
     .limit(500);
 
@@ -756,7 +843,9 @@ async function getAllSupabaseIncidents(): Promise<Incident[]> {
   if (incidentIds.length > 0) {
     const { data: socialRows, error: socialError } = await client
       .from("incident_social_metrics")
-      .select("incident_id,social_mentions_24h,social_trend,social_summary,social_delta_24h_pct,social_platform_split,social_keywords,source,updated_at,x_mentions_24h,x_unique_authors_24h,x_verified_mentions_24h,x_retweet_sum_24h,x_like_sum_24h,x_quote_sum_24h,x_reply_sum_24h,x_heat_score,x_heat_trend,x_top_hashtags,x_top_terms")
+      .select(
+        "incident_id,social_mentions_24h,social_trend,social_summary,social_delta_24h_pct,social_platform_split,social_keywords,source,updated_at,social_metric_explainers,x_mentions_24h,x_unique_authors_24h,x_verified_mentions_24h,x_retweet_sum_24h,x_like_sum_24h,x_quote_sum_24h,x_reply_sum_24h,x_heat_score,x_heat_trend,x_top_hashtags,x_top_terms",
+      )
       .in("incident_id", incidentIds);
     if (socialError) {
       console.error("Failed loading social metrics from Supabase", socialError);

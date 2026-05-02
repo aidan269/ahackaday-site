@@ -32,6 +32,28 @@ export async function getIncidentVoteSummaryMap(slugs: string[]): Promise<Map<st
   return out;
 }
 
+export async function getIncidentSaveCountMap(slugs: string[]): Promise<Map<string, number>> {
+  const out = new Map<string, number>();
+  if (slugs.length === 0) return out;
+
+  const url = process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) return out;
+
+  const supabase = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
+  const { data, error } = await supabase
+    .from("user_saved_incidents")
+    .select("incident_slug")
+    .in("incident_slug", slugs);
+  if (error || !data) return out;
+
+  for (const row of data as Array<{ incident_slug: string }>) {
+    if (typeof row.incident_slug !== "string") continue;
+    out.set(row.incident_slug, (out.get(row.incident_slug) ?? 0) + 1);
+  }
+  return out;
+}
+
 export async function getIncidentCommentCountMap(slugs: string[]): Promise<Map<string, number>> {
   const out = new Map<string, number>();
   if (slugs.length === 0) return out;

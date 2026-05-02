@@ -4,10 +4,12 @@ import { useMemo, useState } from "react";
 
 import { buildOpsIocRows } from "@/lib/ops-iocs";
 import { graceDeepLink, incidentCanonicalUrl } from "@/lib/ecosystem";
+import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
 
 type OpsPackProps = {
   incident: {
     slug: string;
+    canonicalId?: string;
     title: string;
     severity: string;
     summary: string;
@@ -166,6 +168,35 @@ export function IncidentOpsPack({ incident }: OpsPackProps) {
   }
 
   async function openTrack(track: ResponseTrack) {
+    if (incident.canonicalId) {
+      try {
+        const token = await getSupabaseBrowserClient()?.auth
+          .getSession()
+          .then((r) => r.data.session?.access_token ?? null);
+        if (token) {
+          await fetch("/api/grace/runs", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({
+              canonicalId: incident.canonicalId,
+              incidentSlug: incident.slug,
+              track,
+              title: incident.title,
+              severity: incident.severity,
+              summary: incident.summary,
+              sources: incident.sources,
+              iocs: incident.iocs,
+              evidence: incident.evidence,
+            }),
+          });
+        }
+      } catch {
+        // Grace run logging is best-effort; still deep-link into Grace.
+      }
+    }
     const href = buildTrackHref(track);
     if (href) {
       window.open(href, "_blank", "noopener,noreferrer");

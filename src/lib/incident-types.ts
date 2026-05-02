@@ -10,6 +10,50 @@ export type SocialDataQuality =
   /** No refresh row yet, or row predates unified scanner — do not invent totals or splits. */
   | "pending";
 
+/** Structured provenance from last social refresh (Phase 2). */
+export type SocialMetricExplainers = {
+  window_hours: number;
+  scan_started_at?: string;
+  scan_finished_at?: string;
+  scan_latency_ms?: number;
+  platforms?: Partial<
+    Record<
+      "x" | "reddit" | "github",
+      {
+        raw_count?: number;
+        partial_scan?: boolean;
+        rate_limited?: boolean;
+        note?: string;
+      }
+    >
+  >;
+  total_observed?: number;
+  split_source?: "observed_counts" | "synthetic_when_zero";
+  notes?: string[];
+};
+
+export type IncidentClaimRecord = {
+  id: string;
+  field: string;
+  value: string;
+  sourceUrl: string | null;
+  snippet: string | null;
+  confidence: number | null;
+  inferredBy: "source" | "model" | "heuristic";
+  createdAt: string;
+};
+
+export type IncidentRevisionRecord = {
+  id: string;
+  revisionNo: number;
+  changedFields: string[];
+  previousValues: Record<string, unknown>;
+  newValues: Record<string, unknown>;
+  source: string;
+  note: string | null;
+  createdAt: string;
+};
+
 export type IncidentFrontmatter = {
   title: string;
   date: string;
@@ -27,6 +71,13 @@ export type IncidentFrontmatter = {
   iocs?: string[];
   ambiguities?: string[];
   confidenceScore?: number;
+  /** Stable UUID separate from URL slug (Supabase-backed incidents). */
+  canonicalId?: string;
+  canonicalVersion?: number;
+  /** Primary DB row ids backing this merged incident view. */
+  sourceRowIds?: string[];
+  severityInference?: string[];
+  socialMetricExplainers?: SocialMetricExplainers;
   socialMentions24h?: number;
   socialTrend?: SocialTrend;
   socialSummary?: string;
@@ -51,6 +102,8 @@ export type IncidentFrontmatter = {
   socialDataQuality?: SocialDataQuality;
   /** ISO timestamp from `incident_social_metrics.updated_at` when a row exists. */
   socialMetricsUpdatedAt?: string;
+  /** Aggregated community ranking signal (votes/comments/saves). */
+  communityScore?: number;
 };
 
 export type IncidentEvidence = {

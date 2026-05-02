@@ -1,4 +1,3 @@
-import type { CSSProperties } from "react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -6,9 +5,14 @@ import { notFound } from "next/navigation";
 import { AskAI } from "@/components/ask-ai";
 import { IncidentComments } from "@/components/incident-comments";
 import { IncidentOpsPack } from "@/components/incident-ops-pack";
+import { IncidentProvenancePanel } from "@/components/incident-provenance";
+import { IncidentTrackControls } from "@/components/incident-track-controls";
 import { IncidentVoteControls } from "@/components/incident-vote-controls";
+import { SeverityChipExplainer } from "@/components/severity-chip-explainer";
+import { SocialMetricExplainerDrawer } from "@/components/social-metric-explainer-drawer";
 import { SocialPlatformGraph } from "@/components/social-platform-graph";
 import { getPublicSiteUrl } from "@/lib/ecosystem";
+import { fetchIncidentClaimsAndRevisions } from "@/lib/incident-audit";
 import type { SocialDataQuality } from "@/lib/incident-types";
 import {
   formatIncidentDate,
@@ -69,13 +73,6 @@ export async function generateMetadata({ params }: IncidentPageProps): Promise<M
   };
 }
 
-const SEV_COLOR = {
-  critical: "var(--sev-critical)",
-  high: "var(--sev-high)",
-  medium: "var(--sev-medium)",
-  low: "var(--sev-low)",
-} as const;
-
 function deriveSocialDetailSignals(input: {
   slug: string;
   title: string;
@@ -127,7 +124,7 @@ export default async function IncidentPage({ params }: IncidentPageProps) {
   const incident = await getIncidentBySlug(slug);
   if (!incident) notFound();
 
-  const sev = SEV_COLOR[incident.severity];
+  const auditBundle = await fetchIncidentClaimsAndRevisions(incident.sourceRowIds ?? []);
   const trackingId = incident.cve || incident.evidence.cves[0] || null;
   const sections = Array.isArray(incident.content) ? incident.content : [];
   const socialMentionsLabel =
@@ -182,14 +179,13 @@ export default async function IncidentPage({ params }: IncidentPageProps) {
           <div className="detail__bar">
             <Link href="/" className="back-link">back to feed</Link>
             <IncidentVoteControls incidentSlug={incident.slug} />
+            <IncidentTrackControls incidentSlug={incident.slug} />
           </div>
 
           <div className="detail__head">
             <div className="detail__tags">
               <span style={{ color: "var(--fg-2)" }}>{formatIncidentDate(incident.date)}</span>
-              <span className="sev-chip" style={{ ["--sev" as string]: sev } as CSSProperties}>
-                {incident.severity}
-              </span>
+              <SeverityChipExplainer severity={incident.severity} rationale={incident.severityInference ?? []} />
               <span>{incident.category}</span>
               {incident.exploited && <span className="exploited-chip">exploited in the wild</span>}
             </div>
@@ -233,16 +229,15 @@ export default async function IncidentPage({ params }: IncidentPageProps) {
 
           <details className="detail__sources detail__sources--collapsed">
             <summary>
-              <span>sources / provenance</span>
-              <span>{incident.sources.length}</span>
+              <span>audit trail / provenance</span>
+              <span>{auditBundle.claims.length + (incident.severityInference?.length ?? 0)}</span>
             </summary>
-            <ul>
-              {incident.sources.map((sourceUrl) => (
-                <li key={sourceUrl}>
-                  <a href={sourceUrl} target="_blank" rel="noreferrer">{sourceUrl}</a>
-                </li>
-              ))}
-            </ul>
+            <IncidentProvenancePanel
+              claims={auditBundle.claims}
+              revisions={auditBundle.revisions}
+              sources={incident.sources}
+              severityInference={incident.severityInference ?? []}
+            />
           </details>
 
           <div className="signoff">
@@ -258,7 +253,10 @@ export default async function IncidentPage({ params }: IncidentPageProps) {
         <div className="detail__ask-drawer">
           <AskAI incident={incident} />
           <div className="detail__social detail__social--rail">
-            <h3>social pulse</h3>
+            <div className="detail__social-rail-hd">
+              <h3>social pulse</h3>
+              <SocialMetricExplainerDrawer incident={incident} />
+            </div>
             <div className="detail__social-grid">
               <div className="detail__social-metric">
                 <span className="k">mentions (24h)</span>
