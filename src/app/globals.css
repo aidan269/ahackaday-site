@@ -831,10 +831,16 @@ main.shell { max-width: 1560px; margin: 0 auto; padding: 48px 40px 160px; positi
 .detail__bar {
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 8px 16px;
   margin-bottom: 8px;
+}
+.detail__bar-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
 }
 .vote-controls {
   display: inline-flex;
@@ -4499,12 +4505,6 @@ a.open-in-grace:focus-visible {
 }
 
 /* ===== v3 moat: provenance, social explainers, community signal ===== */
-.detail__bar {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px 12px;
-}
 .sev-chip--tip {
   cursor: help;
   display: inline-flex;
