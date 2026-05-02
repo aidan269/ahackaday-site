@@ -2803,7 +2803,12 @@ a.open-in-grace:focus-visible {
   background: var(--paper);
   border: 1px solid var(--line);
   border-radius: 14px;
-  box-shadow: 0 1px 0 rgba(26, 24, 21, 0.04), 0 12px 28px rgba(26, 24, 21, 0.06), 0 24px 60px rgba(26, 24, 21, 0.05);
+  box-shadow:
+    0 0 0 1px rgba(250, 94, 6, 0.16),
+    0 10px 22px rgba(250, 94, 6, 0.12),
+    0 1px 0 rgba(26, 24, 21, 0.04),
+    0 12px 28px rgba(26, 24, 21, 0.06),
+    0 24px 60px rgba(26, 24, 21, 0.05);
   overflow: hidden;
   font-family: var(--sans);
   font-size: 12.5px;
@@ -3665,7 +3670,12 @@ a.open-in-grace:focus-visible {
   --ask-orange-tint: #F4F6FA;
   border-color: var(--ask-line);
   background: var(--ask-paper);
-  box-shadow: 0 1px 0 rgba(26, 24, 21, 0.04), 0 12px 28px rgba(26, 24, 21, 0.06), 0 24px 60px rgba(26, 24, 21, 0.05);
+  box-shadow:
+    0 0 0 1px rgba(250, 94, 6, 0.16),
+    0 10px 22px rgba(250, 94, 6, 0.12),
+    0 1px 0 rgba(26, 24, 21, 0.04),
+    0 12px 28px rgba(26, 24, 21, 0.06),
+    0 24px 60px rgba(26, 24, 21, 0.05);
 }
 .detail__ask-drawer .askai__head {
   background: linear-gradient(180deg, var(--ask-orange-tint), var(--ask-paper));
