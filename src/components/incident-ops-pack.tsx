@@ -305,7 +305,7 @@ export function IncidentOpsPack({ incident }: OpsPackProps) {
               <div className="resp-card__target"><span>target</span><b>detection</b></div>
             </button>
             <button type="button" className="resp-card go">
-              <span className="resp-card__icon">></span>
+              <span className="resp-card__icon">{">"}</span>
               <div className="resp-card__title">Patch</div>
               <div className="resp-card__desc">Prioritize remediation from CVE evidence.</div>
               <div className="resp-card__target"><span>target</span><b>it ops</b></div>
