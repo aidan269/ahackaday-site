@@ -5,7 +5,6 @@ import { useCallback, useState, type CSSProperties, type MouseEvent } from "reac
 
 import { useEmotionalPreferences } from "@/components/emotional-preferences-provider";
 import { IncidentVoteControls } from "@/components/incident-vote-controls";
-import { OpenInGrace } from "@/components/open-in-grace";
 import { formatIncidentDate } from "@/lib/format-incident-date";
 import type { Incident, Severity, SocialDataQuality } from "@/lib/incident-types";
 import { buildOpsIocValues } from "@/lib/ops-iocs";
@@ -124,7 +123,6 @@ export function IncidentItem({ incident, practitionerBadge }: Props) {
           </div>
         </div>
       </Link>
-      <OpenInGrace incidentSlug={incident.slug} className="card__grace" />
       <button
         type="button"
         className={`card__star${saved ? " is-on" : ""}`}

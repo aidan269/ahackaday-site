@@ -4,7 +4,11 @@ import { useCallback, useEffect, useId, useRef, useState } from "react";
 
 import { getToolkitLinkRows } from "@/lib/ecosystem";
 
-export function ToolkitDrawer() {
+type ToolkitDrawerProps = {
+  launchClassName?: string;
+};
+
+export function ToolkitDrawer({ launchClassName = "" }: ToolkitDrawerProps) {
   const [open, setOpen] = useState(false);
   const closeBtnRef = useRef<HTMLButtonElement>(null);
   const launchRef = useRef<HTMLButtonElement>(null);
@@ -57,7 +61,7 @@ export function ToolkitDrawer() {
       <button
         ref={launchRef}
         type="button"
-        className="toolkit-launch toolkit-launch--icon"
+        className={["toolkit-launch", "toolkit-launch--icon", launchClassName].filter(Boolean).join(" ")}
         aria-expanded={open}
         aria-controls={open ? panelId : undefined}
         aria-label="Open toolkit"

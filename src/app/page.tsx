@@ -1,5 +1,5 @@
 import { DailyBriefHead } from "@/components/daily-brief-head";
-import { FeedControls } from "@/components/feed-controls";
+import { FeedBar } from "@/components/feed-bar";
 import { IncidentItem, IncidentTimelineItem } from "@/components/incident-item";
 import { QuietDayEmpty } from "@/components/quiet-day-empty";
 import { graceAvatarUrl } from "@/lib/ecosystem";
@@ -10,10 +10,13 @@ import {
   getIncidentSaveCountMap,
   getIncidentVoteSummaryMap,
 } from "@/lib/incident-votes";
+import { buildFeedReceiptEmphasis } from "@/lib/feed-receipt";
+import type { FeedBarQuery } from "@/lib/feed-url";
 import { getAllIncidents, type IncidentType, type Severity } from "@/lib/incidents";
 import type { SocialDataQuality } from "@/lib/incident-types";
 import Image from "next/image";
 import Link from "next/link";
+import { Suspense } from "react";
 
 /** Refresh feed periodically (Supabase / markdown) so fixes and new rows surface without only redeploying. */
 export const revalidate = 120;
@@ -281,13 +284,26 @@ export default async function Home({ searchParams }: HomeProps) {
   const sortValue = readParam(params.sort, "date");
   const windowValue = readParam(params.window, "30d");
   const layoutParam = readParam(params.layout, "card");
-  const layout = (layoutParam === "timeline" ? "timeline" : "card") as "card" | "timeline";
+  const layoutMode =
+    layoutParam === "timeline" ? "timeline" : layoutParam === "compact" ? "compact" : "card";
   const severityValue = severity as "all" | Severity;
   const typeFilter = typeValue as "all" | IncidentType;
   const focusFilter = (
     focusValue === "ai" || focusValue === "government" || focusValue === "missed" ? focusValue : "all"
   ) as FocusLens;
   const win = (windowValue === "7d" ? "7" : windowValue) as "7" | "30d" | "90d" | "all";
+
+  const feedQuery: FeedBarQuery = {
+    q: query,
+    severity,
+    type: typeValue,
+    social: socialValue,
+    votes: voteValue,
+    focus: focusValue,
+    sort: sortValue,
+    window: win,
+    layout: layoutMode,
+  };
 
   const githubUsername = process.env.GITHUB_USERNAME || process.env.NEXT_PUBLIC_GITHUB_USERNAME || "aidan269";
   const [all, gracePluginFeed] = await Promise.all([
@@ -447,31 +463,20 @@ export default async function Home({ searchParams }: HomeProps) {
         </div>
       </div>
 
-      <FeedControls
-        query={query}
-        severity={severity}
-        typeValue={typeValue}
-        socialValue={socialValue}
-        voteValue={voteValue}
-        windowValue={win}
-        layout={layout}
-        focusValue={focusValue}
-        sortValue={sortValue}
-      />
-
-      <div className="feed-meta">
-        <span>
-          showing <span style={{ color: "var(--fg)" }}>{filtered.length}</span> of {all.length}
-          <span className="dot">·</span>
-          sorted by {sortMode === "community" ? "community signal" : "newest activity"}
-        </span>
-      </div>
+      <Suspense fallback={<div className="feed-bar-skeleton" style={{ minHeight: 96 }} aria-hidden />}>
+        <FeedBar
+          receiptCount={filtered.length}
+          receiptTotal={all.length}
+          receiptEmphasis={buildFeedReceiptEmphasis(feedQuery)}
+          filteredSlugs={sortedFiltered.slice(0, 120).map((i) => i.slug)}
+        />
+      </Suspense>
 
       {filtered.length === 0 ? (
         <QuietDayEmpty allLen={all.length} />
       ) : (
         <>
-          {layout === "timeline" ? (
+          {layoutMode === "timeline" ? (
             <div className="feed--timeline">
               {Object.entries(groupedByDate).map(([date, items]) => (
                 <div key={date} className="tl-group">
@@ -482,7 +487,7 @@ export default async function Home({ searchParams }: HomeProps) {
             </div>
           ) : (
             <div className="feed-with-x">
-              <div className="feed--card">
+              <div className={`feed--card${layoutMode === "compact" ? " feed--compact" : ""}`}>
                 {sortedFiltered.map((i, idx) => (
                   <IncidentItem
                     key={i.slug}

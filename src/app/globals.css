@@ -441,6 +441,17 @@ main.shell { max-width: 1560px; margin: 0 auto; padding: 48px 40px 160px; positi
 /* ===== CARD ===== */
 .feed--card { display: flex; flex-direction: column; }
 .feed--card { border-top: 1px solid rgba(250,94,6,0.28); }
+.feed--compact .card {
+  grid-template-columns: 72px 1fr;
+  gap: 14px;
+  padding: 12px 8px 8px 12px;
+}
+.feed--compact .card__sum {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
 .feed-with-x {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 320px;
