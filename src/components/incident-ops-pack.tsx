@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 
 import { buildOpsIocRows } from "@/lib/ops-iocs";
+import { graceDeepLink, incidentCanonicalUrl } from "@/lib/ecosystem";
 
 type OpsPackProps = {
   incident: {
@@ -27,6 +28,8 @@ type TypedIoc = {
   confidence: "high" | "mid" | "low";
   score: number;
 };
+
+type ResponseTrack = "contain" | "hunt" | "patch" | "brief";
 
 function classifyIoc(value: string): IocType {
   const v = value.trim();
@@ -140,6 +143,35 @@ export function IncidentOpsPack({ incident }: OpsPackProps) {
     if (type === "hash" || type === "cve") return "h";
     if (type === "domain" || type === "url") return "d";
     return "i";
+  }
+
+  function buildTrackHref(track: ResponseTrack): string {
+    const storyUrl = new URL(incidentCanonicalUrl(incident.slug));
+    storyUrl.searchParams.set("ops_track", track);
+    storyUrl.searchParams.set("ops_iocs", String(typedIocs.length));
+    storyUrl.searchParams.set("ops_severity", incident.severity);
+    return graceDeepLink(storyUrl.toString());
+  }
+
+  function fallbackTrackPrompt(track: ResponseTrack): string {
+    const iocPreview = typedIocs.slice(0, 8).map((row) => row.value).join(", ") || "none";
+    return [
+      `Grace track: ${track.toUpperCase()}`,
+      `Incident: ${incident.title}`,
+      `Severity: ${incident.severity}`,
+      `IOC count: ${typedIocs.length}`,
+      `Top IOCs: ${iocPreview}`,
+      "Use available plugins to produce an actionable runbook in 8 bullets max.",
+    ].join("\n");
+  }
+
+  async function openTrack(track: ResponseTrack) {
+    const href = buildTrackHref(track);
+    if (href) {
+      window.open(href, "_blank", "noopener,noreferrer");
+      return;
+    }
+    await copyText(fallbackTrackPrompt(track));
   }
 
   return (
@@ -300,25 +332,25 @@ export function IncidentOpsPack({ incident }: OpsPackProps) {
             <div className="lane__count"><b>4</b> tracks</div>
           </div>
           <div className="resp-grid">
-            <button type="button" className="resp-card danger">
+            <button type="button" className="resp-card danger" onClick={() => void openTrack("contain")}>
               <span className="resp-card__icon">!</span>
               <div className="resp-card__title">Contain</div>
               <div className="resp-card__desc">Block indicators and isolate impacted assets.</div>
               <div className="resp-card__target"><span>target</span><b>soc</b></div>
             </button>
-            <button type="button" className="resp-card calm">
+            <button type="button" className="resp-card calm" onClick={() => void openTrack("hunt")}>
               <span className="resp-card__icon">i</span>
               <div className="resp-card__title">Hunt</div>
               <div className="resp-card__desc">Sweep recent telemetry for indicator hits.</div>
               <div className="resp-card__target"><span>target</span><b>detection</b></div>
             </button>
-            <button type="button" className="resp-card go">
+            <button type="button" className="resp-card go" onClick={() => void openTrack("patch")}>
               <span className="resp-card__icon">{">"}</span>
               <div className="resp-card__title">Patch</div>
               <div className="resp-card__desc">Prioritize remediation from CVE evidence.</div>
               <div className="resp-card__target"><span>target</span><b>it ops</b></div>
             </button>
-            <button type="button" className="resp-card">
+            <button type="button" className="resp-card" onClick={() => void openTrack("brief")}>
               <span className="resp-card__icon">#</span>
               <div className="resp-card__title">Brief</div>
               <div className="resp-card__desc">Export concise incident notes for leadership.</div>
