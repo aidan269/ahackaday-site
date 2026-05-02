@@ -81,6 +81,45 @@ type StructuredBriefing = {
   exploited?: boolean;
 };
 
+function normalizeSeverity(value: unknown): Severity {
+  if (value === "critical" || value === "high" || value === "medium" || value === "low") return value;
+  return "medium";
+}
+
+function maxSeverity(a: Severity, b: Severity): Severity {
+  return severityRank[a] >= severityRank[b] ? a : b;
+}
+
+function inferSeverityFromSignals(input: {
+  title: string;
+  summary: string;
+  raw: string;
+  category: string;
+  exploited: boolean;
+  evidence: IncidentEvidence;
+  base: Severity;
+}): Severity {
+  const text = `${input.title} ${input.summary} ${input.raw} ${input.category}`.toLowerCase();
+  let severity = input.base;
+
+  const hasCve = input.evidence.cves.length > 0 || /\bcve-\d{4}-\d+\b/i.test(text);
+  const hasRansomware = /ransomware|double extortion|lockbit|cl0p|ryuk|blackcat|akira/i.test(text);
+  const hasActiveExploit = input.exploited || inferExploitedSignal(text) || /in the wild|active exploitation|weaponized/i.test(text);
+  const hasZeroDay = /zero-day|0-day|unpatched zero day|0day/i.test(text);
+  const hasMassImpact = /mass exploitation|widespread|internet-facing|public exploit|critical infrastructure|hospital|utility|government/i.test(text);
+
+  if (hasCve) severity = maxSeverity(severity, "high");
+  if (hasActiveExploit) severity = maxSeverity(severity, "high");
+  if (hasRansomware) severity = maxSeverity(severity, "high");
+  if ((hasZeroDay && hasActiveExploit) || (hasRansomware && hasMassImpact)) {
+    severity = "critical";
+  } else if (hasMassImpact && hasActiveExploit) {
+    severity = maxSeverity(severity, "critical");
+  }
+
+  return severity;
+}
+
 function slugify(value: string): string {
   return value
     .toLowerCase()
@@ -336,9 +375,18 @@ function mapDbRowToIncident(row: SupabaseIncidentRow, socialMetrics?: SupabaseSo
           row.raw_content.trim() || row.claude_summary.trim() || "Awaiting analyst summary.",
         ),
       );
-  const incidentSeverity = parsedBriefing?.severity ?? row.severity;
+  const incidentSeverityBase = normalizeSeverity(parsedBriefing?.severity ?? row.severity);
   const incidentExploited = parsedBriefing?.exploited ?? inferredExploited;
   const incidentCategory = classifyIncidentType(row);
+  const incidentSeverity = inferSeverityFromSignals({
+    title: cleanTitle,
+    summary,
+    raw: row.raw_content,
+    category: incidentCategory,
+    exploited: incidentExploited,
+    evidence: parsedBriefing?.evidence || createEmptyEvidence(),
+    base: incidentSeverityBase,
+  });
   const socialPulse = deriveSocialPulse({
     severity: incidentSeverity,
     exploited: incidentExploited,
