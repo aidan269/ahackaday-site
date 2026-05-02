@@ -2,6 +2,7 @@ import { DailyBriefHead } from "@/components/daily-brief-head";
 import { FeedControls } from "@/components/feed-controls";
 import { IncidentItem, IncidentTimelineItem } from "@/components/incident-item";
 import { QuietDayEmpty } from "@/components/quiet-day-empty";
+import { graceAvatarUrl } from "@/lib/ecosystem";
 import { matchesFocusLens, type FocusLens } from "@/lib/focus-lenses";
 import { getIncidentCommentCountMap, getIncidentVoteSummaryMap } from "@/lib/incident-votes";
 import { getAllIncidents, type IncidentType, type Severity } from "@/lib/incidents";
@@ -114,6 +115,156 @@ function formatCompactNumber(value: number): string {
   return String(value);
 }
 
+type GracePluginFeedItem = {
+  id: string;
+  title: string;
+  meta: string;
+  href: string;
+  tags: string[];
+};
+
+type GithubEvent = {
+  id?: string;
+  type?: string;
+  created_at?: string;
+  repo?: { name?: string };
+  payload?: {
+    size?: number;
+    action?: string;
+    ref_type?: string;
+    ref?: string;
+    pull_request?: { number?: number };
+    issue?: { number?: number };
+  };
+};
+
+function relativeTime(iso: string): string {
+  const ts = Date.parse(iso);
+  if (!Number.isFinite(ts)) return "recent";
+  const deltaSec = Math.max(0, Math.round((Date.now() - ts) / 1000));
+  if (deltaSec < 60) return "just now";
+  const min = Math.floor(deltaSec / 60);
+  if (min < 60) return `${min}m ago`;
+  const hr = Math.floor(min / 60);
+  if (hr < 24) return `${hr}h ago`;
+  const day = Math.floor(hr / 24);
+  return `${day}d ago`;
+}
+
+function pluginRelevance(repo: string, type: string): number {
+  const name = repo.toLowerCase();
+  let score = 0;
+  if (name.includes("grace")) score += 5;
+  if (name.includes("plugin")) score += 4;
+  if (name.includes("mcp")) score += 3;
+  if (type === "PushEvent") score += 2;
+  if (type === "PullRequestEvent") score += 2;
+  if (type === "IssuesEvent") score += 1;
+  return score;
+}
+
+function eventToFeedItem(event: GithubEvent): GracePluginFeedItem | null {
+  const type = String(event?.type ?? "");
+  const repo = String(event?.repo?.name ?? "");
+  const createdAt = String(event?.created_at ?? "");
+  const rel = relativeTime(createdAt);
+  const baseHref = repo ? `https://github.com/${repo}` : "https://github.com";
+
+  if (!repo || !type) return null;
+
+  if (type === "PushEvent") {
+    const commits = Number(event?.payload?.size ?? 0);
+    return {
+      id: String(event.id ?? `${type}-${repo}-${createdAt}`),
+      title: `Pushed ${commits || 1} commit${commits === 1 ? "" : "s"} to ${repo}`,
+      meta: `${rel} · push`,
+      href: `${baseHref}/commits`,
+      tags: ["code"],
+    };
+  }
+  if (type === "PullRequestEvent") {
+    const action = String(event?.payload?.action ?? "updated");
+    const prNumber = event?.payload?.pull_request?.number;
+    return {
+      id: String(event.id ?? `${type}-${repo}-${createdAt}`),
+      title: `${action} PR #${prNumber ?? "?"} in ${repo}`,
+      meta: `${rel} · pull request`,
+      href: prNumber ? `${baseHref}/pull/${prNumber}` : `${baseHref}/pulls`,
+      tags: ["review"],
+    };
+  }
+  if (type === "IssuesEvent") {
+    const action = String(event?.payload?.action ?? "updated");
+    const issueNumber = event?.payload?.issue?.number;
+    return {
+      id: String(event.id ?? `${type}-${repo}-${createdAt}`),
+      title: `${action} issue #${issueNumber ?? "?"} in ${repo}`,
+      meta: `${rel} · issue`,
+      href: issueNumber ? `${baseHref}/issues/${issueNumber}` : `${baseHref}/issues`,
+      tags: ["ops"],
+    };
+  }
+  if (type === "IssueCommentEvent") {
+    const issueNumber = event?.payload?.issue?.number;
+    return {
+      id: String(event.id ?? `${type}-${repo}-${createdAt}`),
+      title: `Commented on issue #${issueNumber ?? "?"} in ${repo}`,
+      meta: `${rel} · discussion`,
+      href: issueNumber ? `${baseHref}/issues/${issueNumber}` : `${baseHref}/issues`,
+      tags: ["discussion"],
+    };
+  }
+  if (type === "CreateEvent") {
+    const refType = String(event?.payload?.ref_type ?? "ref");
+    const ref = String(event?.payload?.ref ?? "");
+    return {
+      id: String(event.id ?? `${type}-${repo}-${createdAt}`),
+      title: `Created ${refType}${ref ? ` ${ref}` : ""} in ${repo}`,
+      meta: `${rel} · create`,
+      href: baseHref,
+      tags: ["setup"],
+    };
+  }
+  return {
+    id: String(event.id ?? `${type}-${repo}-${createdAt}`),
+    title: `${type.replace(/Event$/, "")} activity in ${repo}`,
+    meta: `${rel} · github`,
+    href: baseHref,
+    tags: ["activity"],
+  };
+}
+
+async function getGracePluginFeed(username: string): Promise<GracePluginFeedItem[]> {
+  if (!username) return [];
+  const token = process.env.GITHUB_TOKEN || process.env.GH_TOKEN || "";
+  try {
+    const res = await fetch(`https://api.github.com/users/${encodeURIComponent(username)}/events/public?per_page=40`, {
+      headers: {
+        Accept: "application/vnd.github+json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      next: { revalidate: 300 },
+    });
+    if (!res.ok) return [];
+    const events = (await res.json()) as GithubEvent[];
+    return events
+      .map((event) => ({
+        event,
+        item: eventToFeedItem(event),
+        score: pluginRelevance(String(event?.repo?.name ?? ""), String(event?.type ?? "")),
+      }))
+      .filter((x): x is { event: GithubEvent; item: GracePluginFeedItem; score: number } => Boolean(x.item))
+      .sort((a, b) => {
+        if (b.score !== a.score) return b.score - a.score;
+        return Date.parse(String(b.event?.created_at ?? "")) - Date.parse(String(a.event?.created_at ?? ""));
+      })
+      .slice(0, 8)
+      .map((x) => x.item);
+  } catch {
+    return [];
+  }
+}
+
 export default async function Home({ searchParams }: HomeProps) {
   const params = await searchParams;
   const query = readParam(params.q, "");
@@ -130,7 +281,11 @@ export default async function Home({ searchParams }: HomeProps) {
   const focusFilter = (focusValue === "ai" || focusValue === "government" ? focusValue : "all") as FocusLens;
   const win = (windowValue === "7d" ? "7" : windowValue) as "7" | "30d" | "90d" | "all";
 
-  const all = await getAllIncidents();
+  const githubUsername = process.env.GITHUB_USERNAME || process.env.NEXT_PUBLIC_GITHUB_USERNAME || "aidan269";
+  const [all, gracePluginFeed] = await Promise.all([
+    getAllIncidents(),
+    getGracePluginFeed(githubUsername),
+  ]);
   const allSlugs = all.map((incident) => incident.slug);
   const [voteSummaryMap, commentCountMap] = await Promise.all([
     getIncidentVoteSummaryMap(allSlugs),
@@ -423,6 +578,52 @@ export default async function Home({ searchParams }: HomeProps) {
                         </Link>
                       );
                     })}
+                  </div>
+                </aside>
+                <aside className="grace-plugins-rail" aria-label="Grace plugins activity">
+                  <div className="grace-plugins-rail__head">
+                    <div className="grace-plugins-rail__brand">
+                      <Image
+                        src={graceAvatarUrl()}
+                        alt=""
+                        width={24}
+                        height={24}
+                        className="grace-plugins-rail__logo"
+                      />
+                      <h3>Grace plugins feed</h3>
+                    </div>
+                    <span>from github</span>
+                  </div>
+                  <div className="grace-plugins-rail__list">
+                    {(gracePluginFeed.length > 0 ? gracePluginFeed : [
+                      {
+                        id: "fallback-1",
+                        title: "Plugin activity will appear here after GitHub sync.",
+                        meta: "waiting for feed",
+                        href: `https://github.com/${githubUsername}`,
+                        tags: ["pending"],
+                      },
+                    ]).map((item) => (
+                      <a
+                        key={item.id}
+                        href={item.href}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="grace-plugins-rail__item"
+                      >
+                        <p className="grace-plugins-rail__title">{item.title}</p>
+                        <div className="grace-plugins-rail__meta">
+                          <span>{item.meta}</span>
+                        </div>
+                        {item.tags.length > 0 && (
+                          <div className="grace-plugins-rail__tags">
+                            {item.tags.slice(0, 2).map((tag) => (
+                              <span key={`${item.id}-${tag}`}>{tag}</span>
+                            ))}
+                          </div>
+                        )}
+                      </a>
+                    ))}
                   </div>
                 </aside>
               </div>
