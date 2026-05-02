@@ -445,10 +445,12 @@ main.shell { max-width: 1560px; margin: 0 auto; padding: 48px 40px 160px; positi
   height: 24px;
   object-fit: contain;
   object-position: center;
-  border-radius: 5px;
-  background: #ff4500;
-  box-shadow: 0 6px 12px rgba(255, 69, 0, 0.22);
-  filter: drop-shadow(0 0 4px rgba(255, 69, 0, 0.24));
+  border-radius: 999px;
+  padding: 2px;
+  background: #fff;
+  border: 1.5px solid var(--brand-orange);
+  box-shadow: 0 0 0 1px rgba(26, 24, 21, 0.12), 0 6px 12px rgba(250, 94, 6, 0.2);
+  filter: drop-shadow(0 0 4px rgba(250, 94, 6, 0.2));
 }
 .github-feed-rail__logo {
   flex-shrink: 0;
