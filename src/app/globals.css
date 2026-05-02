@@ -901,18 +901,21 @@ main.shell { max-width: 1560px; margin: 0 auto; padding: 48px 40px 160px; positi
   gap: 8px 16px;
   margin-bottom: 10px;
 }
+/* Stack track/vote out of flow so row height follows tags only (avoids tall flex sibling gap above title). */
 .detail__head-top {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px 20px;
-  margin-bottom: 18px;
+  position: relative;
+  margin-bottom: 12px;
 }
 .detail__head-top .detail__tags {
   margin-bottom: 0;
-  flex: 1 1 auto;
   min-width: 0;
+  padding-right: clamp(104px, 32vw, 228px);
+}
+.detail__head-top .detail__bar-stack {
+  position: absolute;
+  top: 0;
+  right: 0;
+  z-index: 1;
 }
 .detail__bar-stack {
   display: flex;
@@ -920,6 +923,26 @@ main.shell { max-width: 1560px; margin: 0 auto; padding: 48px 40px 160px; positi
   align-items: flex-end;
   gap: 8px;
   flex-shrink: 0;
+}
+
+@media (max-width: 900px) {
+  .detail__head-top {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+  .detail__head-top .detail__tags {
+    padding-right: 0;
+  }
+  .detail__head-top .detail__bar-stack {
+    position: static;
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    align-items: flex-start;
+    z-index: auto;
+  }
 }
 .vote-controls {
   display: inline-flex;
