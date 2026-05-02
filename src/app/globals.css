@@ -2782,18 +2782,18 @@ a.open-in-grace:focus-visible {
    OPS PACK — focused redesign (scoped)
    ========================================================================= */
 .ops {
-  --bg: #FBF8F1;
+  --bg: #F5F6F8;
   --paper: #FFFFFF;
   --ink: #1A1815;
   --ink-2: #3B372F;
   --ink-3: #6B6558;
-  --ink-4: #9A9384;
-  --ink-5: #CFC8B8;
-  --line: #E8E2D2;
-  --line-2: #F0EBDC;
+  --ink-4: #8E939B;
+  --ink-5: #D7DBE2;
+  --line: #DFE3EA;
+  --line-2: #ECEFF4;
   --orange: #FA5E06;
-  --orange-soft: #FFE5D2;
-  --orange-tint: #FFF1E4;
+  --orange-soft: #F7DCCD;
+  --orange-tint: #F4F6FA;
   --sev-crit: #E02E1F;
   --ok: #2E9E6D;
   --blue: #2B5B9C;
@@ -3654,15 +3654,15 @@ a.open-in-grace:focus-visible {
 /* Ask Grace palette aligned with Ops Pack */
 .detail__ask-drawer .askai {
   --ask-paper: #FFFFFF;
-  --ask-bg: #FBF8F1;
-  --ask-line: #E8E2D2;
-  --ask-line-2: #F0EBDC;
+  --ask-bg: #F5F6F8;
+  --ask-line: #DFE3EA;
+  --ask-line-2: #ECEFF4;
   --ask-ink: #1A1815;
   --ask-ink-2: #3B372F;
-  --ask-ink-3: #6B6558;
+  --ask-ink-3: #636A74;
   --ask-orange: #FA5E06;
-  --ask-orange-soft: #FFE5D2;
-  --ask-orange-tint: #FFF1E4;
+  --ask-orange-soft: #F7DCCD;
+  --ask-orange-tint: #F4F6FA;
   border-color: var(--ask-line);
   background: var(--ask-paper);
   box-shadow: 0 1px 0 rgba(26, 24, 21, 0.04), 0 12px 28px rgba(26, 24, 21, 0.06), 0 24px 60px rgba(26, 24, 21, 0.05);
