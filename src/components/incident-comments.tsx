@@ -207,7 +207,7 @@ export function IncidentComments({ incidentSlug }: { incidentSlug: string }) {
         <div className="detail__comments-list">
           {comments.map((comment) => (
             <article key={comment.id} className="detail__comment">
-              <div className="vote-controls vote-controls--stack detail__comment-vote">
+              <div className="vote-controls vote-controls--reddit vote-controls--reddit-narrow vote-controls--reddit-thread detail__comment-vote">
                 <button
                   type="button"
                   className={`vote-controls__btn${comment.viewerVote === 1 ? " is-active is-up" : ""}`}
@@ -216,8 +216,8 @@ export function IncidentComments({ incidentSlug }: { incidentSlug: string }) {
                 >
                   ▲
                 </button>
-                <div className="vote-controls__stack-score">
-                  {comment.score >= 0 ? `+${comment.score}` : comment.score}
+                <div className="vote-controls__reddit-score" aria-label={`Score ${comment.score}`}>
+                  {comment.score >= 0 ? String(comment.score) : comment.score}
                 </div>
                 <button
                   type="button"

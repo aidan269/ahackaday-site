@@ -117,43 +117,37 @@ export function IncidentVoteControls({
     }
   }
 
-  const scoreStr = loading ? "…" : state.score >= 0 ? `+${state.score}` : String(state.score);
-  const countsStr = error ? statusLabel : loading ? "…" : `${state.upvotes} up · ${state.downvotes} down`;
+  const scoreStr = error ? "—" : loading ? "…" : state.score >= 0 ? `${state.score}` : String(state.score);
 
   return (
     <div
       className={[
         "vote-controls",
-        "vote-controls--compact",
-        compact ? "vote-controls--compact-narrow" : "vote-controls--compact-wide",
+        "vote-controls--reddit",
+        compact ? "vote-controls--reddit-narrow" : "vote-controls--reddit-wide",
       ].join(" ")}
     >
-      <div className="vote-controls__compact-btns">
-        <button
-          type="button"
-          className={`vote-controls__btn${state.viewerVote === 1 ? " is-active is-up" : ""}`}
-          onClick={() => void mutateVote(state.viewerVote === 1 ? null : 1)}
-          disabled={saving || !userEmail}
-          title={userEmail ? "Mark helpful" : "Sign in to vote"}
-        >
-          ▲
-        </button>
-        <button
-          type="button"
-          className={`vote-controls__btn${state.viewerVote === -1 ? " is-active is-down" : ""}`}
-          onClick={() => void mutateVote(state.viewerVote === -1 ? null : -1)}
-          disabled={saving || !userEmail}
-          title={userEmail ? "Mark not helpful" : "Sign in to vote"}
-        >
-          ▼
-        </button>
+      <button
+        type="button"
+        className={`vote-controls__btn${state.viewerVote === 1 ? " is-active is-up" : ""}`}
+        onClick={() => void mutateVote(state.viewerVote === 1 ? null : 1)}
+        disabled={saving || !userEmail}
+        title={userEmail ? "Mark helpful" : "Sign in to vote"}
+      >
+        ▲
+      </button>
+      <div className="vote-controls__reddit-score" aria-label={statusLabel}>
+        {scoreStr}
       </div>
-      <div className="vote-controls__compact-meta" aria-label={statusLabel}>
-        <span className="vote-controls__compact-scoreline">
-          score <strong>{scoreStr}</strong>
-        </span>
-        <span className="vote-controls__compact-counts">{countsStr}</span>
-      </div>
+      <button
+        type="button"
+        className={`vote-controls__btn${state.viewerVote === -1 ? " is-active is-down" : ""}`}
+        onClick={() => void mutateVote(state.viewerVote === -1 ? null : -1)}
+        disabled={saving || !userEmail}
+        title={userEmail ? "Mark not helpful" : "Sign in to vote"}
+      >
+        ▼
+      </button>
     </div>
   );
 }

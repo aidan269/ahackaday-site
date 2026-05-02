@@ -940,93 +940,54 @@ main.shell { max-width: 1560px; margin: 0 auto; padding: 48px 40px 160px; positi
   border-color: rgba(199, 76, 76, 0.45);
   background: rgba(199, 76, 76, 0.08);
 }
-/* Feed + incident: same pill, score + counts (mono). Narrow = feed card column; wide = incident bar. */
-.vote-controls.vote-controls--compact {
-  align-items: center;
-  gap: 10px;
-  padding: 6px 10px;
-}
-.vote-controls--compact-narrow {
-  flex-direction: column;
-  align-items: stretch;
-  gap: 8px;
-  padding: 8px 8px;
-}
-.vote-controls--compact-wide {
-  flex-direction: row;
-  flex-wrap: wrap;
-  gap: 12px;
-}
-.vote-controls__compact-btns {
-  display: inline-flex;
-  flex-direction: row;
-  gap: 5px;
-  flex-shrink: 0;
-}
-.vote-controls--compact-narrow .vote-controls__btn {
-  width: 22px;
-  height: 20px;
-  font-size: 8px;
-  border-radius: 5px;
-  flex: 1;
-}
-.vote-controls--compact-wide .vote-controls__btn {
-  width: 28px;
-  height: 24px;
-  font-size: 11px;
-}
-.vote-controls__compact-meta {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  font-family: var(--font-mono);
-  font-size: 9.5px;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  line-height: 1.25;
-  min-width: 0;
-}
-.vote-controls--compact-wide .vote-controls__compact-meta {
-  flex-direction: row;
-  align-items: baseline;
-  flex-wrap: wrap;
-  gap: 12px 14px;
-}
-.vote-controls__compact-scoreline {
-  color: var(--fg);
-  white-space: nowrap;
-}
-.vote-controls__compact-scoreline strong {
-  font-weight: 700;
-}
-.vote-controls__compact-counts {
-  color: var(--fg-3);
-  white-space: nowrap;
-}
-/* Comment rows: keep a minimal vertical control. */
-.vote-controls--stack {
+/* Reddit-style: up · score · down (feed, incident, comments). */
+.vote-controls.vote-controls--reddit {
   display: inline-grid;
   justify-items: center;
-  gap: 3px;
-  padding: 3px 2px;
-  border-radius: 8px;
-  max-width: 100%;
-  border: 1px solid var(--border);
-  background: rgba(255, 255, 255, 0.96);
+  align-content: start;
+  gap: 4px;
+  padding: 6px 7px;
 }
-.vote-controls--stack .vote-controls__btn {
+.vote-controls--reddit-narrow .vote-controls__btn {
+  width: 22px;
+  height: 20px;
+  font-size: 9px;
+  border-radius: 5px;
+}
+.vote-controls--reddit-wide .vote-controls__btn {
+  width: 30px;
+  height: 26px;
+  font-size: 12px;
+  border-radius: 6px;
+}
+.vote-controls__reddit-score {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--fg);
+  line-height: 1.2;
+  min-width: 1.35rem;
+  text-align: center;
+  padding: 1px 0;
+}
+.vote-controls--reddit-wide .vote-controls__reddit-score {
+  font-size: 13px;
+  min-width: 1.5rem;
+}
+/* Comment thread: same pattern, tighter. */
+.vote-controls--reddit-thread {
+  padding: 4px 4px;
+  gap: 2px;
+}
+.vote-controls--reddit-thread .vote-controls__btn {
   width: 20px;
   height: 18px;
   font-size: 8px;
   border-radius: 5px;
 }
-.vote-controls__stack-score {
-  min-width: 20px;
-  text-align: center;
-  font-size: 9px;
-  font-weight: 600;
-  letter-spacing: 0.01em;
-  color: var(--fg);
+.vote-controls--reddit-thread .vote-controls__reddit-score {
+  font-size: 10px;
 }
 .detail__grace-actions {
   display: inline-flex;
