@@ -2,11 +2,13 @@
 
 import "@/app/feed-bar.css";
 
+import Image from "next/image";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 
 import { FeedGracePanel } from "@/components/feed-grace-panel";
 import { ToolkitDrawer } from "@/components/toolkit-drawer";
+import { graceAvatarUrl } from "@/lib/ecosystem";
 import { countActiveFeedChips } from "@/lib/feed-receipt";
 import { DEFAULT_FEED_QUERY, mergeFeedQuery, parseFeedBarQuery, serializeFeedBarQuery, type FeedBarQuery } from "@/lib/feed-url";
 
@@ -176,8 +178,7 @@ export function FeedBar({ receiptCount, receiptTotal, receiptEmphasis, filteredS
   };
 
   const emphasisText = receiptEmphasis.join(" · ");
-  const graceSubtitle =
-    chipsActive === 0 ? "across the whole feed" : `about these ${receiptCount}`;
+  const graceSubtitle = `about these ${receiptCount}`;
 
   return (
     <div>
@@ -390,20 +391,6 @@ export function FeedBar({ receiptCount, receiptTotal, receiptEmphasis, filteredS
               type="button"
               className="fb-view"
               role="radio"
-              aria-checked={query.layout === "timeline"}
-              onClick={() => commit({ layout: "timeline" })}
-              title="Timeline view"
-            >
-              <svg viewBox="0 0 16 16" fill="currentColor" aria-hidden>
-                <rect x="2" y="3" width="12" height="2" rx="0.5" />
-                <rect x="2" y="7" width="12" height="2" rx="0.5" />
-                <rect x="2" y="11" width="12" height="2" rx="0.5" />
-              </svg>
-            </button>
-            <button
-              type="button"
-              className="fb-view"
-              role="radio"
               aria-checked={query.layout === "compact"}
               onClick={() => commit({ layout: "compact" })}
               title="Compact cards"
@@ -423,7 +410,14 @@ export function FeedBar({ receiptCount, receiptTotal, receiptEmphasis, filteredS
             onClick={() => setGraceOpen(true)}
           >
             <span className="fb-grace__avatar" aria-hidden>
-              G<span className="pulse" aria-hidden />
+              <Image
+                className="fb-grace__avatar-img"
+                src={graceAvatarUrl()}
+                alt=""
+                width={22}
+                height={22}
+              />
+              <span className="pulse" aria-hidden />
             </span>
             <span className="fb-grace__txt">
               Ask Grace

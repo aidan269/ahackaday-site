@@ -914,11 +914,7 @@ main.shell { max-width: 1560px; margin: 0 auto; padding: 48px 40px 160px; positi
   border: 1px solid var(--border);
   border-radius: 10px;
   padding: 6px 8px;
-  background: rgba(255,255,255,0.96);
-}
-.vote-controls__buttons {
-  display: inline-flex;
-  gap: 6px;
+  background: rgba(255, 255, 255, 0.96);
 }
 .vote-controls__btn {
   width: 28px;
@@ -931,45 +927,100 @@ main.shell { max-width: 1560px; margin: 0 auto; padding: 48px 40px 160px; positi
   line-height: 1;
   transition: color 160ms, border-color 160ms, background 160ms;
 }
-.vote-controls__btn:disabled { opacity: 0.55; }
+.vote-controls__btn:disabled {
+  opacity: 0.55;
+}
 .vote-controls__btn.is-active.is-up {
   color: #0c9f56;
-  border-color: rgba(12,159,86,0.45);
-  background: rgba(12,159,86,0.08);
+  border-color: rgba(12, 159, 86, 0.45);
+  background: rgba(12, 159, 86, 0.08);
 }
 .vote-controls__btn.is-active.is-down {
   color: #c74c4c;
-  border-color: rgba(199,76,76,0.45);
-  background: rgba(199,76,76,0.08);
+  border-color: rgba(199, 76, 76, 0.45);
+  background: rgba(199, 76, 76, 0.08);
 }
-.vote-controls__meta {
-  display: inline-flex;
+/* Feed + incident: same pill, score + counts (mono). Narrow = feed card column; wide = incident bar. */
+.vote-controls.vote-controls--compact {
   align-items: center;
+  gap: 10px;
+  padding: 6px 10px;
+}
+.vote-controls--compact-narrow {
+  flex-direction: column;
+  align-items: stretch;
   gap: 8px;
-  font-size: 10px;
-  letter-spacing: 0.08em;
+  padding: 8px 8px;
+}
+.vote-controls--compact-wide {
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.vote-controls__compact-btns {
+  display: inline-flex;
+  flex-direction: row;
+  gap: 5px;
+  flex-shrink: 0;
+}
+.vote-controls--compact-narrow .vote-controls__btn {
+  width: 22px;
+  height: 20px;
+  font-size: 8px;
+  border-radius: 5px;
+  flex: 1;
+}
+.vote-controls--compact-wide .vote-controls__btn {
+  width: 28px;
+  height: 24px;
+  font-size: 11px;
+}
+.vote-controls__compact-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--fg-3);
+  line-height: 1.25;
+  min-width: 0;
 }
-.vote-controls__score {
+.vote-controls--compact-wide .vote-controls__compact-meta {
+  flex-direction: row;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 12px 14px;
+}
+.vote-controls__compact-scoreline {
   color: var(--fg);
-  font-weight: 600;
+  white-space: nowrap;
 }
-.vote-controls--compact {
+.vote-controls__compact-scoreline strong {
+  font-weight: 700;
+}
+.vote-controls__compact-counts {
+  color: var(--fg-3);
+  white-space: nowrap;
+}
+/* Comment rows: keep a minimal vertical control. */
+.vote-controls--stack {
   display: inline-grid;
   justify-items: center;
   gap: 3px;
   padding: 3px 2px;
   border-radius: 8px;
   max-width: 100%;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.96);
 }
-.vote-controls--compact .vote-controls__btn {
+.vote-controls--stack .vote-controls__btn {
   width: 20px;
   height: 18px;
   font-size: 8px;
   border-radius: 5px;
 }
-.vote-controls__compact-score {
+.vote-controls__stack-score {
   min-width: 20px;
   text-align: center;
   font-size: 9px;

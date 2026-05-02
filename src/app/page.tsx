@@ -1,6 +1,6 @@
 import { DailyBriefHead } from "@/components/daily-brief-head";
 import { FeedBar } from "@/components/feed-bar";
-import { IncidentItem, IncidentTimelineItem } from "@/components/incident-item";
+import { IncidentItem } from "@/components/incident-item";
 import { QuietDayEmpty } from "@/components/quiet-day-empty";
 import { graceAvatarUrl } from "@/lib/ecosystem";
 import { matchesFocusLens, type FocusLens } from "@/lib/focus-lenses";
@@ -284,8 +284,8 @@ export default async function Home({ searchParams }: HomeProps) {
   const sortValue = readParam(params.sort, "date");
   const windowValue = readParam(params.window, "30d");
   const layoutParam = readParam(params.layout, "card");
-  const layoutMode =
-    layoutParam === "timeline" ? "timeline" : layoutParam === "compact" ? "compact" : "card";
+  /** `layout=timeline` is retired; treat like card. */
+  const layoutMode = layoutParam === "compact" ? "compact" : "card";
   const severityValue = severity as "all" | Severity;
   const typeFilter = typeValue as "all" | IncidentType;
   const focusFilter = (
@@ -379,13 +379,6 @@ export default async function Home({ searchParams }: HomeProps) {
     return SEVERITY_ORDER[b.severity] - SEVERITY_ORDER[a.severity];
   });
 
-  const groupedByDate = sortedFiltered.reduce<Record<string, typeof sortedFiltered>>((acc, incident) => {
-    const key = incident.date.slice(0, 10);
-    if (!acc[key]) acc[key] = [];
-    acc[key].push(incident);
-    return acc;
-  }, {});
-
   const xWithSignal = [...filtered].filter((incident) => {
     const heat = incident.xHeatScore ?? 0;
     const mentions = incident.xMentions24h ?? 0;
@@ -475,19 +468,8 @@ export default async function Home({ searchParams }: HomeProps) {
       {filtered.length === 0 ? (
         <QuietDayEmpty allLen={all.length} />
       ) : (
-        <>
-          {layoutMode === "timeline" ? (
-            <div className="feed--timeline">
-              {Object.entries(groupedByDate).map(([date, items]) => (
-                <div key={date} className="tl-group">
-                  <h3 className="tl-group__date">{new Date(date).toLocaleDateString("en-US", { month: "short", day: "2-digit" })}</h3>
-                  {items.map((i) => <IncidentTimelineItem key={i.slug} incident={i} />)}
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="feed-with-x">
-              <div className={`feed--card${layoutMode === "compact" ? " feed--compact" : ""}`}>
+        <div className="feed-with-x">
+          <div className={`feed--card${layoutMode === "compact" ? " feed--compact" : ""}`}>
                 {sortedFiltered.map((i, idx) => (
                   <IncidentItem
                     key={i.slug}
@@ -680,8 +662,6 @@ export default async function Home({ searchParams }: HomeProps) {
                 </aside>
               </div>
             </div>
-          )}
-        </>
       )}
     </main>
   );

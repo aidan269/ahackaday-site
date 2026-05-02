@@ -10,7 +10,7 @@ export type FeedBarQuery = {
   focus: string;
   sort: string;
   window: string;
-  layout: "card" | "timeline" | "compact";
+  layout: "card" | "compact";
 };
 
 export const DEFAULT_FEED_QUERY: FeedBarQuery = {
@@ -27,8 +27,8 @@ export const DEFAULT_FEED_QUERY: FeedBarQuery = {
 
 export function parseFeedBarQuery(sp: URLSearchParams): FeedBarQuery {
   const layoutRaw = sp.get("layout") ?? "card";
-  const layout =
-    layoutRaw === "timeline" ? "timeline" : layoutRaw === "compact" ? "compact" : "card";
+  /** Legacy `layout=timeline` and unknown values normalize to card. */
+  const layout = layoutRaw === "compact" ? "compact" : "card";
   const win = sp.get("window") ?? DEFAULT_FEED_WINDOW;
   return {
     q: sp.get("q") ?? "",

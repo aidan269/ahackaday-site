@@ -14,6 +14,7 @@ type VoteState = {
 
 export function IncidentVoteControls({
   incidentSlug,
+  /** When true, use a stacked layout suited to the narrow feed card date column. */
   compact = false,
 }: {
   incidentSlug: string;
@@ -116,60 +117,43 @@ export function IncidentVoteControls({
     }
   }
 
+  const scoreStr = loading ? "…" : state.score >= 0 ? `+${state.score}` : String(state.score);
+  const countsStr = error ? statusLabel : loading ? "…" : `${state.upvotes} up · ${state.downvotes} down`;
+
   return (
-    <div className={`vote-controls${compact ? " vote-controls--compact" : ""}`}>
-      {compact ? (
-        <>
-          <button
-            type="button"
-            className={`vote-controls__btn${state.viewerVote === 1 ? " is-active is-up" : ""}`}
-            onClick={() => void mutateVote(state.viewerVote === 1 ? null : 1)}
-            disabled={saving || !userEmail}
-            title={userEmail ? "Mark helpful" : "Sign in to vote"}
-          >
-            ▲
-          </button>
-          <div className="vote-controls__compact-score" aria-label={statusLabel}>
-            {loading ? "…" : state.score >= 0 ? `+${state.score}` : String(state.score)}
-          </div>
-          <button
-            type="button"
-            className={`vote-controls__btn${state.viewerVote === -1 ? " is-active is-down" : ""}`}
-            onClick={() => void mutateVote(state.viewerVote === -1 ? null : -1)}
-            disabled={saving || !userEmail}
-            title={userEmail ? "Mark not helpful" : "Sign in to vote"}
-          >
-            ▼
-          </button>
-        </>
-      ) : (
-        <>
-          <div className="vote-controls__buttons">
-            <button
-              type="button"
-              className={`vote-controls__btn${state.viewerVote === 1 ? " is-active is-up" : ""}`}
-              onClick={() => void mutateVote(state.viewerVote === 1 ? null : 1)}
-              disabled={saving || !userEmail}
-              title={userEmail ? "Mark helpful" : "Sign in to vote"}
-            >
-              ▲
-            </button>
-            <button
-              type="button"
-              className={`vote-controls__btn${state.viewerVote === -1 ? " is-active is-down" : ""}`}
-              onClick={() => void mutateVote(state.viewerVote === -1 ? null : -1)}
-              disabled={saving || !userEmail}
-              title={userEmail ? "Mark not helpful" : "Sign in to vote"}
-            >
-              ▼
-            </button>
-        </div>
-          <div className="vote-controls__meta">
-            <span className="vote-controls__score">score {state.score >= 0 ? `+${state.score}` : state.score}</span>
-            <span className="vote-controls__counts">{statusLabel}</span>
-          </div>
-        </>
-      )}
+    <div
+      className={[
+        "vote-controls",
+        "vote-controls--compact",
+        compact ? "vote-controls--compact-narrow" : "vote-controls--compact-wide",
+      ].join(" ")}
+    >
+      <div className="vote-controls__compact-btns">
+        <button
+          type="button"
+          className={`vote-controls__btn${state.viewerVote === 1 ? " is-active is-up" : ""}`}
+          onClick={() => void mutateVote(state.viewerVote === 1 ? null : 1)}
+          disabled={saving || !userEmail}
+          title={userEmail ? "Mark helpful" : "Sign in to vote"}
+        >
+          ▲
+        </button>
+        <button
+          type="button"
+          className={`vote-controls__btn${state.viewerVote === -1 ? " is-active is-down" : ""}`}
+          onClick={() => void mutateVote(state.viewerVote === -1 ? null : -1)}
+          disabled={saving || !userEmail}
+          title={userEmail ? "Mark not helpful" : "Sign in to vote"}
+        >
+          ▼
+        </button>
+      </div>
+      <div className="vote-controls__compact-meta" aria-label={statusLabel}>
+        <span className="vote-controls__compact-scoreline">
+          score <strong>{scoreStr}</strong>
+        </span>
+        <span className="vote-controls__compact-counts">{countsStr}</span>
+      </div>
     </div>
   );
 }
