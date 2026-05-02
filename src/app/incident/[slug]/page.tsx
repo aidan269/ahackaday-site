@@ -231,8 +231,11 @@ export default async function IncidentPage({ params }: IncidentPageProps) {
             ))}
           </div>
 
-          <div className="detail__sources">
-            <h3>sources</h3>
+          <details className="detail__sources detail__sources--collapsed">
+            <summary>
+              <span>sources / provenance</span>
+              <span>{incident.sources.length}</span>
+            </summary>
             <ul>
               {incident.sources.map((sourceUrl) => (
                 <li key={sourceUrl}>
@@ -240,7 +243,7 @@ export default async function IncidentPage({ params }: IncidentPageProps) {
                 </li>
               ))}
             </ul>
-          </div>
+          </details>
 
           <div className="signoff">
             <em>

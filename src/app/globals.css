@@ -3250,17 +3250,37 @@ a.open-in-grace:focus-visible {
   padding-top: 24px;
   border-top: 1px solid var(--border);
 }
-.detail__sources h3 {
+.detail__sources summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  cursor: pointer;
+  list-style: none;
   font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.14em;
   color: var(--fg-3);
-  margin: 0 0 8px;
   font-weight: 600;
+  user-select: none;
+}
+.detail__sources summary::-webkit-details-marker {
+  display: none;
+}
+.detail__sources summary::after {
+  content: "▾";
+  color: var(--brand-orange);
+  font-size: 12px;
+  transform: rotate(-90deg);
+  transition: transform 150ms ease;
+}
+.detail__sources[open] summary::after {
+  transform: rotate(0deg);
 }
 .detail__sources ul {
   list-style: none;
   padding: 0;
+  margin-top: 10px;
 }
 .detail__sources li {
   font-size: 12px;
