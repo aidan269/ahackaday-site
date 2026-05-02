@@ -3,7 +3,7 @@ import { FeedControls } from "@/components/feed-controls";
 import { IncidentItem, IncidentTimelineItem } from "@/components/incident-item";
 import { QuietDayEmpty } from "@/components/quiet-day-empty";
 import { matchesFocusLens, type FocusLens } from "@/lib/focus-lenses";
-import { getIncidentVoteSummaryMap } from "@/lib/incident-votes";
+import { getIncidentCommentCountMap, getIncidentVoteSummaryMap } from "@/lib/incident-votes";
 import { getAllIncidents, type IncidentType, type Severity } from "@/lib/incidents";
 import type { SocialDataQuality } from "@/lib/incident-types";
 import Image from "next/image";
@@ -131,7 +131,11 @@ export default async function Home({ searchParams }: HomeProps) {
   const win = (windowValue === "7d" ? "7" : windowValue) as "7" | "30d" | "90d" | "all";
 
   const all = await getAllIncidents();
-  const voteSummaryMap = await getIncidentVoteSummaryMap(all.map((incident) => incident.slug));
+  const allSlugs = all.map((incident) => incident.slug);
+  const [voteSummaryMap, commentCountMap] = await Promise.all([
+    getIncidentVoteSummaryMap(allSlugs),
+    getIncidentCommentCountMap(allSlugs),
+  ]);
   const now = new Date();
   const qq = query.trim().toLowerCase();
   const days = win === "all" ? null : parseInt(win, 10);
@@ -145,9 +149,10 @@ export default async function Home({ searchParams }: HomeProps) {
     if (typeFilter !== "all" && i.category !== typeFilter) return false;
     if (!matchesFocusLens(i, focusFilter)) return false;
     const voteSummary = voteSummaryMap.get(i.slug) ?? { upvotes: 0, downvotes: 0, score: 0 };
+    const commentCount = commentCountMap.get(i.slug) ?? 0;
     if (voteValue === "upvoted" && voteSummary.score <= 0) return false;
     if (voteValue === "downvoted" && voteSummary.score >= 0) return false;
-    if (voteValue === "controversial" && (voteSummary.upvotes === 0 || voteSummary.downvotes === 0)) return false;
+    if (voteValue === "comments" && commentCount <= 0) return false;
     if (days) {
       const age = (now.getTime() - parseLocal(i.date).getTime()) / 86400000;
       if (age > days) return false;

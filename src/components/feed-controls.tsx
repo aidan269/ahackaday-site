@@ -64,13 +64,13 @@ export function FeedControls({
       </div>
 
       <div className="ctrl">
-        <label htmlFor="f-votes">Votes</label>
+        <label htmlFor="f-votes">Activity</label>
         <div className="ctrl__box">
           <select id="f-votes" name="votes" defaultValue={voteValue}>
-            <option value="all">all vote states</option>
+            <option value="all">all activity</option>
             <option value="upvoted">upvoted</option>
             <option value="downvoted">downvoted</option>
-            <option value="controversial">controversial</option>
+            <option value="comments">comments</option>
           </select>
           <span className="chev">▾</span>
         </div>
