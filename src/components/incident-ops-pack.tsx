@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 
 import { buildOpsIocValues } from "@/lib/ops-iocs";
 
@@ -43,19 +43,26 @@ function toTxt(rows: TypedIoc[]) {
 }
 
 export function IncidentOpsPack({ incident }: OpsPackProps) {
+  const [activeTab, setActiveTab] = useState<"all" | "network" | "vuln" | "packages">("all");
   const typedIocs = useMemo(() => {
     const raw = buildOpsIocValues(incident);
     return raw.map((value) => ({ value, type: classifyIoc(value) }));
   }, [incident]);
 
-  const grouped = useMemo(() => {
-    const map = new Map<IocType, string[]>();
-    for (const row of typedIocs) {
-      const arr = map.get(row.type) ?? [];
-      arr.push(row.value);
-      map.set(row.type, arr);
+  const tabRows = useMemo(() => {
+    if (activeTab === "all") return typedIocs;
+    if (activeTab === "network") {
+      return typedIocs.filter((r) => r.type === "ip" || r.type === "domain" || r.type === "url");
     }
-    return map;
+    if (activeTab === "vuln") return typedIocs.filter((r) => r.type === "cve" || r.type === "hash");
+    return typedIocs.filter((r) => r.type === "package");
+  }, [activeTab, typedIocs]);
+
+  const counts = useMemo(() => {
+    const network = typedIocs.filter((r) => r.type === "ip" || r.type === "domain" || r.type === "url").length;
+    const vuln = typedIocs.filter((r) => r.type === "cve" || r.type === "hash").length;
+    const packages = typedIocs.filter((r) => r.type === "package").length;
+    return { all: typedIocs.length, network, vuln, packages };
   }, [typedIocs]);
 
   const sigmaRule = useMemo(() => {
@@ -115,80 +122,204 @@ export function IncidentOpsPack({ incident }: OpsPackProps) {
     URL.revokeObjectURL(url);
   }
 
+  function confidenceClass(type: IocType): "high" | "mid" | "low" {
+    if (type === "cve" || type === "hash" || type === "ip" || type === "url") return "high";
+    if (type === "domain" || type === "package") return "mid";
+    return "low";
+  }
+
+  function iconTypeClass(type: IocType): "h" | "d" | "i" {
+    if (type === "hash" || type === "cve") return "h";
+    if (type === "domain" || type === "url") return "d";
+    return "i";
+  }
+
   return (
-    <section className="detail__ops">
-      <div className="detail__ops-head">
-        <h3>ops pack</h3>
-        <span>{typedIocs.length} iocs</span>
+    <section className="ops">
+      <div className="ops__hd">
+        <div className="ops__hd__l">
+          <div>
+            <div className="ops__name">Ops Pack</div>
+            <div className="ops__sub">triage-ready iocs + detections</div>
+          </div>
+        </div>
+        <div className="ops__hd__r">
+          <span className="ops__fresh"><span className="dot" /> fresh</span>
+        </div>
       </div>
 
-      <details className="detail__ops-panel">
-        <summary>IOCs</summary>
-        {typedIocs.length === 0 ? (
-          <p className="detail__ops-empty">No structured IOCs found for this incident yet.</p>
-        ) : (
-          <>
-            <div className="detail__ops-actions">
-              <button type="button" onClick={() => void copyText(toTxt(typedIocs))}>copy all</button>
-              <button
-                type="button"
-                onClick={() => download(`${incident.slug}-iocs.txt`, "text/plain", toTxt(typedIocs))}
-              >
-                download txt
-              </button>
-              <button
-                type="button"
-                onClick={() =>
-                  download(
-                    `${incident.slug}-iocs.json`,
-                    "application/json",
-                    JSON.stringify(typedIocs, null, 2),
-                  )
-                }
-              >
-                download json
-              </button>
+      <div className="ops__lanes">
+        <div className="lane">
+          <div className="lane__hd">
+            <div className="lane__hd__l">
+              <div className="lane__num">1</div>
+              <div>
+                <div className="lane__title">IOC Workbench</div>
+                <div className="lane__hint">typed indicators with fast copy and export actions</div>
+              </div>
             </div>
-            <div className="detail__ops-groups">
-              {Array.from(grouped.entries()).map(([type, values]) => (
-                <div key={type} className="detail__ops-group">
-                  <div className="detail__ops-group-head">
-                    <strong>{type}</strong>
-                    <button
-                      type="button"
-                      onClick={() => void copyText(values.join("\n"))}
-                    >
-                      copy
-                    </button>
-                  </div>
-                  <ul>
-                    {values.map((v) => <li key={`${type}-${v}`}>{v}</li>)}
-                  </ul>
-                </div>
-              ))}
-            </div>
-          </>
-        )}
-      </details>
+            <div className="lane__count"><b>{typedIocs.length}</b> total</div>
+          </div>
+          <div className="ioc-tabs">
+            <button type="button" className={`ioc-tab${activeTab === "all" ? " active" : ""}`} onClick={() => setActiveTab("all")}>
+              all <span className="tag">{counts.all}</span>
+            </button>
+            <button type="button" className={`ioc-tab${activeTab === "network" ? " active" : ""}`} onClick={() => setActiveTab("network")}>
+              network <span className="tag">{counts.network}</span>
+            </button>
+            <button type="button" className={`ioc-tab${activeTab === "vuln" ? " active" : ""}`} onClick={() => setActiveTab("vuln")}>
+              vuln <span className="tag">{counts.vuln}</span>
+            </button>
+            <button type="button" className={`ioc-tab${activeTab === "packages" ? " active" : ""}`} onClick={() => setActiveTab("packages")}>
+              packages <span className="tag">{counts.packages}</span>
+            </button>
+          </div>
 
-      <details className="detail__ops-panel">
-        <summary>Rules</summary>
-        <p className="detail__ops-hint">Starter detections only. Validate and tune before production use.</p>
-        <div className="detail__ops-rule">
-          <div className="detail__ops-group-head">
-            <strong>Sigma</strong>
-            <button type="button" onClick={() => void copyText(sigmaRule)}>copy</button>
-          </div>
-          <pre>{sigmaRule}</pre>
+          {tabRows.length === 0 ? (
+            <div className="ioc-empty">
+              <div className="ioc-empty__icon">!</div>
+              <div className="ioc-empty__txt">
+                <b>No indicators in this slice yet.</b>
+                <span>Switch tabs or export the full IOC set.</span>
+              </div>
+            </div>
+          ) : (
+            <>
+              <div className="ioc-list">
+                {tabRows.slice(0, 20).map((row) => (
+                  <div key={`${row.type}-${row.value}`} className="ioc-row">
+                    <span className={`ioc-row__type ${iconTypeClass(row.type)}`}>{row.type[0]}</span>
+                    <span className="ioc-row__val">{row.value}</span>
+                    <span className="ioc-row__conf">
+                      <span className={`conf-bar ${confidenceClass(row.type)}`}>
+                        <i /><i /><i />
+                      </span>
+                    </span>
+                    <span className="ioc-row__act">
+                      <button type="button" className="ioc-act" onClick={() => void copyText(row.value)}>copy</button>
+                    </span>
+                  </div>
+                ))}
+              </div>
+              <div className="ioc-bulk">
+                <div className="ioc-bulk__txt"><b>{typedIocs.length}</b> indicators staged for handoff.</div>
+                <button type="button" className="btn-quiet" onClick={() => void copyText(toTxt(typedIocs))}>copy all</button>
+                <button type="button" className="btn-quiet" onClick={() => download(`${incident.slug}-iocs.txt`, "text/plain", toTxt(typedIocs))}>
+                  txt
+                </button>
+                <button
+                  type="button"
+                  className="btn-primary"
+                  onClick={() =>
+                    download(
+                      `${incident.slug}-iocs.json`,
+                      "application/json",
+                      JSON.stringify(typedIocs, null, 2),
+                    )
+                  }
+                >
+                  json
+                </button>
+              </div>
+            </>
+          )}
         </div>
-        <div className="detail__ops-rule">
-          <div className="detail__ops-group-head">
-            <strong>YARA</strong>
-            <button type="button" onClick={() => void copyText(yaraRule)}>copy</button>
+
+        <div className="lane">
+          <div className="lane__hd">
+            <div className="lane__hd__l">
+              <div className="lane__num">2</div>
+              <div>
+                <div className="lane__title">Rule Studio</div>
+                <div className="lane__hint">starter detections generated from this IOC set</div>
+              </div>
+            </div>
+            <div className="lane__count"><b>2</b> formats</div>
           </div>
-          <pre>{yaraRule}</pre>
+
+          <div className="rule-help">
+            <span>!</span>
+            <span><b>Draft output:</b> validate and tune before production rollout.</span>
+            <button type="button" className="btn-quiet" onClick={() => void copyText(`${sigmaRule}\n\n${yaraRule}`)}>copy all</button>
+          </div>
+
+          <div className="rule-cards">
+            <article className="rule-card">
+              <div className="rule-card__hd">
+                <div className="rule-card__hd__l">
+                  <span className="rule-kind">sigma</span>
+                  <span className="rule-status">draft</span>
+                </div>
+                <button type="button" className="btn-quiet" onClick={() => void copyText(sigmaRule)}>copy</button>
+              </div>
+              <div className="rule-card__body">{sigmaRule}</div>
+              <div className="rule-card__foot">
+                <div className="rule-readiness">
+                  coverage
+                  <span className="bar"><i style={{ width: "42%" }} /></span>
+                </div>
+              </div>
+            </article>
+
+            <article className="rule-card">
+              <div className="rule-card__hd">
+                <div className="rule-card__hd__l">
+                  <span className="rule-kind">yara</span>
+                  <span className="rule-status">draft</span>
+                </div>
+                <button type="button" className="btn-quiet" onClick={() => void copyText(yaraRule)}>copy</button>
+              </div>
+              <div className="rule-card__body">{yaraRule}</div>
+              <div className="rule-card__foot">
+                <div className="rule-readiness">
+                  coverage
+                  <span className="bar"><i style={{ width: "38%" }} /></span>
+                </div>
+              </div>
+            </article>
+          </div>
         </div>
-      </details>
+
+        <div className="lane">
+          <div className="lane__hd">
+            <div className="lane__hd__l">
+              <div className="lane__num">3</div>
+              <div>
+                <div className="lane__title">Response Tracks</div>
+                <div className="lane__hint">fast operational tracks from this incident snapshot</div>
+              </div>
+            </div>
+            <div className="lane__count"><b>4</b> tracks</div>
+          </div>
+          <div className="resp-grid">
+            <button type="button" className="resp-card danger">
+              <span className="resp-card__icon">!</span>
+              <div className="resp-card__title">Contain</div>
+              <div className="resp-card__desc">Block indicators and isolate impacted assets.</div>
+              <div className="resp-card__target"><span>target</span><b>soc</b></div>
+            </button>
+            <button type="button" className="resp-card calm">
+              <span className="resp-card__icon">i</span>
+              <div className="resp-card__title">Hunt</div>
+              <div className="resp-card__desc">Sweep recent telemetry for indicator hits.</div>
+              <div className="resp-card__target"><span>target</span><b>detection</b></div>
+            </button>
+            <button type="button" className="resp-card go">
+              <span className="resp-card__icon">></span>
+              <div className="resp-card__title">Patch</div>
+              <div className="resp-card__desc">Prioritize remediation from CVE evidence.</div>
+              <div className="resp-card__target"><span>target</span><b>it ops</b></div>
+            </button>
+            <button type="button" className="resp-card">
+              <span className="resp-card__icon">#</span>
+              <div className="resp-card__title">Brief</div>
+              <div className="resp-card__desc">Export concise incident notes for leadership.</div>
+              <div className="resp-card__target"><span>target</span><b>exec</b></div>
+            </button>
+          </div>
+          <div className="resp-foot">source-backed <b>{incident.sources.length}</b> refs</div>
+        </div>
+      </div>
     </section>
   );
 }
