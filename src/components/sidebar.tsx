@@ -134,21 +134,100 @@ function IconGovernment() {
   );
 }
 
-function IconVendor() {
+/** Stylized bridge bars (Cisco-adjacent). */
+function IconCisco() {
   return (
     <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden>
       <path
-        d="M3 12V5.2L7 3l4 2.2V12"
+        d="M2.8 11V6.2M5.2 11V4.8M8.8 11V4.8M11.2 11V6.2"
+        stroke="currentColor"
+        strokeWidth="1.2"
+        strokeLinecap="round"
+      />
+      <path
+        d="M2.8 6.2c1.4-1.1 2.8-1.35 4.2-.55 1.4-.8 2.8-.55 4.2.55"
+        stroke="currentColor"
+        strokeWidth="1.2"
+        fill="none"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+/** Globe / “G” energy — not the trademark. */
+function IconGoogle() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden>
+      <circle cx="7" cy="7" r="4.2" stroke="currentColor" strokeWidth="1.2" fill="none" />
+      <path d="M2.8 7h8.4M7 2.8v8.4" stroke="currentColor" strokeWidth="1" strokeLinecap="round" />
+      <ellipse cx="7" cy="7" rx="1.6" ry="4.2" stroke="currentColor" strokeWidth="1" fill="none" />
+    </svg>
+  );
+}
+
+/** Four-pane window (Microsoft-adjacent). */
+function IconMicrosoft() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden>
+      <rect x="2" y="2" width="4" height="4" stroke="currentColor" strokeWidth="1.2" fill="none" rx="0.5" />
+      <rect x="8" y="2" width="4" height="4" stroke="currentColor" strokeWidth="1.2" fill="none" rx="0.5" />
+      <rect x="2" y="8" width="4" height="4" stroke="currentColor" strokeWidth="1.2" fill="none" rx="0.5" />
+      <rect x="8" y="8" width="4" height="4" stroke="currentColor" strokeWidth="1.2" fill="none" rx="0.5" />
+    </svg>
+  );
+}
+
+/** Mountain “A” (Anthropic-adjacent). */
+function IconAnthropic() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden>
+      <path
+        d="M2.5 11.2 7 2.8l4.5 8.4"
+        stroke="currentColor"
+        strokeWidth="1.2"
+        fill="none"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path d="M4.6 8.2h4.8" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+/** Hex blossom (OpenAI-adjacent). */
+function IconOpenAI() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden>
+      <path
+        d="M7 2.2 9.9 4.1 9.9 7.9 7 9.8 4.1 7.9 4.1 4.1z"
         stroke="currentColor"
         strokeWidth="1.2"
         fill="none"
         strokeLinejoin="round"
-        strokeLinecap="round"
       />
-      <path d="M3 12h8" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
-      <path d="M6 12V8.5h2V12" stroke="currentColor" strokeWidth="1.2" fill="none" strokeLinejoin="round" />
+      <circle cx="7" cy="6" r="1.1" fill="currentColor" />
     </svg>
   );
+}
+
+function CompanyFocusIcon({ id }: { id: CompanyFocusId }) {
+  switch (id) {
+    case "cisco":
+      return <IconCisco />;
+    case "google":
+      return <IconGoogle />;
+    case "microsoft":
+      return <IconMicrosoft />;
+    case "anthropic":
+      return <IconAnthropic />;
+    case "openai":
+      return <IconOpenAI />;
+    default: {
+      const _x: never = id;
+      return _x;
+    }
+  }
 }
 
 /** Lowercase labels to match other focus rows (zero-day, ai, government). */
@@ -276,7 +355,7 @@ function SidebarBody({ counts, filters }: Props & { filters: UrlFilters }) {
             className={`sidebar__item${isFeed && filters.focus === id ? " is-active" : ""}`}
           >
             <span className="sidebar__icon" aria-hidden>
-              <IconVendor />
+              <CompanyFocusIcon id={id} />
             </span>
             <span>{COMPANY_FOCUS_LABELS[id]}</span>
             <span className="sidebar__count">{counts[id]}</span>
