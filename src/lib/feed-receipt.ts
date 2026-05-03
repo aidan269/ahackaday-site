@@ -22,6 +22,11 @@ function focusLabel(focus: string): string | null {
   if (focus === "ai") return "AI / agents";
   if (focus === "government") return "government / KEV";
   if (focus === "missed") return "missed on X";
+  if (focus === "cisco") return "Cisco";
+  if (focus === "google") return "Google";
+  if (focus === "microsoft") return "Microsoft";
+  if (focus === "anthropic") return "Anthropic";
+  if (focus === "openai") return "OpenAI";
   return focus;
 }
 

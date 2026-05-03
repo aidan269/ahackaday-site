@@ -3,7 +3,7 @@ import { FeedBar } from "@/components/feed-bar";
 import { IncidentItem } from "@/components/incident-item";
 import { QuietDayEmpty } from "@/components/quiet-day-empty";
 import { graceAvatarUrl } from "@/lib/ecosystem";
-import { matchesFocusLens, type FocusLens } from "@/lib/focus-lenses";
+import { matchesFocusLens, parseFocusLens } from "@/lib/focus-lenses";
 import { computeCommunityScore, practitionerBadgeEligible } from "@/lib/community-score";
 import {
   getIncidentCommentCountMap,
@@ -288,9 +288,7 @@ export default async function Home({ searchParams }: HomeProps) {
   const layoutMode = layoutParam === "compact" ? "compact" : "card";
   const severityValue = severity as "all" | Severity;
   const typeFilter = typeValue as "all" | IncidentType;
-  const focusFilter = (
-    focusValue === "ai" || focusValue === "government" || focusValue === "missed" ? focusValue : "all"
-  ) as FocusLens;
+  const focusFilter = parseFocusLens(focusValue);
   const win = (windowValue === "7d" ? "7" : windowValue) as "7" | "30d" | "90d" | "all";
 
   const feedQuery: FeedBarQuery = {
@@ -299,7 +297,7 @@ export default async function Home({ searchParams }: HomeProps) {
     type: typeValue,
     social: socialValue,
     votes: voteValue,
-    focus: focusValue,
+    focus: focusFilter,
     sort: sortValue,
     window: win,
     layout: layoutMode,

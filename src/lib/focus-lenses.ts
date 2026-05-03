@@ -1,9 +1,40 @@
 import type { Incident } from "@/lib/incident-types";
 
-export type FocusLens = "all" | "ai" | "government" | "missed";
+export const COMPANY_FOCUS_IDS = ["cisco", "google", "microsoft", "anthropic", "openai"] as const;
+export type CompanyFocusId = (typeof COMPANY_FOCUS_IDS)[number];
+
+export type FocusLens = "all" | "ai" | "government" | "missed" | CompanyFocusId;
+
+const COMPANY_PATTERNS: Record<CompanyFocusId, RegExp> = {
+  cisco: /\b(cisco|talos)\b/i,
+  google: /\b(google|alphabet|chromium|gmail|google cloud|google workspace|youtube)\b/i,
+  microsoft:
+    /\b(microsoft|msft|azure|office 365|microsoft 365|outlook|exchange online|intune|entra|defender for|windows server|windows 11|windows 10)\b/i,
+  anthropic: /\b(anthropic|claude)\b/i,
+  openai: /\b(openai|chatgpt|gpt-4|gpt-5|gpt-3)\b/i,
+};
 
 function textForIncident(i: Pick<Incident, "title" | "summary" | "category" | "affected">): string {
   return `${i.title} ${i.summary} ${i.category} ${i.affected}`.toLowerCase();
+}
+
+export function isCompanyFocusId(value: string): value is CompanyFocusId {
+  return (COMPANY_FOCUS_IDS as readonly string[]).includes(value);
+}
+
+/** Normalize `?focus=` from the URL; unknown values fall back to `"all"`. */
+export function parseFocusLens(raw: string): FocusLens {
+  if (raw === "all") return "all";
+  if (raw === "ai" || raw === "government" || raw === "missed") return raw;
+  if (isCompanyFocusId(raw)) return raw;
+  return "all";
+}
+
+export function matchesCompanyFocus(
+  i: Pick<Incident, "title" | "summary" | "category" | "affected">,
+  id: CompanyFocusId,
+): boolean {
+  return COMPANY_PATTERNS[id].test(textForIncident(i));
 }
 
 export function isAiIncident(i: Pick<Incident, "title" | "summary" | "category" | "affected">): boolean {
@@ -39,5 +70,7 @@ export function matchesFocusLens(
     const cs = typeof communityScore === "number" ? communityScore : 0;
     return matchesMissedTwitterLens(i, cs);
   }
-  return true;
+  if (isCompanyFocusId(focus)) return matchesCompanyFocus(i, focus);
+  const _exhaustive: never = focus;
+  return _exhaustive;
 }

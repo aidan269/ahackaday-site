@@ -38,6 +38,11 @@ const FOCUS_OPTS = [
   { value: "ai", label: "AI / agents" },
   { value: "government", label: "Government / KEV" },
   { value: "missed", label: "Missed on X" },
+  { value: "cisco", label: "Cisco" },
+  { value: "google", label: "Google" },
+  { value: "microsoft", label: "Microsoft" },
+  { value: "anthropic", label: "Anthropic" },
+  { value: "openai", label: "OpenAI" },
 ] as const;
 
 const SORT_OPTS = [

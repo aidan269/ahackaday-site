@@ -6,6 +6,7 @@ import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 
 import { useEmotionalPreferences } from "@/components/emotional-preferences-provider";
+import { COMPANY_FOCUS_IDS, type CompanyFocusId } from "@/lib/focus-lenses";
 import { buildFeedHref } from "@/lib/feed-nav";
 import type { SidebarCounts } from "@/lib/sidebar-counts";
 
@@ -133,6 +134,32 @@ function IconGovernment() {
   );
 }
 
+function IconVendor() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden>
+      <path
+        d="M3 12V5.2L7 3l4 2.2V12"
+        stroke="currentColor"
+        strokeWidth="1.2"
+        fill="none"
+        strokeLinejoin="round"
+        strokeLinecap="round"
+      />
+      <path d="M3 12h8" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+      <path d="M6 12V8.5h2V12" stroke="currentColor" strokeWidth="1.2" fill="none" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+/** Lowercase labels to match other focus rows (zero-day, ai, government). */
+const COMPANY_FOCUS_LABELS: Record<CompanyFocusId, string> = {
+  cisco: "cisco",
+  google: "google",
+  microsoft: "microsoft",
+  anthropic: "anthropic",
+  openai: "openai",
+};
+
 function SidebarBody({ counts, filters }: Props & { filters: UrlFilters }) {
   const pathname = usePathname();
   const { reviewCount, savedCount, userEmail } = useEmotionalPreferences();
@@ -210,11 +237,6 @@ function SidebarBody({ counts, filters }: Props & { filters: UrlFilters }) {
           <span>medium</span>
           <span className="sidebar__count">{counts.medium}</span>
         </Link>
-        <Link href={buildFeedHref({ severity: "low" })} className={`sidebar__item${sevActive("low") ? " is-active" : ""}`}>
-          <span className="sidebar__sev-dot" style={{ ["--sev" as string]: "var(--sev-low)" } as CSSProperties} />
-          <span>low</span>
-          <span className="sidebar__count">{counts.low}</span>
-        </Link>
       </nav>
 
       <div className="sidebar__section-label">focus</div>
@@ -247,6 +269,19 @@ function SidebarBody({ counts, filters }: Props & { filters: UrlFilters }) {
           <span>government</span>
           <span className="sidebar__count">{counts.government}</span>
         </Link>
+        {COMPANY_FOCUS_IDS.map((id) => (
+          <Link
+            key={id}
+            href={buildFeedHref({ focus: id })}
+            className={`sidebar__item${isFeed && filters.focus === id ? " is-active" : ""}`}
+          >
+            <span className="sidebar__icon" aria-hidden>
+              <IconVendor />
+            </span>
+            <span>{COMPANY_FOCUS_LABELS[id]}</span>
+            <span className="sidebar__count">{counts[id]}</span>
+          </Link>
+        ))}
       </nav>
 
       <div className="sidebar__section-label sidebar__section-label--receipts">your work</div>
