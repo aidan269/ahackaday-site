@@ -1,6 +1,6 @@
 /**
  * Public site base (AHackaday canonical URLs, toolkit links, Grace deep links).
- * NEXT_PUBLIC_GRACE_ORIGIN: Grace deployment origin, no trailing slash.
+ * NEXT_PUBLIC_GRACE_ORIGIN: Grace deployment origin, no trailing slash (e.g. https://askgrace.xyz).
  */
 
 const DEFAULT_SITE = "https://ahackaday-intel.vercel.app";
