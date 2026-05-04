@@ -186,7 +186,6 @@ export default async function IncidentPage({ params }: IncidentPageProps) {
                 <span style={{ color: "var(--fg-2)" }}>{formatIncidentDate(incident.date)}</span>
                 <SeverityChipExplainer severity={incident.severity} rationale={incident.severityInference ?? []} />
                 <span>{incident.category}</span>
-                {incident.exploited && <span className="exploited-chip">exploited in the wild</span>}
               </div>
               <div className="detail__bar-stack">
                 <IncidentTrackControls incidentSlug={incident.slug} />

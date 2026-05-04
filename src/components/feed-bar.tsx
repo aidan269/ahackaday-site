@@ -6,9 +6,8 @@ import Image from "next/image";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 
-import { FeedGracePanel } from "@/components/feed-grace-panel";
 import { ToolkitDrawer } from "@/components/toolkit-drawer";
-import { graceAvatarUrl } from "@/lib/ecosystem";
+import { graceAvatarUrl, graceDeepLink, getPublicSiteUrl } from "@/lib/ecosystem";
 import { countActiveFeedChips } from "@/lib/feed-receipt";
 import { DEFAULT_FEED_QUERY, mergeFeedQuery, parseFeedBarQuery, serializeFeedBarQuery, type FeedBarQuery } from "@/lib/feed-url";
 
@@ -129,7 +128,6 @@ export function FeedBar({ receiptCount, receiptTotal, receiptEmphasis, filteredS
   const searchParams = useSearchParams();
   const [pending, startTransition] = useTransition();
   const [openMenu, setOpenMenu] = useState<string | null>(null);
-  const [graceOpen, setGraceOpen] = useState(false);
   const [savedFlash, setSavedFlash] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
 
@@ -184,6 +182,16 @@ export function FeedBar({ receiptCount, receiptTotal, receiptEmphasis, filteredS
 
   const emphasisText = receiptEmphasis.join(" · ");
   const graceSubtitle = `about these ${receiptCount}`;
+  const openGrace = useCallback(() => {
+    const site = getPublicSiteUrl();
+    const qs = serializeFeedBarQuery(query);
+    const slugPart = filteredSlugs.length > 0
+      ? `&context_slugs=${encodeURIComponent(filteredSlugs.slice(0, 40).join(","))}`
+      : "";
+    const contextUrl = `${site}/?${qs}${slugPart}`;
+    const href = graceDeepLink(contextUrl);
+    if (href) window.open(href, "_blank", "noopener,noreferrer");
+  }, [filteredSlugs, query]);
 
   return (
     <div>
@@ -412,7 +420,7 @@ export function FeedBar({ receiptCount, receiptTotal, receiptEmphasis, filteredS
             type="button"
             className="fb-grace"
             aria-label={`Open Grace scoped to ${receiptCount} filtered incidents`}
-            onClick={() => setGraceOpen(true)}
+            onClick={openGrace}
           >
             <span className="fb-grace__avatar" aria-hidden>
               <Image
@@ -453,14 +461,6 @@ export function FeedBar({ receiptCount, receiptTotal, receiptEmphasis, filteredS
           ) : null}
         </span>
       </div>
-
-      <FeedGracePanel
-        open={graceOpen}
-        onClose={() => setGraceOpen(false)}
-        query={query}
-        filteredCount={receiptCount}
-        filteredSlugs={filteredSlugs}
-      />
     </div>
   );
 }
