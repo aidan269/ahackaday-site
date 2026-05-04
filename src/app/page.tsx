@@ -612,7 +612,7 @@ export default async function Home({ searchParams }: HomeProps) {
                     })}
                   </div>
                 </aside>
-                <aside className="grace-plugins-rail" aria-label="Grace plugins activity">
+                <aside className="grace-plugins-rail" aria-label="AHackaday updates from GitHub">
                   <div className="grace-plugins-rail__head">
                     <div className="grace-plugins-rail__brand">
                       <Image
@@ -622,7 +622,7 @@ export default async function Home({ searchParams }: HomeProps) {
                         height={24}
                         className="grace-plugins-rail__logo"
                       />
-                      <h3>Grace plugins feed</h3>
+                      <h3>ahackaday updates</h3>
                     </div>
                     <span>from github</span>
                   </div>

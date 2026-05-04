@@ -207,7 +207,7 @@ ${incident.sources.join("\n")}`;
         <span className={`askai__avatar ${status === "done" ? "is-done" : ""}`} aria-hidden>
           <img src={graceAvatarUrl()} alt="" className="askai__avatar-img" width={24} height={24} decoding="async" />
         </span>
-        <span className="label">Grace <span className="sub">{status === "thinking" ? "Working on it…" : status === "done" ? `For ${role} · ${promptTitle} · ${tone}` : "Your AI security intern"}</span></span>
+        <span className="label">Grace <span className="sub">{status === "thinking" ? "Working on it…" : status === "done" ? `For ${role} · ${promptTitle} · ${tone}` : "Ask Grace"}</span></span>
         <span className={`askai__status askai__status--${status}`} aria-live="polite">
           <span className="dot" />
           {status}
