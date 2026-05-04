@@ -32,6 +32,8 @@ function readParam(v: string | string[] | undefined, fallback: string): string {
 }
 
 type IncidentRow = Awaited<ReturnType<typeof getAllIncidents>>[number];
+const FEED_COMMUNITY_SLUG_LIMIT = 250;
+const GITHUB_FEED_TIMEOUT_MS = 1800;
 
 const SEVERITY_ORDER: Record<Severity, number> = {
   critical: 4,
@@ -245,6 +247,8 @@ function eventToFeedItem(event: GithubEvent): GracePluginFeedItem | null {
 async function getGracePluginFeed(username: string): Promise<GracePluginFeedItem[]> {
   if (!username) return [];
   const token = process.env.GITHUB_TOKEN || process.env.GH_TOKEN || "";
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), GITHUB_FEED_TIMEOUT_MS);
   try {
     const res = await fetch(`https://api.github.com/users/${encodeURIComponent(username)}/events/public?per_page=40`, {
       headers: {
@@ -252,6 +256,7 @@ async function getGracePluginFeed(username: string): Promise<GracePluginFeedItem
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
       next: { revalidate: 300 },
+      signal: controller.signal,
     });
     if (!res.ok) return [];
     const events = (await res.json()) as GithubEvent[];
@@ -270,6 +275,8 @@ async function getGracePluginFeed(username: string): Promise<GracePluginFeedItem
       .map((x) => x.item);
   } catch {
     return [];
+  } finally {
+    clearTimeout(timeout);
   }
 }
 
@@ -309,10 +316,11 @@ export default async function Home({ searchParams }: HomeProps) {
     getGracePluginFeed(githubUsername),
   ]);
   const allSlugs = all.map((incident) => incident.slug);
+  const communitySlugs = allSlugs.slice(0, FEED_COMMUNITY_SLUG_LIMIT);
   const [voteSummaryMap, commentCountMap, saveCountMap] = await Promise.all([
-    getIncidentVoteSummaryMap(allSlugs),
-    getIncidentCommentCountMap(allSlugs),
-    getIncidentSaveCountMap(allSlugs),
+    getIncidentVoteSummaryMap(communitySlugs),
+    getIncidentCommentCountMap(communitySlugs),
+    getIncidentSaveCountMap(communitySlugs),
   ]);
   const communityMap = new Map<string, number>();
   const practitionerMap = new Map<string, boolean>();
