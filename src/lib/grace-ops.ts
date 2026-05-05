@@ -36,6 +36,20 @@ export type GraceIncidentState = {
   extracted_indicators: string[];
 };
 
+export type GraceWeeklyAeoBrief = {
+  week_of: string;
+  generated_at: string;
+  topics: string[];
+  recommendations: string[];
+  feedback: string[];
+  supporting_metrics?: {
+    north_star?: number;
+    answer_inclusion?: number;
+    freshness?: number;
+    open_actions?: number;
+  };
+};
+
 type IncidentStateCacheEntry = {
   state: GraceIncidentState;
   cachedAt: number;
@@ -539,6 +553,38 @@ export async function forwardRecommendationAction(input: {
     workspaceId,
     requestId: correlation.request_id,
   });
+}
+
+export async function fetchWeeklyAeoBrief(input?: {
+  tenantId?: string;
+  requestId?: string;
+}): Promise<GraceWeeklyAeoBrief> {
+  const workspaceId = await resolveGraceWorkspaceId(input?.tenantId);
+  const correlation = getCorrelationIds({
+    requestId: input?.requestId,
+    workspaceId,
+  });
+  const response = await graceFetch<{ ok?: boolean; [k: string]: unknown }>(
+    `/api/ops/weekly-aeo?workspace_id=${encodeURIComponent(workspaceId)}&source=ahackaday`,
+    { method: "GET" },
+    correlation,
+  );
+  const topics = Array.isArray(response.topics) ? response.topics.filter((v): v is string => typeof v === "string") : [];
+  const recommendations = Array.isArray(response.recommendations)
+    ? response.recommendations.filter((v): v is string => typeof v === "string")
+    : [];
+  const feedback = Array.isArray(response.feedback) ? response.feedback.filter((v): v is string => typeof v === "string") : [];
+  const supporting = (response.supporting_metrics && typeof response.supporting_metrics === "object")
+    ? response.supporting_metrics as GraceWeeklyAeoBrief["supporting_metrics"]
+    : undefined;
+  return {
+    week_of: typeof response.week_of === "string" ? response.week_of : new Date().toISOString().slice(0, 10),
+    generated_at: typeof response.generated_at === "string" ? response.generated_at : new Date().toISOString(),
+    topics,
+    recommendations,
+    feedback,
+    supporting_metrics: supporting,
+  };
 }
 
 export function parsePollingParams(url: URL): { intervalMs: number; timeoutMs: number } {
