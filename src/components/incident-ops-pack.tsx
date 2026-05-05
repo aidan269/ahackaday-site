@@ -176,6 +176,13 @@ export function IncidentOpsPack({ incident, incidentKey, incidentUrl, initialGra
   }
 
   const graceEnabled = process.env.NEXT_PUBLIC_OPS_PACK_GRACE_ENABLED === "1";
+  const graceStatusLabel = !graceEnabled
+    ? "grace disabled"
+    : !graceState
+      ? "grace connecting"
+      : graceState.top_recommendation
+        ? "grace recommendations live"
+        : "grace connected • no recommendations yet";
 
   function fallbackTrackPrompt(track: ResponseTrack): string {
     const iocPreview = typedIocs.slice(0, 8).map((row) => row.value).join(", ") || "none";
@@ -264,6 +271,7 @@ export function IncidentOpsPack({ incident, incidentKey, incidentUrl, initialGra
         </div>
         <div className="ops__hd__r">
           <span className="ops__fresh"><span className="dot" /> {graceState?.stale ? "stale" : "fresh"}</span>
+          <span className="ops__fresh">{graceStatusLabel}</span>
           {graceEnabled && graceState ? (
             <>
               <span className="ops__fresh">north_star {graceState.kpis.north_star}</span>
