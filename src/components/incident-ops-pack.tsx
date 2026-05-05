@@ -147,15 +147,20 @@ export function IncidentOpsPack({ incident, incidentKey, incidentUrl, initialGra
         : "grace connected • no recommendations yet";
   const aeoNorthStar = graceState?.kpis.north_star ?? 0;
   const answerInclusion = graceState?.kpis.answer_inclusion ?? 0;
-  const promptVolumeSignal = Math.max(
-    0,
-    Math.round((graceState?.ioc_count ?? typedIocs.length) * 8 + (graceState?.kpis.open_actions ?? 0) * 5),
-  );
   const agentAnalyticsSignal = graceState?.latest_run ? "tracking" : "idle";
   const recommendationBacklog = graceState?.kpis.open_actions ?? 0;
-  const promptClusters = weeklyBrief?.topics ?? [incident.category, incident.severity];
-  const strategyRecommendations = weeklyBrief?.recommendations ?? [];
-  const strategyFeedback = weeklyBrief?.feedback ?? [];
+  const weeklyFocus = (weeklyBrief?.topics ?? [incident.category, incident.severity]).slice(0, 3);
+  const strategyRecommendations = (weeklyBrief?.recommendations ?? []).slice(0, 3);
+  const topActions = strategyRecommendations.map((rec, index) => {
+    const owner = index === 0 ? "content" : index === 1 ? "editorial" : "ops";
+    const eta = index === 0 ? "48h" : index === 1 ? "72h" : "this week";
+    return `${rec} · owner: ${owner} · eta: ${eta}`;
+  });
+  const proofPoints = [
+    `Topic coverage this cycle: ${weeklyBrief?.topics.length ?? weeklyFocus.length} prioritized themes.`,
+    `Answer inclusion signal: ${answerInclusion}% with AEO score ${aeoNorthStar}.`,
+    `Execution backlog: ${recommendationBacklog} open recommendations.`,
+  ];
 
   function fallbackTrackPrompt(track: ResponseTrack): string {
     const iocPreview = typedIocs.slice(0, 8).map((row) => row.value).join(", ") || "none";
@@ -262,10 +267,12 @@ export function IncidentOpsPack({ incident, incidentKey, incidentUrl, initialGra
           <span className="ops__fresh">{graceStatusLabel}</span>
           {graceEnabled && graceState ? (
             <>
-              <span className="ops__fresh">north_star {graceState.kpis.north_star}</span>
-              <span className="ops__fresh">inclusion {graceState.kpis.answer_inclusion}</span>
-              <span className="ops__fresh">freshness {graceState.kpis.freshness}</span>
-              <span className="ops__fresh">open {graceState.kpis.open_actions}</span>
+              <span className="ops__fresh">
+                weekly health {Math.round((graceState.kpis.freshness + graceState.kpis.answer_inclusion) / 2)}
+              </span>
+              <span className="ops__fresh">
+                trend {graceState.kpis.open_actions > 6 ? "backlog heavy" : "on track"}
+              </span>
             </>
           ) : null}
         </div>
@@ -364,7 +371,7 @@ export function IncidentOpsPack({ incident, incidentKey, incidentUrl, initialGra
               <div className="lane__num">2</div>
               <div>
                 <div className="lane__title">AEO/GEO Strategy Agent</div>
-                <div className="lane__hint">weekly topics, recommendations, and content feedback across full feed</div>
+                <div className="lane__hint">what to publish this week to improve AI search rank across the full feed</div>
               </div>
             </div>
             <div className="lane__count"><b>2</b> formats</div>
@@ -373,12 +380,12 @@ export function IncidentOpsPack({ incident, incidentKey, incidentUrl, initialGra
           <div className="rule-help">
             <span>!</span>
             <span>
-              <b>Weekly guidance:</b> use these priorities to improve AI-search rank across all feed content.
+              <b>Weekly plan:</b> focus + actions + proof signals for ranking gains.
             </span>
             <button
               type="button"
               className="btn-quiet"
-              onClick={() => void copyText([...strategyRecommendations, ...strategyFeedback].join("\n"))}
+              onClick={() => void copyText([...weeklyFocus, ...topActions, ...proofPoints].join("\n"))}
             >
               copy all
             </button>
@@ -388,19 +395,19 @@ export function IncidentOpsPack({ incident, incidentKey, incidentUrl, initialGra
             <article className="rule-card">
               <div className="rule-card__hd">
                 <div className="rule-card__hd__l">
-                  <span className="rule-kind">weekly topics</span>
-                  <span className="rule-status">{promptVolumeSignal}</span>
+                  <span className="rule-kind">this week's focus</span>
+                  <span className="rule-status">{weeklyFocus.length} topics</span>
                 </div>
-                <button type="button" className="btn-quiet" onClick={() => void copyText(promptClusters.join("\n"))}>copy</button>
+                <button type="button" className="btn-quiet" onClick={() => void copyText(weeklyFocus.join("\n"))}>copy</button>
               </div>
               <div className="rule-card__body">
-                {promptClusters.length > 0
-                  ? promptClusters.map((cluster) => `${cluster} · weekly priority`).join("\n")
-                  : "No prompt clusters yet for this incident."}
+                {weeklyFocus.length > 0
+                  ? weeklyFocus.map((cluster, index) => `${index + 1}. ${cluster}`).join("\n")
+                  : "No weekly focus topics available yet."}
               </div>
               <div className="rule-card__foot">
                 <div className="rule-readiness">
-                  answer inclusion
+                  focus confidence
                   <span className="bar"><i style={{ width: `${Math.max(8, Math.min(100, answerInclusion))}%` }} /></span>
                 </div>
               </div>
@@ -409,21 +416,21 @@ export function IncidentOpsPack({ incident, incidentKey, incidentUrl, initialGra
             <article className="rule-card">
               <div className="rule-card__hd">
                 <div className="rule-card__hd__l">
-                  <span className="rule-kind">recommendations + feedback</span>
+                  <span className="rule-kind">top 3 actions + why</span>
                   <span className="rule-status">{agentAnalyticsSignal} </span>
                 </div>
                 <button
                   type="button"
                   className="btn-quiet"
-                  onClick={() => void copyText([...strategyRecommendations, ...strategyFeedback].join("\n"))}
+                  onClick={() => void copyText([...topActions, ...proofPoints].join("\n"))}
                 >
                   copy
                 </button>
               </div>
               <div className="rule-card__body">
-                {[...strategyRecommendations.slice(0, 3), ...strategyFeedback.slice(0, 2)]
+                {[...topActions, ...proofPoints]
                   .map((line) => `- ${line}`)
-                  .join("\n") || "No recommendations generated yet for this weekly cycle."}
+                  .join("\n") || "No action plan generated yet for this weekly cycle."}
               </div>
               <div className="rule-card__foot">
                 <div className="rule-readiness">
