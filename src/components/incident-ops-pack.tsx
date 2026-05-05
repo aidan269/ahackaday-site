@@ -1,10 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { buildOpsIocRows } from "@/lib/ops-iocs";
-import { graceDeepLink, incidentCanonicalUrl } from "@/lib/ecosystem";
-import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
 
 type OpsPackProps = {
   incident: {
@@ -20,6 +18,9 @@ type OpsPackProps = {
       packages: string[];
     };
   };
+  incidentKey: string;
+  incidentUrl: string;
+  initialGraceState?: GraceState | null;
 };
 
 type IocType = "cve" | "ip" | "domain" | "url" | "hash" | "package" | "other";
@@ -32,6 +33,30 @@ type TypedIoc = {
 };
 
 type ResponseTrack = "contain" | "hunt" | "patch" | "brief";
+
+type GraceState = {
+  kpis: {
+    north_star: number;
+    answer_inclusion: number;
+    freshness: number;
+    open_actions: number;
+  };
+  top_recommendation: {
+    id: string;
+    title: string;
+    status: string;
+  } | null;
+  recommendation_counts_by_status: Record<string, number>;
+  latest_run: {
+    run_id: string;
+    status: "queued" | "started" | "completed" | "failed";
+    created_at: string;
+    origin: string;
+  } | null;
+  stale: boolean;
+  ioc_count: number;
+  extracted_indicators: string[];
+};
 
 function classifyIoc(value: string): IocType {
   const v = value.trim();
@@ -49,8 +74,10 @@ function toTxt(rows: TypedIoc[]) {
   return rows.map((r) => `[${r.type}] ${r.value}`).join("\n");
 }
 
-export function IncidentOpsPack({ incident }: OpsPackProps) {
+export function IncidentOpsPack({ incident, incidentKey, incidentUrl, initialGraceState = null }: OpsPackProps) {
   const [activeTab, setActiveTab] = useState<"all" | "network" | "vuln" | "packages">("all");
+  const [graceState, setGraceState] = useState<GraceState | null>(initialGraceState);
+  const [runStatus, setRunStatus] = useState<"idle" | "queued" | "started" | "completed" | "failed">("idle");
   const typedIocs = useMemo(() => {
     return buildOpsIocRows(incident).map((row) => ({
       value: row.value,
@@ -147,13 +174,7 @@ export function IncidentOpsPack({ incident }: OpsPackProps) {
     return "i";
   }
 
-  function buildTrackHref(track: ResponseTrack): string {
-    const storyUrl = new URL(incidentCanonicalUrl(incident.slug));
-    storyUrl.searchParams.set("ops_track", track);
-    storyUrl.searchParams.set("ops_iocs", String(typedIocs.length));
-    storyUrl.searchParams.set("ops_severity", incident.severity);
-    return graceDeepLink(storyUrl.toString());
-  }
+  const graceEnabled = process.env.NEXT_PUBLIC_OPS_PACK_GRACE_ENABLED === "1";
 
   function fallbackTrackPrompt(track: ResponseTrack): string {
     const iocPreview = typedIocs.slice(0, 8).map((row) => row.value).join(", ") || "none";
@@ -167,41 +188,58 @@ export function IncidentOpsPack({ incident }: OpsPackProps) {
     ].join("\n");
   }
 
-  async function openTrack(track: ResponseTrack) {
-    if (incident.canonicalId) {
-      try {
-        const token = await getSupabaseBrowserClient()?.auth
-          .getSession()
-          .then((r) => r.data.session?.access_token ?? null);
-        if (token) {
-          await fetch("/api/grace/runs", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${token}`,
-            },
-            body: JSON.stringify({
-              canonicalId: incident.canonicalId,
-              incidentSlug: incident.slug,
-              track,
-              title: incident.title,
-              severity: incident.severity,
-              summary: incident.summary,
-              sources: incident.sources,
-              iocs: incident.iocs,
-              evidence: incident.evidence,
-            }),
-          });
+  async function refreshGraceState() {
+    if (!graceEnabled) return;
+    try {
+      const response = await fetch(`/api/ops/incident-state?incident_key=${encodeURIComponent(incidentKey)}`);
+      if (!response.ok) return;
+      const data = await response.json() as { ok: boolean; state?: GraceState };
+      if (data.ok && data.state) {
+        setGraceState(data.state);
+        if (data.state.latest_run?.status) {
+          setRunStatus(data.state.latest_run.status);
         }
+      }
+    } catch {
+      // Grace fetch is best-effort for UI continuity.
+    }
+  }
+
+  useEffect(() => {
+    if (!graceEnabled) return;
+    if (runStatus === "queued" || runStatus === "started") {
+      const id = setInterval(() => {
+        void refreshGraceState();
+      }, 3000);
+      return () => clearInterval(id);
+    }
+    return undefined;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [runStatus, graceEnabled]);
+
+  async function openTrack(track: ResponseTrack) {
+    if (graceEnabled) {
+      try {
+        setRunStatus("queued");
+        await fetch("/api/ops/run-incident", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            incident_key: incidentKey,
+            incident_url: incidentUrl,
+            incident_title: incident.title,
+            severity: incident.severity,
+            related_urls: incident.sources.slice(0, 8),
+            tags: [incident.category, track],
+          }),
+        });
+        await refreshGraceState();
+        return;
       } catch {
-        // Grace run logging is best-effort; still deep-link into Grace.
+        setRunStatus("failed");
       }
     }
-    const href = buildTrackHref(track);
-    if (href) {
-      window.open(href, "_blank", "noopener,noreferrer");
-      return;
-    }
+
     await copyText(fallbackTrackPrompt(track));
   }
 
@@ -215,7 +253,15 @@ export function IncidentOpsPack({ incident }: OpsPackProps) {
           </div>
         </div>
         <div className="ops__hd__r">
-          <span className="ops__fresh"><span className="dot" /> fresh</span>
+          <span className="ops__fresh"><span className="dot" /> {graceState?.stale ? "stale" : "fresh"}</span>
+          {graceEnabled && graceState ? (
+            <>
+              <span className="ops__fresh">north_star {graceState.kpis.north_star}</span>
+              <span className="ops__fresh">inclusion {graceState.kpis.answer_inclusion}</span>
+              <span className="ops__fresh">freshness {graceState.kpis.freshness}</span>
+              <span className="ops__fresh">open {graceState.kpis.open_actions}</span>
+            </>
+          ) : null}
         </div>
       </div>
 
@@ -229,7 +275,7 @@ export function IncidentOpsPack({ incident }: OpsPackProps) {
                 <div className="lane__hint">typed indicators with fast copy and export actions</div>
               </div>
             </div>
-            <div className="lane__count"><b>{typedIocs.length}</b> total</div>
+            <div className="lane__count"><b>{graceState?.ioc_count ?? typedIocs.length}</b> total</div>
           </div>
           <div className="ioc-tabs">
             <button type="button" className={`ioc-tab${activeTab === "all" ? " active" : ""}`} onClick={() => setActiveTab("all")}>
@@ -257,7 +303,15 @@ export function IncidentOpsPack({ incident }: OpsPackProps) {
           ) : (
             <>
               <div className="ioc-list">
-                {tabRows.slice(0, 20).map((row) => (
+                {(graceState?.extracted_indicators?.length
+                  ? graceState.extracted_indicators.slice(0, 20).map((value) => ({
+                    value,
+                    type: classifyIoc(value),
+                    confidence: "mid" as const,
+                    score: 72,
+                  }))
+                  : tabRows.slice(0, 20)
+                ).map((row) => (
                   <div key={`${row.type}-${row.value}`} className="ioc-row">
                     <span className={`ioc-row__type ${iconTypeClass(row.type)}`}>{row.type[0]}</span>
                     <span className="ioc-row__val">{row.value}</span>
@@ -273,7 +327,7 @@ export function IncidentOpsPack({ incident }: OpsPackProps) {
                 ))}
               </div>
               <div className="ioc-bulk">
-                <div className="ioc-bulk__txt"><b>{typedIocs.length}</b> indicators staged for handoff.</div>
+                <div className="ioc-bulk__txt"><b>{graceState?.ioc_count ?? typedIocs.length}</b> indicators staged for handoff.</div>
                 <button type="button" className="btn-quiet" onClick={() => void copyText(toTxt(typedIocs))}>copy all</button>
                 <button type="button" className="btn-quiet" onClick={() => download(`${incident.slug}-iocs.txt`, "text/plain", toTxt(typedIocs))}>
                   txt
@@ -360,8 +414,24 @@ export function IncidentOpsPack({ incident }: OpsPackProps) {
                 <div className="lane__hint">fast operational tracks from this incident snapshot</div>
               </div>
             </div>
-            <div className="lane__count"><b>4</b> tracks</div>
+            <div className="lane__count">
+              <b>4</b> tracks
+              {graceEnabled && graceState?.top_recommendation ? (
+                <span className="tag" style={{ marginLeft: 8 }}>
+                  {graceState.top_recommendation.status}
+                </span>
+              ) : null}
+            </div>
           </div>
+          {graceEnabled && graceState?.top_recommendation ? (
+            <div className="rule-help">
+              <span>!</span>
+              <span>
+                <b>Top Grace action:</b> {graceState.top_recommendation.title}
+              </span>
+              <span className="tag">{graceState.top_recommendation.status}</span>
+            </div>
+          ) : null}
           <div className="resp-grid">
             <button type="button" className="resp-card danger" onClick={() => void openTrack("contain")}>
               <span className="resp-card__icon">!</span>

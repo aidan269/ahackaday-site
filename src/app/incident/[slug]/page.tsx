@@ -12,6 +12,7 @@ import { SeverityChipExplainer } from "@/components/severity-chip-explainer";
 import { SocialMetricExplainerDrawer } from "@/components/social-metric-explainer-drawer";
 import { SocialPlatformGraph } from "@/components/social-platform-graph";
 import { getPublicSiteUrl } from "@/lib/ecosystem";
+import { fetchIncidentState, generateIncidentKey, isOpsPackGraceEnabled, resolveGraceWorkspaceId } from "@/lib/grace-ops";
 import { fetchIncidentClaimsAndRevisions } from "@/lib/incident-audit";
 import type { SocialDataQuality } from "@/lib/incident-types";
 import {
@@ -123,6 +124,20 @@ export default async function IncidentPage({ params }: IncidentPageProps) {
   const { slug } = await params;
   const incident = await getIncidentBySlug(slug);
   if (!incident) notFound();
+  const incidentUrl = `${getPublicSiteUrl()}/incident/${incident.slug}`;
+  const incidentKey = generateIncidentKey({
+    incidentUrl,
+    publishedAt: incident.date,
+  });
+  let initialGraceState = null;
+  if (isOpsPackGraceEnabled()) {
+    try {
+      const workspaceId = await resolveGraceWorkspaceId();
+      initialGraceState = await fetchIncidentState({ incidentKey, workspaceId });
+    } catch {
+      initialGraceState = null;
+    }
+  }
 
   const auditBundle = await fetchIncidentClaimsAndRevisions(incident.sourceRowIds ?? []);
   const trackingId = incident.cve || incident.evidence.cves[0] || null;
@@ -217,7 +232,7 @@ export default async function IncidentPage({ params }: IncidentPageProps) {
             </div>
           </div>
 
-          <IncidentOpsPack incident={incident} />
+          <IncidentOpsPack incident={incident} incidentKey={incidentKey} incidentUrl={incidentUrl} initialGraceState={initialGraceState} />
 
           <IncidentComments incidentSlug={incident.slug} />
 
