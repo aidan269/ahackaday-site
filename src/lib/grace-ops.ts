@@ -105,11 +105,7 @@ function getGraceOrigin(): string {
 }
 
 function getGraceApiKey(): string {
-  const key = process.env.GRACE_SERVICE_API_KEY?.trim();
-  if (!key) {
-    throw new GraceOpsConfigError("Missing GRACE_SERVICE_API_KEY");
-  }
-  return key;
+  return process.env.GRACE_SERVICE_API_KEY?.trim() ?? "";
 }
 
 function getWorkspaceMappingFromEnv(tenantId: string): string | null {
@@ -156,6 +152,22 @@ export async function resolveGraceWorkspaceId(explicitTenantId?: string): Promis
       workspaceCache.set(tenantId, { workspaceId: mapped, expiresAt: now + WORKSPACE_CACHE_TTL_MS });
       return mapped;
     }
+  }
+
+  try {
+    const discovery = await graceFetch<{ workspaces?: Array<{ id?: string; workspace_id?: string }> }>(
+      "/api/discover",
+      { method: "GET" },
+      getCorrelationIds({}),
+    );
+    const firstWorkspace = discovery.workspaces?.[0];
+    const discoveredId = firstWorkspace?.id ?? firstWorkspace?.workspace_id;
+    if (typeof discoveredId === "string" && discoveredId.trim()) {
+      workspaceCache.set(tenantId, { workspaceId: discoveredId, expiresAt: now + WORKSPACE_CACHE_TTL_MS });
+      return discoveredId;
+    }
+  } catch {
+    // discovery fallback is best-effort
   }
 
   throw new WorkspaceMappingError(`Missing Grace workspace mapping for tenant '${tenantId}'`);
@@ -213,8 +225,8 @@ async function graceFetch<T>(
         ...init,
         headers: {
           "Content-Type": "application/json",
-          "x-api-key": key,
           "x-request-id": correlation.request_id,
+          ...(key ? { "x-api-key": key } : {}),
           ...(init.headers ?? {}),
         },
       });
