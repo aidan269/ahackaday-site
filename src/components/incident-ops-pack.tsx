@@ -59,6 +59,14 @@ type GraceState = {
   extracted_indicators: string[];
 };
 
+type WeeklyAeoBrief = {
+  generated_at: string;
+  week_of: string;
+  topics: string[];
+  recommendations: string[];
+  feedback: string[];
+};
+
 function classifyIoc(value: string): IocType {
   const v = value.trim();
   if (!v) return "other";
@@ -78,6 +86,7 @@ function toTxt(rows: TypedIoc[]) {
 export function IncidentOpsPack({ incident, incidentKey, incidentUrl, initialGraceState = null }: OpsPackProps) {
   const [activeTab, setActiveTab] = useState<"all" | "network" | "vuln" | "packages">("all");
   const [graceState, setGraceState] = useState<GraceState | null>(initialGraceState);
+  const [weeklyBrief, setWeeklyBrief] = useState<WeeklyAeoBrief | null>(null);
   const [runStatus, setRunStatus] = useState<"idle" | "queued" | "started" | "completed" | "failed">("idle");
   const typedIocs = useMemo(() => {
     return buildOpsIocRows(incident).map((row) => ({
@@ -103,53 +112,6 @@ export function IncidentOpsPack({ incident, incidentKey, incidentUrl, initialGra
     const packages = typedIocs.filter((r) => r.type === "package").length;
     return { all: typedIocs.length, network, vuln, packages };
   }, [typedIocs]);
-
-  const averageScore = useMemo(() => {
-    if (typedIocs.length === 0) return 0;
-    return Math.round(typedIocs.reduce((sum, row) => sum + row.score, 0) / typedIocs.length);
-  }, [typedIocs]);
-
-  const sigmaCoverage = Math.max(12, Math.min(95, Math.round(averageScore * 0.88)));
-  const yaraCoverage = Math.max(12, Math.min(95, Math.round(averageScore * 0.8)));
-
-  const sigmaRule = useMemo(() => {
-    const indicators = typedIocs.slice(0, 30).map((r) => `      - "${r.value.replace(/"/g, '\\"')}"`).join("\n");
-    return [
-      "title: AHackaday IOC starter detection",
-      `id: ahackaday-${incident.slug}`,
-      `description: IOC starter rule for ${incident.title}`,
-      "status: experimental",
-      "author: ahackaday",
-      "logsource:",
-      "  product: network",
-      "detection:",
-      "  selection_iocs:",
-      indicators || '      - "placeholder-ioc"',
-      "  condition: selection_iocs",
-      "falsepositives:",
-      "  - unknown",
-      `level: ${incident.severity === "critical" ? "high" : "medium"}`,
-    ].join("\n");
-  }, [incident.severity, incident.slug, incident.title, typedIocs]);
-
-  const yaraRule = useMemo(() => {
-    const strings = typedIocs
-      .slice(0, 20)
-      .map((r, i) => `    $ioc${i + 1} = "${r.value.replace(/"/g, '\\"')}" nocase`)
-      .join("\n");
-    return [
-      `rule ahackaday_${incident.slug.replace(/[^a-z0-9_]/gi, "_")}`,
-      "{",
-      "  meta:",
-      `    description = "IOC starter for ${incident.title.replace(/"/g, "'")}"`,
-      '    author = "ahackaday"',
-      "  strings:",
-      strings || '    $ioc1 = "placeholder-ioc" nocase',
-      "  condition:",
-      "    any of them",
-      "}",
-    ].join("\n");
-  }, [incident.slug, incident.title, typedIocs]);
 
   async function copyText(value: string) {
     try {
@@ -191,19 +153,9 @@ export function IncidentOpsPack({ incident, incidentKey, incidentUrl, initialGra
   );
   const agentAnalyticsSignal = graceState?.latest_run ? "tracking" : "idle";
   const recommendationBacklog = graceState?.kpis.open_actions ?? 0;
-  const promptClusters = [
-    incident.category,
-    incident.severity,
-    ...(graceState?.top_recommendation?.title
-      ? graceState.top_recommendation.title.toLowerCase().split(/[^a-z0-9]+/g).filter((w) => w.length > 4).slice(0, 2)
-      : []),
-  ].filter(Boolean).slice(0, 4);
-  const engineCoverage = [
-    { name: "chatgpt", value: graceState?.latest_run ? "seen" : "pending" },
-    { name: "claude", value: graceState?.latest_run ? "seen" : "pending" },
-    { name: "gemini", value: graceState?.latest_run ? "seen" : "pending" },
-    { name: "perplexity", value: graceState?.latest_run ? "seen" : "pending" },
-  ];
+  const promptClusters = weeklyBrief?.topics ?? [incident.category, incident.severity];
+  const strategyRecommendations = weeklyBrief?.recommendations ?? [];
+  const strategyFeedback = weeklyBrief?.feedback ?? [];
 
   function fallbackTrackPrompt(track: ResponseTrack): string {
     const iocPreview = typedIocs.slice(0, 8).map((row) => row.value).join(", ") || "none";
@@ -234,10 +186,25 @@ export function IncidentOpsPack({ incident, incidentKey, incidentUrl, initialGra
     }
   }
 
+  async function refreshWeeklyBrief() {
+    if (!graceEnabled) return;
+    try {
+      const response = await fetch("/api/ops/weekly-aeo");
+      if (!response.ok) return;
+      const data = await response.json() as { ok: boolean; brief?: WeeklyAeoBrief };
+      if (data.ok && data.brief) {
+        setWeeklyBrief(data.brief);
+      }
+    } catch {
+      // best-effort only
+    }
+  }
+
   useEffect(() => {
     if (!graceEnabled) return;
     const timer = setTimeout(() => {
       void refreshGraceState();
+      void refreshWeeklyBrief();
     }, 0);
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -342,7 +309,10 @@ export function IncidentOpsPack({ incident, incidentKey, incidentUrl, initialGra
             <>
               <div className="ioc-list">
                 {(graceState?.extracted_indicators?.length
-                  ? graceState.extracted_indicators.slice(0, 20).map((value) => ({
+                  ? graceState.extracted_indicators
+                    .filter((value) => !/^inc_[a-f0-9]{10,}$/i.test(value))
+                    .slice(0, 20)
+                    .map((value) => ({
                     value,
                     type: classifyIoc(value),
                     confidence: "mid" as const,
@@ -393,8 +363,8 @@ export function IncidentOpsPack({ incident, incidentKey, incidentUrl, initialGra
             <div className="lane__hd__l">
               <div className="lane__num">2</div>
               <div>
-                <div className="lane__title">Rule Studio</div>
-                <div className="lane__hint">starter detections generated from this IOC set</div>
+                <div className="lane__title">AEO/GEO Strategy Agent</div>
+                <div className="lane__hint">weekly topics, recommendations, and content feedback across full feed</div>
               </div>
             </div>
             <div className="lane__count"><b>2</b> formats</div>
@@ -403,28 +373,34 @@ export function IncidentOpsPack({ incident, incidentKey, incidentUrl, initialGra
           <div className="rule-help">
             <span>!</span>
             <span>
-              <b>AEO insights:</b> prompt + answer-engine + agent coverage snapshot.
+              <b>Weekly guidance:</b> use these priorities to improve AI-search rank across all feed content.
             </span>
-            <button type="button" className="btn-quiet" onClick={() => void copyText(`${sigmaRule}\n\n${yaraRule}`)}>copy all</button>
+            <button
+              type="button"
+              className="btn-quiet"
+              onClick={() => void copyText([...strategyRecommendations, ...strategyFeedback].join("\n"))}
+            >
+              copy all
+            </button>
           </div>
 
           <div className="rule-cards">
             <article className="rule-card">
               <div className="rule-card__hd">
                 <div className="rule-card__hd__l">
-                  <span className="rule-kind">prompt volumes</span>
+                  <span className="rule-kind">weekly topics</span>
                   <span className="rule-status">{promptVolumeSignal}</span>
                 </div>
                 <button type="button" className="btn-quiet" onClick={() => void copyText(promptClusters.join("\n"))}>copy</button>
               </div>
               <div className="rule-card__body">
                 {promptClusters.length > 0
-                  ? promptClusters.map((cluster) => `${cluster} · ${promptVolumeSignal}`).join("\n")
+                  ? promptClusters.map((cluster) => `${cluster} · weekly priority`).join("\n")
                   : "No prompt clusters yet for this incident."}
               </div>
               <div className="rule-card__foot">
                 <div className="rule-readiness">
-                  answer insights
+                  answer inclusion
                   <span className="bar"><i style={{ width: `${Math.max(8, Math.min(100, answerInclusion))}%` }} /></span>
                 </div>
               </div>
@@ -433,19 +409,21 @@ export function IncidentOpsPack({ incident, incidentKey, incidentUrl, initialGra
             <article className="rule-card">
               <div className="rule-card__hd">
                 <div className="rule-card__hd__l">
-                  <span className="rule-kind">agent analytics</span>
-                  <span className="rule-status">{agentAnalyticsSignal}</span>
+                  <span className="rule-kind">recommendations + feedback</span>
+                  <span className="rule-status">{agentAnalyticsSignal} </span>
                 </div>
                 <button
                   type="button"
                   className="btn-quiet"
-                  onClick={() => void copyText(engineCoverage.map((row) => `${row.name}: ${row.value}`).join("\n"))}
+                  onClick={() => void copyText([...strategyRecommendations, ...strategyFeedback].join("\n"))}
                 >
                   copy
                 </button>
               </div>
               <div className="rule-card__body">
-                {engineCoverage.map((row) => `${row.name}: ${row.value}`).join("\n")}
+                {[...strategyRecommendations.slice(0, 3), ...strategyFeedback.slice(0, 2)]
+                  .map((line) => `- ${line}`)
+                  .join("\n") || "No recommendations generated yet for this weekly cycle."}
               </div>
               <div className="rule-card__foot">
                 <div className="rule-readiness">
