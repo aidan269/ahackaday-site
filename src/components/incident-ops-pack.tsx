@@ -183,6 +183,27 @@ export function IncidentOpsPack({ incident, incidentKey, incidentUrl, initialGra
       : graceState.top_recommendation
         ? "grace recommendations live"
         : "grace connected • no recommendations yet";
+  const aeoNorthStar = graceState?.kpis.north_star ?? 0;
+  const answerInclusion = graceState?.kpis.answer_inclusion ?? 0;
+  const promptVolumeSignal = Math.max(
+    0,
+    Math.round((graceState?.ioc_count ?? typedIocs.length) * 8 + (graceState?.kpis.open_actions ?? 0) * 5),
+  );
+  const agentAnalyticsSignal = graceState?.latest_run ? "tracking" : "idle";
+  const recommendationBacklog = graceState?.kpis.open_actions ?? 0;
+  const promptClusters = [
+    incident.category,
+    incident.severity,
+    ...(graceState?.top_recommendation?.title
+      ? graceState.top_recommendation.title.toLowerCase().split(/[^a-z0-9]+/g).filter((w) => w.length > 4).slice(0, 2)
+      : []),
+  ].filter(Boolean).slice(0, 4);
+  const engineCoverage = [
+    { name: "chatgpt", value: graceState?.latest_run ? "seen" : "pending" },
+    { name: "claude", value: graceState?.latest_run ? "seen" : "pending" },
+    { name: "gemini", value: graceState?.latest_run ? "seen" : "pending" },
+    { name: "perplexity", value: graceState?.latest_run ? "seen" : "pending" },
+  ];
 
   function fallbackTrackPrompt(track: ResponseTrack): string {
     const iocPreview = typedIocs.slice(0, 8).map((row) => row.value).join(", ") || "none";
@@ -282,7 +303,6 @@ export function IncidentOpsPack({ incident, incidentKey, incidentUrl, initialGra
           ) : null}
         </div>
       </div>
-
       <div className="ops__lanes">
         <div className="lane">
           <div className="lane__hd">
@@ -382,7 +402,9 @@ export function IncidentOpsPack({ incident, incidentKey, incidentUrl, initialGra
 
           <div className="rule-help">
             <span>!</span>
-            <span><b>Draft output:</b> validate and tune before production rollout.</span>
+            <span>
+              <b>AEO insights:</b> prompt + answer-engine + agent coverage snapshot.
+            </span>
             <button type="button" className="btn-quiet" onClick={() => void copyText(`${sigmaRule}\n\n${yaraRule}`)}>copy all</button>
           </div>
 
@@ -390,16 +412,20 @@ export function IncidentOpsPack({ incident, incidentKey, incidentUrl, initialGra
             <article className="rule-card">
               <div className="rule-card__hd">
                 <div className="rule-card__hd__l">
-                  <span className="rule-kind">sigma</span>
-                  <span className="rule-status">draft</span>
+                  <span className="rule-kind">prompt volumes</span>
+                  <span className="rule-status">{promptVolumeSignal}</span>
                 </div>
-                <button type="button" className="btn-quiet" onClick={() => void copyText(sigmaRule)}>copy</button>
+                <button type="button" className="btn-quiet" onClick={() => void copyText(promptClusters.join("\n"))}>copy</button>
               </div>
-              <div className="rule-card__body">{sigmaRule}</div>
+              <div className="rule-card__body">
+                {promptClusters.length > 0
+                  ? promptClusters.map((cluster) => `${cluster} · ${promptVolumeSignal}`).join("\n")
+                  : "No prompt clusters yet for this incident."}
+              </div>
               <div className="rule-card__foot">
                 <div className="rule-readiness">
-                  coverage
-                  <span className="bar"><i style={{ width: `${sigmaCoverage}%` }} /></span>
+                  answer insights
+                  <span className="bar"><i style={{ width: `${Math.max(8, Math.min(100, answerInclusion))}%` }} /></span>
                 </div>
               </div>
             </article>
@@ -407,16 +433,24 @@ export function IncidentOpsPack({ incident, incidentKey, incidentUrl, initialGra
             <article className="rule-card">
               <div className="rule-card__hd">
                 <div className="rule-card__hd__l">
-                  <span className="rule-kind">yara</span>
-                  <span className="rule-status">draft</span>
+                  <span className="rule-kind">agent analytics</span>
+                  <span className="rule-status">{agentAnalyticsSignal}</span>
                 </div>
-                <button type="button" className="btn-quiet" onClick={() => void copyText(yaraRule)}>copy</button>
+                <button
+                  type="button"
+                  className="btn-quiet"
+                  onClick={() => void copyText(engineCoverage.map((row) => `${row.name}: ${row.value}`).join("\n"))}
+                >
+                  copy
+                </button>
               </div>
-              <div className="rule-card__body">{yaraRule}</div>
+              <div className="rule-card__body">
+                {engineCoverage.map((row) => `${row.name}: ${row.value}`).join("\n")}
+              </div>
               <div className="rule-card__foot">
                 <div className="rule-readiness">
-                  coverage
-                  <span className="bar"><i style={{ width: `${yaraCoverage}%` }} /></span>
+                  aeo score
+                  <span className="bar"><i style={{ width: `${Math.max(8, Math.min(100, aeoNorthStar))}%` }} /></span>
                 </div>
               </div>
             </article>
