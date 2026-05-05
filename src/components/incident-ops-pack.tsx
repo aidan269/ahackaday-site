@@ -208,6 +208,15 @@ export function IncidentOpsPack({ incident, incidentKey, incidentUrl, initialGra
 
   useEffect(() => {
     if (!graceEnabled) return;
+    const timer = setTimeout(() => {
+      void refreshGraceState();
+    }, 0);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [incidentKey, graceEnabled]);
+
+  useEffect(() => {
+    if (!graceEnabled) return;
     if (runStatus === "queued" || runStatus === "started") {
       const id = setInterval(() => {
         void refreshGraceState();
@@ -249,8 +258,8 @@ export function IncidentOpsPack({ incident, incidentKey, incidentUrl, initialGra
       <div className="ops__hd">
         <div className="ops__hd__l">
           <div>
-            <div className="ops__name">Ops Pack</div>
-            <div className="ops__sub">triage-ready iocs + detections</div>
+            <div className="ops__name">Grace Ops</div>
+            <div className="ops__sub">grace intelligence for incident response</div>
           </div>
         </div>
         <div className="ops__hd__r">
