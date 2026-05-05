@@ -5,6 +5,7 @@ import test from "node:test";
 
 import {
   buildGraceWeeklyPayload,
+  fetchDailyAeoDigest,
   fetchIncidentState,
   forwardRecommendationAction,
   generateIncidentKey,
@@ -142,6 +143,29 @@ test("incident state falls back to stale cache when grace unavailable", async ()
   assert.equal(fallback.kpis.north_star, 61);
 });
 
+test("daily digest fetch maps digest_date and opportunities", async () => {
+  process.env.GRACE_SERVICE_ORIGIN = "https://grace.example.test";
+  process.env.GRACE_WORKSPACE_MAP_JSON = JSON.stringify({ tenant_a: "ws_a" });
+  global.fetch = async (input: string | URL) => {
+    const url = String(input);
+    if (url.includes("/api/ops/weekly-aeo")) {
+      return mockJsonResponse({
+        week_of: "2026-05-05",
+        generated_at: "2026-05-05T00:00:00.000Z",
+        topics: ["identity"],
+        opportunities: ["identity: rising now (2 AHackaday signals vs 0 Cantina hits)"],
+        recommendations: ["Publish an answer-first brief for identity."],
+        feedback: ["Daily digest seed: Identity provider exploit update"],
+      });
+    }
+    throw new Error(`unexpected url: ${url}`);
+  };
+
+  const digest = await fetchDailyAeoDigest({ tenantId: "tenant_a" });
+  assert.equal(digest.digest_date, "2026-05-05");
+  assert.ok(digest.opportunities.length >= 1);
+});
+
 test("known-good incident-state fixture contains Grace recommendation payload", () => {
   const fixturePath = path.join(process.cwd(), "tests/fixtures/grace-incident-state.good.json");
   const fixture = JSON.parse(fs.readFileSync(fixturePath, "utf8")) as {
@@ -156,6 +180,24 @@ test("known-good incident-state fixture contains Grace recommendation payload", 
   assert.ok(fixture.state.top_recommendation);
   assert.ok(fixture.state.recommendation_counts_by_status.todo >= 1);
   assert.ok(fixture.state.kpis.freshness >= 1);
+});
+
+test("known-good daily digest fixture contains marketing digest payload", () => {
+  const fixturePath = path.join(process.cwd(), "tests/fixtures/grace-daily-aeo.good.json");
+  const fixture = JSON.parse(fs.readFileSync(fixturePath, "utf8")) as {
+    ok: boolean;
+    brief: {
+      digest_date: string;
+      opportunities: string[];
+      recommendations: string[];
+      feedback: string[];
+    };
+  };
+  assert.equal(fixture.ok, true);
+  assert.ok(fixture.brief.digest_date.length > 0);
+  assert.ok(fixture.brief.opportunities.length >= 1);
+  assert.ok(fixture.brief.recommendations.length >= 1);
+  assert.ok(fixture.brief.feedback.length >= 1);
 });
 
 test.after(() => {

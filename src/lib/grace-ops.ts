@@ -36,10 +36,11 @@ export type GraceIncidentState = {
   extracted_indicators: string[];
 };
 
-export type GraceWeeklyAeoBrief = {
-  week_of: string;
+export type GraceDailyAeoDigest = {
+  digest_date: string;
   generated_at: string;
   topics: string[];
+  opportunities: string[];
   recommendations: string[];
   feedback: string[];
   supporting_metrics?: {
@@ -555,10 +556,10 @@ export async function forwardRecommendationAction(input: {
   });
 }
 
-export async function fetchWeeklyAeoBrief(input?: {
+export async function fetchDailyAeoDigest(input?: {
   tenantId?: string;
   requestId?: string;
-}): Promise<GraceWeeklyAeoBrief> {
+}): Promise<GraceDailyAeoDigest> {
   const workspaceId = await resolveGraceWorkspaceId(input?.tenantId);
   const correlation = getCorrelationIds({
     requestId: input?.requestId,
@@ -570,22 +571,30 @@ export async function fetchWeeklyAeoBrief(input?: {
     correlation,
   );
   const topics = Array.isArray(response.topics) ? response.topics.filter((v): v is string => typeof v === "string") : [];
+  const opportunities = Array.isArray(response.opportunities)
+    ? response.opportunities.filter((v): v is string => typeof v === "string")
+    : [];
   const recommendations = Array.isArray(response.recommendations)
     ? response.recommendations.filter((v): v is string => typeof v === "string")
     : [];
   const feedback = Array.isArray(response.feedback) ? response.feedback.filter((v): v is string => typeof v === "string") : [];
   const supporting = (response.supporting_metrics && typeof response.supporting_metrics === "object")
-    ? response.supporting_metrics as GraceWeeklyAeoBrief["supporting_metrics"]
+    ? response.supporting_metrics as GraceDailyAeoDigest["supporting_metrics"]
     : undefined;
   return {
-    week_of: typeof response.week_of === "string" ? response.week_of : new Date().toISOString().slice(0, 10),
+    digest_date: typeof response.digest_date === "string"
+      ? response.digest_date
+      : (typeof response.week_of === "string" ? response.week_of : new Date().toISOString().slice(0, 10)),
     generated_at: typeof response.generated_at === "string" ? response.generated_at : new Date().toISOString(),
     topics,
+    opportunities,
     recommendations,
     feedback,
     supporting_metrics: supporting,
   };
 }
+
+export const fetchWeeklyAeoBrief = fetchDailyAeoDigest;
 
 export function parsePollingParams(url: URL): { intervalMs: number; timeoutMs: number } {
   const interval = Math.min(15000, Math.max(1500, Number(url.searchParams.get("poll_interval_ms") ?? "3000")));

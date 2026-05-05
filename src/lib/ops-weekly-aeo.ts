@@ -1,9 +1,10 @@
 import type { Incident } from "@/lib/incident-types";
 
-export type WeeklyAeoBrief = {
+export type DailyAeoDigest = {
   generated_at: string;
-  week_of: string;
+  digest_date: string;
   topics: string[];
+  opportunities: string[];
   recommendations: string[];
   feedback: string[];
 };
@@ -30,21 +31,16 @@ function topicSeedsForIncident(incident: Incident): string[] {
   );
 }
 
-function weekStartIso(date = new Date()): string {
-  const d = new Date(date);
-  const day = d.getUTCDay();
-  const diff = day === 0 ? -6 : 1 - day;
-  d.setUTCDate(d.getUTCDate() + diff);
-  d.setUTCHours(0, 0, 0, 0);
-  return d.toISOString();
+function toDigestDate(date = new Date()): string {
+  return date.toISOString().slice(0, 10);
 }
 
-export function buildWeeklyAeoBrief(input: {
+export function buildDailyAeoDigest(input: {
   incidents: Incident[];
   recommendations?: Array<{ title?: string; status?: string }>;
-}): WeeklyAeoBrief {
+}): DailyAeoDigest {
   const now = new Date();
-  const lookbackStart = new Date(now.getTime() - (1000 * 60 * 60 * 24 * 10));
+  const lookbackStart = new Date(now.getTime() - (1000 * 60 * 60 * 24 * 3));
   const recent = input.incidents.filter((incident) => new Date(incident.date).getTime() >= lookbackStart.getTime());
 
   const topicCounts = new Map<string, number>();
@@ -83,8 +79,8 @@ export function buildWeeklyAeoBrief(input: {
     .sort((a, b) => b.gapScore - a.gapScore)
     .slice(0, 3);
 
-  const digestAngles = opportunityTopics.map((row) =>
-    `Angle to own: ${row.topic} (${row.count} AHackaday signals vs ${row.cantinaCount} Cantina hits).`);
+  const opportunities = opportunityTopics.map((row) =>
+    `${row.topic}: rising now (${row.count} AHackaday signals vs ${row.cantinaCount} Cantina hits)`);
 
   const digestStories = recent
     .slice()
@@ -110,7 +106,7 @@ export function buildWeeklyAeoBrief(input: {
 
   const recommendations = [
     ...(openRecommendations.length > 0 ? openRecommendations : fallbackRecommendations),
-    ...digestAngles,
+    ...opportunities.map((item) => `Publish an answer-first brief for ${item.split(":")[0]}.`),
   ].slice(0, 5);
 
   const criticalCount = recent.filter((incident) => incident.severity === "critical").length;
@@ -127,9 +123,13 @@ export function buildWeeklyAeoBrief(input: {
 
   return {
     generated_at: new Date().toISOString(),
-    week_of: weekStartIso(now),
+    digest_date: toDigestDate(now),
     topics: topics.length > 0 ? topics : rankedTopicList,
+    opportunities: opportunities.length > 0 ? opportunities : rankedTopicList.slice(0, 3).map((topic) => `${topic}: maintain daily coverage`),
     recommendations,
     feedback,
   };
 }
+
+// Backward-compatibility alias while callers migrate from weekly naming.
+export const buildWeeklyAeoBrief = buildDailyAeoDigest;

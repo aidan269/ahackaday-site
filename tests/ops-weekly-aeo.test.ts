@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { buildWeeklyAeoBrief } from "../src/lib/ops-weekly-aeo";
+import { buildDailyAeoDigest } from "../src/lib/ops-weekly-aeo";
 import type { Incident } from "../src/lib/incident-types";
 
 const sampleIncident: Incident = {
@@ -26,17 +26,18 @@ const sampleIncident: Incident = {
   exploited: true,
 };
 
-test("buildWeeklyAeoBrief returns topics and recommendations", () => {
-  const brief = buildWeeklyAeoBrief({
+test("buildDailyAeoDigest returns topics and recommendations", () => {
+  const brief = buildDailyAeoDigest({
     incidents: [sampleIncident],
     recommendations: [{ title: "Publish answer-first FAQ set", status: "todo" }],
   });
   assert.ok(brief.topics.length >= 1);
+  assert.ok(brief.opportunities.length >= 1);
   assert.ok(brief.recommendations.length >= 1);
   assert.ok(brief.feedback.length >= 1);
 });
 
-test("buildWeeklyAeoBrief adds opportunity angles from trend gaps", () => {
+test("buildDailyAeoDigest adds opportunity lines from trend gaps", () => {
   const nowIso = new Date().toISOString();
   const nonCantinaTrend: Incident = {
     ...sampleIncident,
@@ -62,9 +63,9 @@ test("buildWeeklyAeoBrief adds opportunity angles from trend gaps", () => {
     sources: ["https://cantina.security/blog/secure-code-review"],
     date: nowIso,
   };
-  const brief = buildWeeklyAeoBrief({ incidents: [nonCantinaTrend, nonCantinaTrend, cantinaCoverage] });
+  const brief = buildDailyAeoDigest({ incidents: [nonCantinaTrend, nonCantinaTrend, cantinaCoverage] });
   assert.ok(
-    brief.recommendations.some((line) => line.toLowerCase().includes("angle to own")),
+    brief.opportunities.some((line) => line.toLowerCase().includes("rising now")),
     "expected a trend-gap recommendation angle",
   );
   assert.ok(

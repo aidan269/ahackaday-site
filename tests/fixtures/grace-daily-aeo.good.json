@@ -1,0 +1,25 @@
+{
+  "ok": true,
+  "brief": {
+    "digest_date": "2026-05-05",
+    "generated_at": "2026-05-05T12:00:00.000Z",
+    "topics": [
+      "identity",
+      "cloud",
+      "runtime"
+    ],
+    "opportunities": [
+      "identity: rising now (3 AHackaday signals vs 0 Cantina hits)",
+      "runtime: rising now (2 AHackaday signals vs 0 Cantina hits)"
+    ],
+    "recommendations": [
+      "Publish an answer-first brief for identity.",
+      "Ship a comparison post on runtime hardening controls."
+    ],
+    "feedback": [
+      "Add direct one-sentence answers in the first 120 words.",
+      "Include explicit query-intent headings for each section."
+    ]
+  },
+  "source": "grace"
+}

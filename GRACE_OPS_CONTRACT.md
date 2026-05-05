@@ -1,6 +1,6 @@
 # Grace Ops Contract (AHackaday)
 
-This document defines the minimum contract between AHackaday and Grace for incident-scoped Ops rendering.
+This document defines the minimum contract between AHackaday and Grace for marketing-oriented Grace Ops rendering.
 
 ## Required AHackaday env vars
 
@@ -38,6 +38,19 @@ Grace should normalize aliases/default values to canonical UUIDs before report l
 - `POST /api/grace-approvals`
 - `GET /api/discover`
 
+## Minimum daily digest payload
+
+`GET /api/ops/weekly-aeo` (daily semantics for v1) should include:
+
+- `digest_date` (or `week_of` during compatibility window)
+- `generated_at`
+- `topics[]`
+- `opportunities[]`
+- `recommendations[]`
+- `feedback[]`
+
+If Grace returns sparse digest data, AHackaday will compute a local fallback digest from the feed.
+
 ## Minimum incident report payload
 
 `GET /api/grace-report` should include:
@@ -57,3 +70,9 @@ Grace should normalize aliases/default values to canonical UUIDs before report l
 - AHackaday logs incident-state top-recommendation coverage every 20 responses.
 - Known-good fixture: `tests/fixtures/grace-incident-state.good.json`.
 - Keep the Grace-side repo contract docs in sync with this file after API changes.
+
+## What this panel tells you daily
+
+- **Top opportunities today**: where AHackaday can publish answer-first content before competitors.
+- **Recommended actions**: the 3 highest-priority content moves for the current day.
+- **Feedback to improve rank**: concrete structure/copy changes that increase AI citation likelihood.
