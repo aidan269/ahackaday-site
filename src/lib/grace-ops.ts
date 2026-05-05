@@ -170,6 +170,16 @@ export async function resolveGraceWorkspaceId(explicitTenantId?: string): Promis
     // discovery fallback is best-effort
   }
 
+  const globalFallbackWorkspace = process.env.GRACE_WORKSPACE_ID?.trim() || "default";
+  if (globalFallbackWorkspace) {
+    workspaceCache.set(tenantId, { workspaceId: globalFallbackWorkspace, expiresAt: now + WORKSPACE_CACHE_TTL_MS });
+    logEvent("warn", "grace_workspace_fallback_used", {
+      tenant_id: tenantId,
+      workspace_id: globalFallbackWorkspace,
+    });
+    return globalFallbackWorkspace;
+  }
+
   throw new WorkspaceMappingError(`Missing Grace workspace mapping for tenant '${tenantId}'`);
 }
 
