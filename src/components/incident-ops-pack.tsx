@@ -9,6 +9,7 @@ type OpsPackProps = {
     slug: string;
     canonicalId?: string;
     title: string;
+    category: string;
     severity: string;
     summary: string;
     iocs: string[];
