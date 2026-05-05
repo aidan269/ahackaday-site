@@ -3,6 +3,12 @@ import { createHash, randomUUID } from "node:crypto";
 import { createClient } from "@supabase/supabase-js";
 
 import type { Severity } from "@/lib/incident-types";
+import {
+  rawGraceWeeklyAeoPayloadToGraceOpsDigest,
+  type GraceOpsDailyDigest,
+} from "@/lib/ops-weekly-aeo";
+
+export type GraceDailyAeoDigest = GraceOpsDailyDigest;
 
 const INCIDENT_STATE_STALE_MS = 1000 * 60 * 15;
 const INCIDENT_STATE_CACHE_TTL_MS = 1000 * 60 * 20;
@@ -34,21 +40,6 @@ export type GraceIncidentState = {
   stale: boolean;
   ioc_count: number;
   extracted_indicators: string[];
-};
-
-export type GraceDailyAeoDigest = {
-  digest_date: string;
-  generated_at: string;
-  topics: string[];
-  opportunities: string[];
-  recommendations: string[];
-  feedback: string[];
-  supporting_metrics?: {
-    north_star?: number;
-    answer_inclusion?: number;
-    freshness?: number;
-    open_actions?: number;
-  };
 };
 
 type IncidentStateCacheEntry = {
@@ -565,33 +556,12 @@ export async function fetchDailyAeoDigest(input?: {
     requestId: input?.requestId,
     workspaceId,
   });
-  const response = await graceFetch<{ ok?: boolean; [k: string]: unknown }>(
+  const response = await graceFetch<Record<string, unknown>>(
     `/api/ops/weekly-aeo?workspace_id=${encodeURIComponent(workspaceId)}&source=ahackaday`,
     { method: "GET" },
     correlation,
   );
-  const topics = Array.isArray(response.topics) ? response.topics.filter((v): v is string => typeof v === "string") : [];
-  const opportunities = Array.isArray(response.opportunities)
-    ? response.opportunities.filter((v): v is string => typeof v === "string")
-    : [];
-  const recommendations = Array.isArray(response.recommendations)
-    ? response.recommendations.filter((v): v is string => typeof v === "string")
-    : [];
-  const feedback = Array.isArray(response.feedback) ? response.feedback.filter((v): v is string => typeof v === "string") : [];
-  const supporting = (response.supporting_metrics && typeof response.supporting_metrics === "object")
-    ? response.supporting_metrics as GraceDailyAeoDigest["supporting_metrics"]
-    : undefined;
-  return {
-    digest_date: typeof response.digest_date === "string"
-      ? response.digest_date
-      : (typeof response.week_of === "string" ? response.week_of : new Date().toISOString().slice(0, 10)),
-    generated_at: typeof response.generated_at === "string" ? response.generated_at : new Date().toISOString(),
-    topics,
-    opportunities,
-    recommendations,
-    feedback,
-    supporting_metrics: supporting,
-  };
+  return rawGraceWeeklyAeoPayloadToGraceOpsDigest(response);
 }
 
 export const fetchWeeklyAeoBrief = fetchDailyAeoDigest;

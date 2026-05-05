@@ -182,22 +182,29 @@ test("known-good incident-state fixture contains Grace recommendation payload", 
   assert.ok(fixture.state.kpis.freshness >= 1);
 });
 
-test("known-good daily digest fixture contains marketing digest payload", () => {
+test("known-good daily digest fixture contains V2 marketing digest payload", () => {
   const fixturePath = path.join(process.cwd(), "tests/fixtures/grace-daily-aeo.good.json");
   const fixture = JSON.parse(fs.readFileSync(fixturePath, "utf8")) as {
     ok: boolean;
+    source_mode?: string;
+    data_quality?: { completeness: number };
     brief: {
+      version?: number;
       digest_date: string;
-      opportunities: string[];
-      recommendations: string[];
+      themes: string[];
+      opportunity_items: Array<{ opportunity_title: string }>;
+      recommendation_items: Array<{ action: string; source: string }>;
       feedback: string[];
     };
   };
   assert.equal(fixture.ok, true);
+  assert.ok(fixture.source_mode === "hybrid");
   assert.ok(fixture.brief.digest_date.length > 0);
-  assert.ok(fixture.brief.opportunities.length >= 1);
-  assert.ok(fixture.brief.recommendations.length >= 1);
+  assert.ok((fixture.brief.version ?? 0) >= 2);
+  assert.ok(fixture.brief.opportunity_items.length >= 1);
+  assert.ok(fixture.brief.recommendation_items.length >= 1);
   assert.ok(fixture.brief.feedback.length >= 1);
+  assert.ok(typeof fixture.data_quality?.completeness === "number");
 });
 
 test.after(() => {

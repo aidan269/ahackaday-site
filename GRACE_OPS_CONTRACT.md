@@ -38,18 +38,44 @@ Grace should normalize aliases/default values to canonical UUIDs before report l
 - `POST /api/grace-approvals`
 - `GET /api/discover`
 
-## Minimum daily digest payload
+## AHackaday digest BFF (`GET /api/ops/weekly-aeo`)
 
-`GET /api/ops/weekly-aeo` (daily semantics for v1) should include:
+The route always derives a **local feed digest first**, then merges a **Grace workspace digest** when the remote call succeeds. Response envelope:
 
-- `digest_date` (or `week_of` during compatibility window)
-- `generated_at`
-- `topics[]`
-- `opportunities[]`
-- `recommendations[]`
-- `feedback[]`
+```json
+{
+  "ok": true,
+  "brief": { "...GraceOpsDailyDigest V2..." },
+  "source_mode": "hybrid | local_fallback",
+  "data_quality": { "completeness": 0 }
+}
+```
 
-If Grace returns sparse digest data, AHackaday will compute a local fallback digest from the feed.
+- **`source_mode`**
+  - `local_fallback` — only AHackaday feed-derived structured digest (Grace unreachable or Grace added nothing beyond local).
+  - `hybrid` — Grace workspace payload contributed at least one of: structured items, legacy string arrays, or feedback rows that were folded in.
+- **`data_quality.completeness`** — 0–100 heuristic from theme coverage, structured opportunities/recommendations, and feedback depth.
+
+### GraceOps daily digest V2 (`brief`)
+
+| Field | Description |
+| --- | --- |
+| `version` | `2` |
+| `digest_date` | UTC `YYYY-MM-DD` |
+| `generated_at` | ISO timestamp |
+| `themes[]` | Editorial tokens (severity labels are **not** used as standalone themes) |
+| `signals_summary` | Optional one-line severity / attention snapshot |
+| `opportunity_items[]` | Structured gap cards (`opportunity_title`, `why_now`, `recommended_angle`, `expected_impact`, `confidence`, `evidence_refs`) |
+| `recommendation_items[]` | Structured actions (`action`, `expected_impact`, `confidence`, `source`: `feed_digest` \| `grace_workspace`) |
+| `feedback[]` | Rank / structure guidance lines |
+| `topics[]` | Mirrors `themes` for backward compatibility |
+| `opportunities[]` | One-line summaries derived from `opportunity_items` |
+| `recommendations[]` | One-line summaries derived from `recommendation_items` |
+| `supporting_metrics` | Optional Grace telemetry passthrough (`north_star`, `answer_inclusion`, etc.) |
+
+### Grace workspace digest (optional enhancement)
+
+Grace `GET /api/ops/weekly-aeo` may return V2 JSON with `opportunity_items` / `recommendation_items`, or **legacy** `topics` / `opportunities` / `recommendations` strings — AHackaday normalizes both before merging.
 
 ## Minimum incident report payload
 
@@ -68,11 +94,15 @@ If Grace returns sparse digest data, AHackaday will compute a local fallback dig
 ## Monitoring and regression
 
 - AHackaday logs incident-state top-recommendation coverage every 20 responses.
-- Known-good fixture: `tests/fixtures/grace-incident-state.good.json`.
+- Known-good fixtures:
+  - `tests/fixtures/grace-incident-state.good.json`
+  - `tests/fixtures/grace-daily-aeo.good.json` (V2 digest envelope)
 - Keep the Grace-side repo contract docs in sync with this file after API changes.
 
 ## What this panel tells you daily
 
-- **Top opportunities today**: where AHackaday can publish answer-first content before competitors.
-- **Recommended actions**: the 3 highest-priority content moves for the current day.
-- **Feedback to improve rank**: concrete structure/copy changes that increase AI citation likelihood.
+- **Themes vs signals**: *Themes* are editorial clusters; *signals* summarize severity mix without turning severity into fake topic names.
+- **Top opportunities today**: structured gap analysis (Cantina contrast, confidence, evidence URLs when present).
+- **Recommended actions**: each line includes action, expected impact, and **source** (`feed digest` vs `grace workspace`).
+- **Feedback to improve rank**: aggregate feed notes plus digest quality completeness.
+- **Page score**: per-incident blend of freshness + answer-inclusion (0–100) — distinct from workspace digest completeness.

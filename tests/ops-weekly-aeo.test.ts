@@ -1,7 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { buildDailyAeoDigest } from "../src/lib/ops-weekly-aeo";
+import {
+  buildDailyAeoDigest,
+  mergeGraceAndLocalDigests,
+} from "../src/lib/ops-weekly-aeo";
 import type { Incident } from "../src/lib/incident-types";
 
 const sampleIncident: Incident = {
@@ -26,18 +29,21 @@ const sampleIncident: Incident = {
   exploited: true,
 };
 
-test("buildDailyAeoDigest returns topics and recommendations", () => {
+test("buildDailyAeoDigest returns v2 themes, opportunity items, and recommendations", () => {
   const brief = buildDailyAeoDigest({
-    incidents: [sampleIncident],
+    incidents: [sampleIncident, { ...sampleIncident, slug: "b", sources: ["https://example.test/b"] }],
     recommendations: [{ title: "Publish answer-first FAQ set", status: "todo" }],
   });
-  assert.ok(brief.topics.length >= 1);
-  assert.ok(brief.opportunities.length >= 1);
-  assert.ok(brief.recommendations.length >= 1);
+  assert.equal(brief.version, 2);
+  assert.ok(brief.themes.length >= 1);
+  assert.ok(!brief.themes.some((t) => t === "critical" || t === "high"), "severity tokens must not headline themes list");
+  assert.ok(brief.opportunity_items.length >= 1);
+  assert.ok(brief.recommendation_items.length >= 1);
   assert.ok(brief.feedback.length >= 1);
+  assert.ok(brief.opportunities.length >= 1);
 });
 
-test("buildDailyAeoDigest adds opportunity lines from trend gaps", () => {
+test("buildDailyAeoDigest surfaces Cantina contrast in opportunity copy", () => {
   const nowIso = new Date().toISOString();
   const nonCantinaTrend: Incident = {
     ...sampleIncident,
@@ -65,11 +71,28 @@ test("buildDailyAeoDigest adds opportunity lines from trend gaps", () => {
   };
   const brief = buildDailyAeoDigest({ incidents: [nonCantinaTrend, nonCantinaTrend, cantinaCoverage] });
   assert.ok(
-    brief.opportunities.some((line) => line.toLowerCase().includes("rising now")),
-    "expected a trend-gap recommendation angle",
+    brief.opportunity_items.some((o) => o.why_now.toLowerCase().includes("cantina")),
+    "expected Cantina contrast in structured opportunity",
   );
   assert.ok(
-    brief.feedback.some((line) => line.toLowerCase().includes("daily digest seed")),
-    "expected daily digest seeds in feedback",
+    brief.feedback.some((line) => line.toLowerCase().includes("top story momentum")),
+    "expected momentum notes in feedback",
   );
+});
+
+test("mergeGraceAndLocalDigests prefers hybrid when grace contributes feedback", () => {
+  const local = buildDailyAeoDigest({
+    incidents: [sampleIncident, { ...sampleIncident, slug: "x" }],
+  });
+  const grace = {
+    ...local,
+    feedback: ["Grace-only nuance: tighten entity definitions for AI snippets."],
+    opportunity_items: [],
+    recommendation_items: [],
+    opportunities: [],
+    recommendations: [],
+  };
+  const merged = mergeGraceAndLocalDigests({ local, grace });
+  assert.equal(merged.source_mode, "hybrid");
+  assert.ok(merged.brief.feedback.some((f) => f.includes("Grace-only")));
 });

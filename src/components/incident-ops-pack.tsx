@@ -44,18 +44,69 @@ type GraceState = {
   stale: boolean;
 };
 
-type DailyAeoDigest = {
-  generated_at: string;
+type DigestOpportunityItem = {
+  opportunity_title: string;
+  why_now: string;
+  recommended_angle: string;
+  expected_impact: string;
+  confidence: string;
+  evidence_refs: string[];
+};
+
+type DigestRecommendationItem = {
+  action: string;
+  expected_impact: string;
+  confidence: string;
+  source: string;
+};
+
+type DigestDataQuality = {
+  completeness: number;
+  notes?: string[];
+};
+
+type GraceOpsDailyDigest = {
+  version: number;
   digest_date: string;
-  topics: string[];
-  opportunities: string[];
-  recommendations: string[];
+  generated_at: string;
+  themes: string[];
+  signals_summary: string | null;
+  opportunity_items: DigestOpportunityItem[];
+  recommendation_items: DigestRecommendationItem[];
   feedback: string[];
 };
 
+function humanizeTheme(token: string): string {
+  const t = token.trim().toLowerCase();
+  if (!t) return token;
+  return t.replace(/[-_]+/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+function sourceBadgeLabel(source: string): string {
+  if (source === "grace_workspace") return "grace workspace";
+  return "feed digest";
+}
+
+function formatOpportunityCopyBlock(item: DigestOpportunityItem): string {
+  const refs = item.evidence_refs.length > 0 ? `\nEvidence: ${item.evidence_refs.join(", ")}` : "";
+  return [
+    `${item.opportunity_title}`,
+    `Why now: ${item.why_now}`,
+    `Angle: ${item.recommended_angle}`,
+    `Impact: ${item.expected_impact}`,
+    `Confidence: ${item.confidence}`,
+  ].join("\n") + refs;
+}
+
+function formatRecommendationCopyBlock(item: DigestRecommendationItem): string {
+  return `${item.action}\nImpact: ${item.expected_impact}\nSource: ${sourceBadgeLabel(item.source)} · Confidence: ${item.confidence}`;
+}
+
 export function IncidentOpsPack({ incident, incidentKey, initialGraceState = null }: OpsPackProps) {
   const [graceState, setGraceState] = useState<GraceState | null>(initialGraceState);
-  const [dailyDigest, setDailyDigest] = useState<DailyAeoDigest | null>(null);
+  const [dailyDigest, setDailyDigest] = useState<GraceOpsDailyDigest | null>(null);
+  const [sourceMode, setSourceMode] = useState<string | null>(null);
+  const [dataQuality, setDataQuality] = useState<DigestDataQuality | null>(null);
 
   async function copyText(value: string) {
     try {
@@ -71,25 +122,37 @@ export function IncidentOpsPack({ incident, incidentKey, initialGraceState = nul
     : !graceState
       ? "grace connecting"
       : graceState.top_recommendation
-        ? "grace recommendations live"
-        : "grace connected • no recommendations yet";
+        ? "incident guidance live"
+        : "grace connected · no incident task yet";
 
   const aeoNorthStar = graceState?.kpis.north_star ?? 0;
   const answerInclusion = graceState?.kpis.answer_inclusion ?? 0;
+  const freshness = graceState?.kpis.freshness ?? 0;
   const recommendationBacklog = graceState?.kpis.open_actions ?? 0;
+  const dailyHealth = Math.round((freshness + answerInclusion) / 2);
 
-  const topTopics = (dailyDigest?.topics ?? [incident.category, incident.severity]).slice(0, 3);
-  const topOpportunities = (dailyDigest?.opportunities ?? []).slice(0, 3);
-  const topRecommendations = (dailyDigest?.recommendations ?? []).slice(0, 3);
+  const themeLabels = (dailyDigest?.themes ?? [incident.category]).slice(0, 4).map(humanizeTheme);
+  const signalsLine = dailyDigest?.signals_summary ?? null;
+
+  const topOpportunities = (dailyDigest?.opportunity_items ?? []).slice(0, 3);
+  const topRecommendations = (dailyDigest?.recommendation_items ?? []).slice(0, 3);
   const rankFeedback = (dailyDigest?.feedback ?? []).slice(0, 3);
+
+  const digestSourceLabel = sourceMode === "hybrid"
+    ? "grace + feed digest"
+    : sourceMode === "local_fallback"
+      ? "feed digest"
+      : sourceMode === "grace_workspace"
+        ? "grace workspace"
+        : "digest";
 
   const quickStats = useMemo(
     () => [
-      `Digest date: ${dailyDigest?.digest_date ?? "today"}`,
-      `Topics tracked today: ${dailyDigest?.topics.length ?? topTopics.length}`,
-      `Open recommendation backlog: ${recommendationBacklog}`,
+      `Digest date: ${dailyDigest?.digest_date ?? "—"}`,
+      `Data completeness: ${dataQuality?.completeness ?? "—"}${typeof dataQuality?.completeness === "number" ? "/100" : ""}`,
+      `Open incident tasks: ${recommendationBacklog}`,
     ],
-    [dailyDigest, recommendationBacklog, topTopics.length],
+    [dailyDigest, dataQuality, recommendationBacklog],
   );
 
   async function refreshGraceState() {
@@ -111,9 +174,16 @@ export function IncidentOpsPack({ incident, incidentKey, initialGraceState = nul
     try {
       const response = await fetch("/api/ops/weekly-aeo");
       if (!response.ok) return;
-      const data = await response.json() as { ok: boolean; brief?: DailyAeoDigest };
+      const data = await response.json() as {
+        ok: boolean;
+        brief?: GraceOpsDailyDigest;
+        source_mode?: string;
+        data_quality?: DigestDataQuality;
+      };
       if (data.ok && data.brief) {
         setDailyDigest(data.brief);
+        if (typeof data.source_mode === "string") setSourceMode(data.source_mode);
+        if (data.data_quality) setDataQuality(data.data_quality);
       }
     } catch {
       // best-effort only
@@ -136,16 +206,21 @@ export function IncidentOpsPack({ incident, incidentKey, initialGraceState = nul
         <div className="ops__hd__l">
           <div>
             <div className="ops__name">Grace Ops</div>
-            <div className="ops__sub">marketing analytics agent for AEO/GEO daily ranking opportunities</div>
+            <div className="ops__sub">daily AEO / GEO opportunities from your feed (with optional Grace workspace merge)</div>
           </div>
         </div>
         <div className="ops__hd__r">
           <span className="ops__fresh"><span className="dot" /> {graceState?.stale ? "stale" : "fresh"}</span>
           <span className="ops__fresh">{graceStatusLabel}</span>
+          <span className="ops__fresh">{digestSourceLabel}</span>
           {graceEnabled && graceState ? (
             <>
-              <span className="ops__fresh">daily health {Math.round((graceState.kpis.freshness + graceState.kpis.answer_inclusion) / 2)}</span>
-              <span className="ops__fresh">trend {graceState.kpis.open_actions > 6 ? "backlog heavy" : "on track"}</span>
+              <span className="ops__fresh" title="Blend of freshness and answer-inclusion for this incident">
+                page score {dailyHealth}/100
+              </span>
+              <span className="ops__fresh">
+                backlog {recommendationBacklog > 6 ? "elevated" : "normal"}
+              </span>
             </>
           ) : null}
         </div>
@@ -157,26 +232,45 @@ export function IncidentOpsPack({ incident, incidentKey, initialGraceState = nul
             <div className="lane__hd__l">
               <div className="lane__num">1</div>
               <div>
-                <div className="lane__title">Top Opportunities Today</div>
-                <div className="lane__hint">AEO/GEO content gaps to close in the next publishing cycle</div>
+                <div className="lane__title">Top opportunities today</div>
+                <div className="lane__hint">themes with the clearest gap vs Cantina + social momentum</div>
               </div>
             </div>
-            <div className="lane__count"><b>{topOpportunities.length}</b> opportunities</div>
+            <div className="lane__count"><b>{topOpportunities.length}</b> ranked</div>
           </div>
           <div className="rule-help">
             <span>!</span>
-            <span><b>Daily focus topics:</b> {topTopics.join(", ")}</span>
-            <button type="button" className="btn-quiet" onClick={() => void copyText(topOpportunities.join("\n"))}>copy</button>
+            <span>
+              <b>Themes:</b> {themeLabels.join(" · ")}
+              {signalsLine ? <><br /><b>Signals:</b> {signalsLine}</> : null}
+            </span>
+            <button
+              type="button"
+              className="btn-quiet"
+              onClick={() => void copyText(topOpportunities.map(formatOpportunityCopyBlock).join("\n\n"))}
+            >
+              copy
+            </button>
           </div>
           <article className="rule-card">
             <div className="rule-card__body">
-              {topOpportunities.length > 0
-                ? topOpportunities.map((line) => `- ${line}`).join("\n")
-                : "No strong gap opportunities detected yet. Keep publishing answer-first updates on top trending topics."}
+              {dailyDigest === null ? (
+                "Loading today's digest..."
+              ) : topOpportunities.length > 0 ? (
+                topOpportunities
+                  .map((item, idx) =>
+                    `${idx + 1}. ${item.opportunity_title} · ${item.confidence} confidence\n   ${item.why_now}\n   Angle: ${item.recommended_angle}\n   Impact: ${item.expected_impact}${
+                      item.evidence_refs.length ? `\n   Refs: ${item.evidence_refs.slice(0, 2).join(", ")}` : ""
+                    }`,
+                  )
+                  .join("\n\n")
+              ) : (
+                "No ranked gap yet — widen ingest or revisit after new stories publish."
+              )}
             </div>
             <div className="rule-card__foot">
               <div className="rule-readiness">
-                aeo signal
+                answer inclusion {answerInclusion}/100
                 <span className="bar"><i style={{ width: `${Math.max(8, Math.min(100, answerInclusion))}%` }} /></span>
               </div>
             </div>
@@ -188,24 +282,43 @@ export function IncidentOpsPack({ incident, incidentKey, initialGraceState = nul
             <div className="lane__hd__l">
               <div className="lane__num">2</div>
               <div>
-                <div className="lane__title">Recommended Actions</div>
-                <div className="lane__hint">top three concrete content moves for today</div>
+                <div className="lane__title">Recommended actions</div>
+                <div className="lane__hint">anchored publishing moves for today</div>
               </div>
             </div>
             <div className="lane__count"><b>{topRecommendations.length}</b> actions</div>
           </div>
+          <div className="rule-help">
+            <span>#</span>
+            <span><b>Editorial anchor:</b> {incident.title}</span>
+            <button
+              type="button"
+              className="btn-quiet"
+              onClick={() => void copyText(topRecommendations.map(formatRecommendationCopyBlock).join("\n\n"))}
+            >
+              copy
+            </button>
+          </div>
           <article className="rule-card">
             <div className="rule-card__hd">
               <div className="rule-card__hd__l">
-                <span className="rule-kind">publish queue today</span>
-                <span className="rule-status">{graceState?.latest_run ? "fresh model run" : "fallback model"}</span>
+                <span className="rule-kind">publish queue</span>
+                <span className="rule-status">{digestSourceLabel}</span>
               </div>
-              <button type="button" className="btn-quiet" onClick={() => void copyText(topRecommendations.join("\n"))}>copy</button>
             </div>
             <div className="rule-card__body">
-              {topRecommendations.length > 0
-                ? topRecommendations.map((line) => `- ${line}`).join("\n")
-                : "No recommendation list available yet. Start with one answer-first explainer and one comparison post."}
+              {dailyDigest === null ? (
+                "Loading actions..."
+              ) : topRecommendations.length > 0 ? (
+                topRecommendations
+                  .map(
+                    (item, idx) =>
+                      `${idx + 1}. ${item.action}\n   Impact: ${item.expected_impact}\n   ${sourceBadgeLabel(item.source)} · ${item.confidence} confidence`,
+                  )
+                  .join("\n\n")
+              ) : (
+                "Draft one FAQ cluster and one comparison brief using the themes column."
+              )}
             </div>
           </article>
         </div>
@@ -215,15 +328,15 @@ export function IncidentOpsPack({ incident, incidentKey, initialGraceState = nul
             <div className="lane__hd__l">
               <div className="lane__num">3</div>
               <div>
-                <div className="lane__title">Feedback to Improve Rank</div>
-                <div className="lane__hint">what to change in content structure for better AI citation lift</div>
+                <div className="lane__title">Feedback to improve rank</div>
+                <div className="lane__hint">structure + breadth signals editors can ship today</div>
               </div>
             </div>
             <div className="lane__count"><b>{rankFeedback.length}</b> notes</div>
           </div>
           <div className="rule-help">
             <span>!</span>
-            <span><b>Quick stats:</b> {quickStats.join(" · ")}</span>
+            <span><b>Operator:</b> {quickStats.join(" · ")}</span>
             <button type="button" className="btn-quiet" onClick={() => void copyText([...rankFeedback, ...quickStats].join("\n"))}>
               copy all
             </button>
@@ -232,19 +345,19 @@ export function IncidentOpsPack({ incident, incidentKey, initialGraceState = nul
             <article className="rule-card">
               <div className="rule-card__hd">
                 <div className="rule-card__hd__l">
-                  <span className="rule-kind">content feedback today</span>
-                  <span className="rule-status">{topTopics.length} tracked topics</span>
+                  <span className="rule-kind">content feedback</span>
+                  <span className="rule-status">{themeLabels.length} themes</span>
                 </div>
                 <button type="button" className="btn-quiet" onClick={() => void copyText(rankFeedback.join("\n"))}>copy</button>
               </div>
               <div className="rule-card__body">
                 {rankFeedback.length > 0
                   ? rankFeedback.map((line) => `- ${line}`).join("\n")
-                  : "Add one-sentence direct answers near the top of each post and tighten headings to query intent."}
+                  : "Lead with a one-sentence answer, then support with bullets and dated change notes."}
               </div>
               <div className="rule-card__foot">
                 <div className="rule-readiness">
-                  rank readiness
+                  rank readiness {aeoNorthStar}/100
                   <span className="bar"><i style={{ width: `${Math.max(8, Math.min(100, aeoNorthStar))}%` }} /></span>
                 </div>
               </div>
@@ -253,8 +366,8 @@ export function IncidentOpsPack({ incident, incidentKey, initialGraceState = nul
             <article className="rule-card">
               <div className="rule-card__hd">
                 <div className="rule-card__hd__l">
-                  <span className="rule-kind">operator context</span>
-                  <span className="rule-status">{graceStatusLabel}</span>
+                  <span className="rule-kind">digest quality</span>
+                  <span className="rule-status">{digestSourceLabel}</span>
                 </div>
                 <button type="button" className="btn-quiet" onClick={() => void copyText(quickStats.join("\n"))}>copy</button>
               </div>
@@ -263,8 +376,8 @@ export function IncidentOpsPack({ incident, incidentKey, initialGraceState = nul
               </div>
               <div className="rule-card__foot">
                 <div className="rule-readiness">
-                  execution pressure
-                  <span className="bar"><i style={{ width: `${Math.max(8, Math.min(100, recommendationBacklog * 10))}%` }} /></span>
+                  execution pressure ({recommendationBacklog} tasks)
+                  <span className="bar"><i style={{ width: `${Math.max(8, Math.min(100, Math.min(recommendationBacklog * 12, 100)))}%` }} /></span>
                 </div>
               </div>
             </article>
