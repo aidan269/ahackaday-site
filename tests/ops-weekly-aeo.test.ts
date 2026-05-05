@@ -35,3 +35,40 @@ test("buildWeeklyAeoBrief returns topics and recommendations", () => {
   assert.ok(brief.recommendations.length >= 1);
   assert.ok(brief.feedback.length >= 1);
 });
+
+test("buildWeeklyAeoBrief adds opportunity angles from trend gaps", () => {
+  const nowIso = new Date().toISOString();
+  const nonCantinaTrend: Incident = {
+    ...sampleIncident,
+    slug: "trend",
+    title: "Cloud runtime hardening for zero-day response",
+    summary: "Growing social conversation around cloud hardening and runtime controls.",
+    category: "cloud",
+    socialMentions24h: 120,
+    socialDelta24hPct: 22,
+    socialTrend: "up",
+    sources: ["https://www.ahackaday.news/incident/trend"],
+    date: nowIso,
+  };
+  const cantinaCoverage: Incident = {
+    ...sampleIncident,
+    slug: "cantina",
+    title: "Cantina post on secure code review",
+    category: "appsec",
+    summary: "Steady security engineering update.",
+    socialMentions24h: 12,
+    socialDelta24hPct: 0,
+    socialTrend: "flat",
+    sources: ["https://cantina.security/blog/secure-code-review"],
+    date: nowIso,
+  };
+  const brief = buildWeeklyAeoBrief({ incidents: [nonCantinaTrend, nonCantinaTrend, cantinaCoverage] });
+  assert.ok(
+    brief.recommendations.some((line) => line.toLowerCase().includes("angle to own")),
+    "expected a trend-gap recommendation angle",
+  );
+  assert.ok(
+    brief.feedback.some((line) => line.toLowerCase().includes("daily digest seed")),
+    "expected daily digest seeds in feedback",
+  );
+});

@@ -371,7 +371,7 @@ export function IncidentOpsPack({ incident, incidentKey, incidentUrl, initialGra
               <div className="lane__num">2</div>
               <div>
                 <div className="lane__title">AEO/GEO Strategy Agent</div>
-                <div className="lane__hint">what to publish this week to improve AI search rank across the full feed</div>
+                <div className="lane__hint">trend-based topic gaps vs Cantina + weekly content angles from full feed</div>
               </div>
             </div>
             <div className="lane__count"><b>2</b> formats</div>
@@ -380,7 +380,7 @@ export function IncidentOpsPack({ incident, incidentKey, incidentUrl, initialGra
           <div className="rule-help">
             <span>!</span>
             <span>
-              <b>Weekly plan:</b> focus + actions + proof signals for ranking gains.
+              <b>Weekly plan:</b> identify trend gaps and publishable angles we can own in AI search.
             </span>
             <button
               type="button"
