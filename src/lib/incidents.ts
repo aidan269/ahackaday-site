@@ -822,7 +822,7 @@ function mergeIncident(existing: Incident, incoming: Incident): Incident {
   };
 }
 
-const SUPABASE_INCIDENTS_MS = 12_000;
+const SUPABASE_INCIDENTS_MS = 30_000;
 
 async function getAllSupabaseIncidents(): Promise<Incident[]> {
   const client = getSupabaseServerClient();
