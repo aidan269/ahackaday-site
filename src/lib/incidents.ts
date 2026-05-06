@@ -883,7 +883,9 @@ async function getAllSupabaseIncidents(): Promise<Incident[]> {
 
   const deduped = new Map<string, Incident>();
   for (const incident of rows.map((row) => mapDbRowToIncident(row, metricByIncidentId.get(row.id)))) {
-    const key = dedupeFingerprint(incident);
+    // Use stable identity keys for DB incidents; title/evidence-level dedupe was
+    // collapsing too aggressively when many rows shared similar summaries.
+    const key = incident.canonicalId || incident.sources[0] || incident.slug;
     const existing = deduped.get(key);
     if (!existing) {
       deduped.set(key, incident);
