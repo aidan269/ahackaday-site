@@ -185,7 +185,7 @@ Top-level shape:
 }
 ```
 
-The Python prototype `prototype/grace_ops_agent.py` produces a working version of this shape against mock data so the dashboard can be built before real ingestion is wired.
+The Python prototype [`grace-ops/prototype/grace_ops_agent.py`](prototype/grace_ops_agent.py) produces a working version of this shape against mock data so the dashboard can be built before real ingestion is wired. Run from that directory: `python3 grace_ops_agent.py` → `output/daily_pulse.json`.
 
 ## Cadences
 
