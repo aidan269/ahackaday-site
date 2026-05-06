@@ -578,43 +578,72 @@ INTENT_BY_THEME = {
 }
 
 ANGLE_BY_THEME = {
-    "supply-chain": (
-        "Position Cantina as the only outlet auditing SCA tooling, not just the "
-        "CVE feed. Lead with the EOL gap and back it with the 12-vendor survey."
-    ),
-    "zero-day": (
-        "Be the fastest authoritative explainer the moment a CVE drops. "
-        "Pattern: 90-second TL;DR, exploit timeline, patch grid, IOC list."
-    ),
-    "ransomware": (
-        "Own the analytical angle: economics, negotiator psychology, and law-"
-        "enforcement timelines. Competitors cover the breach; Cantina explains the system."
-    ),
-    "identity-cloud": (
-        "Bridge the cloud-misconfig conversation with identity. Pillar piece: "
-        "'IAM least-privilege playbook in 2026,' with a downloadable checklist."
-    ),
-    "espionage": (
-        "Translate APT alphabet soup into business risk. Each piece names sectors, "
-        "regions, and what a reasonable CISO does Monday morning."
-    ),
-    "bug-bounty": (
-        "Cover the marketplace, not just the headline payouts. Comparative tables "
-        "win for queries like 'which vendor pays most for X.'"
-    ),
-    "infostealers": (
-        "Tie the malware-of-the-week stories together with a recurring 'Stealer "
-        "Quarterly' pillar. Earn topical authority through cadence."
-    ),
+    "supply-chain": [
+        "Position Cantina as the only outlet auditing SCA tooling, not just the CVE feed.",
+        "Make EOL visibility the framing: what NVD-only pipelines miss and how teams compensate.",
+        "Shift from malware headlines to software supply assurance with practical vendor checklists.",
+    ],
+    "zero-day": [
+        "Be the fastest authoritative explainer the moment a CVE drops: timeline, patch matrix, IOCs.",
+        "Win the operator query by publishing patch-first guidance before rumor threads harden.",
+        "Package zero-day coverage as incident playbooks, not news recaps.",
+    ],
+    "ransomware": [
+        "Own the analytical angle: economics, negotiator behavior, and law-enforcement timelines.",
+        "Differentiate with decision-grade ransomware operations guidance for CISOs and IR leads.",
+        "Turn breach headlines into policy choices: disclosure, payment, and resilience trade-offs.",
+    ],
+    "identity-cloud": [
+        "Bridge cloud misconfig and identity with a practical least-privilege implementation guide.",
+        "Center identity blast-radius reduction for common IAM drift patterns.",
+        "Frame cloud security as access-governance hygiene, not just configuration linting.",
+    ],
+    "espionage": [
+        "Translate APT naming into sector-level risk with Monday-morning defensive actions.",
+        "Prioritize campaign context: target profile, objective, and controls that measurably help.",
+        "Make espionage coverage actionable by mapping TTPs to realistic blue-team playbooks.",
+    ],
+    "bug-bounty": [
+        "Cover bounty-market mechanics, not just payout headlines, for comparative buyer queries.",
+        "Build vendor comparison tables that answer researcher and program-owner intent directly.",
+        "Treat bug-bounty stories as pricing and incentives analysis, not announcement reposts.",
+    ],
+    "infostealers": [
+        "Bundle stealer stories into recurring ecosystem reporting to accumulate topical authority.",
+        "Track credential-theft tradecraft over time instead of one-off malware summaries.",
+        "Lead with prevention + detection patterns for SMB-heavy stealer spread paths.",
+    ],
 }
+
+
+def _stable_index(key: str, modulo: int) -> int:
+    if modulo <= 0:
+        return 0
+    return sum(ord(ch) for ch in key) % modulo
+
+
+def _query_tokens(text: str) -> set[str]:
+    stop = {"what", "how", "why", "the", "and", "for", "with", "that", "from", "into", "your"}
+    return {t for t in re.findall(r"[a-z0-9]+", text.lower()) if len(t) >= 3 and t not in stop}
+
+
+def _theme_needles(theme_key: str) -> list[str]:
+    return {
+        "supply-chain": ["EOL blind spot", "SCA", "supply chain", "typosquat", "Daemon Tools"],
+        "zero-day": ["Apache HTTP/2", "OpenSSH", "ED 25-04", "CVE-2026", "patch CVE"],
+        "ransomware": ["double extortion", "Karakurt", "Clop MFT"],
+        "identity-cloud": ["IAM", "AWS", "least privilege"],
+        "espionage": ["UAT-8302", "telco"],
+        "bug-bounty": ["$15M", "bug bounty", "Android"],
+        "infostealers": ["info stealer", "SMB"],
+    }.get(theme_key, [])
 
 
 def synthesize_pulse_opportunities(gap_rows, top_n=3):
     opps = []
     for row in gap_rows[:top_n]:
-        angle = ANGLE_BY_THEME.get(row["theme_key"], "")
-        # Force angle uniqueness via a per-theme prefix; in production an LLM
-        # writes this with an n-gram overlap guardrail.
+        variants = ANGLE_BY_THEME.get(row["theme_key"], [])
+        angle = variants[_stable_index(f"{TODAY.isoformat()}:{row['theme_key']}", len(variants))] if variants else ""
         ref_cards = []
         for art in row["competitor_articles"][:3]:
             ref_cards.append(
@@ -677,12 +706,17 @@ def _impact_for(row) -> str:
 def synthesize_briefs(gap_rows, top_n=5):
     briefs = []
     used_queries: set[str] = set()
+    used_tokens: set[str] = set()
     for row in gap_rows[:top_n]:
         theme_key = row["theme_key"]
-        target_q = _pick_query_for_theme(theme_key, exclude=used_queries)
+        target_q = _pick_query_for_theme(theme_key, exclude=used_queries, avoid_tokens=used_tokens)
         if target_q:
             used_queries.add(target_q.query)
-        secondary = _pick_secondary_queries(theme_key, target_q, n=2)
+            used_tokens.update(_query_tokens(target_q.query))
+        secondary = _pick_secondary_queries(theme_key, target_q, exclude=used_queries, avoid_tokens=used_tokens, n=2)
+        for sq in secondary:
+            used_queries.add(sq.query)
+            used_tokens.update(_query_tokens(sq.query))
         must_facts = _facts_from_competitor_articles(row["competitor_articles"])
         must_sources = _authoritative_links(row["competitor_articles"])
         outline = _outline_for_theme(theme_key, target_q)
@@ -708,45 +742,70 @@ def synthesize_briefs(gap_rows, top_n=5):
                     }
                     for a in row["competitor_articles"][:2]
                 ],
-                "headline_patterns": _headline_patterns(theme_key),
+                "headline_patterns": _headline_patterns(theme_key, target_q),
             }
         )
     return briefs
 
 
-def _pick_query_for_theme(theme_key, exclude: set[str] | None = None):
-    # Best-effort match by tag-like keywords; ordered most-specific-first so
-    # we don't accidentally hand a supply-chain query to the zero-day theme.
+def _pick_query_for_theme(theme_key, exclude: set[str] | None = None, avoid_tokens: set[str] | None = None):
     exclude = exclude or set()
-    needles = {
-        "supply-chain": ["EOL blind spot", "SCA", "supply chain", "typosquat", "Daemon Tools"],
-        "zero-day": ["Apache HTTP/2", "OpenSSH", "ED 25-04", "CVE-2026", "patch CVE"],
-        "ransomware": ["double extortion", "Karakurt", "Clop MFT"],
-        "identity-cloud": ["IAM", "AWS", "least privilege"],
-        "espionage": ["UAT-8302", "telco"],
-        "bug-bounty": ["$15M", "bug bounty", "Android"],
-        "infostealers": ["info stealer", "SMB"],
-    }.get(theme_key, [])
-    for n in needles:
-        for q in QUERIES:
-            if q.query in exclude:
-                continue
-            if n.lower() in q.query.lower():
-                return q
-    # Fallback: first un-used query.
+    avoid_tokens = avoid_tokens or set()
+    needles = _theme_needles(theme_key)
+    candidates: list[tuple[int, int, int, Query]] = []
     for q in QUERIES:
-        if q.query not in exclude:
-            return q
+        if q.query in exclude:
+            continue
+        hay = q.query.lower()
+        needle_hits = sum(1 for n in needles if n.lower() in hay)
+        if needle_hits == 0:
+            continue
+        q_tokens = _query_tokens(q.query)
+        overlap_penalty = len(q_tokens & avoid_tokens)
+        candidates.append((needle_hits, -overlap_penalty, q.weekly_volume_estimate, q))
+    if candidates:
+        candidates.sort(key=lambda x: (x[0], x[1], x[2]), reverse=True)
+        return candidates[0][3]
+    # Fallback: least-overlapping unused query by volume.
+    fallback: list[tuple[int, int, Query]] = []
+    for q in QUERIES:
+        if q.query in exclude:
+            continue
+        overlap_penalty = len(_query_tokens(q.query) & avoid_tokens)
+        fallback.append((-overlap_penalty, q.weekly_volume_estimate, q))
+    if fallback:
+        fallback.sort(key=lambda x: (x[0], x[1]), reverse=True)
+        return fallback[0][2]
     return None
 
 
-def _pick_secondary_queries(theme_key, primary, n=2):
+def _pick_secondary_queries(
+    theme_key,
+    primary,
+    exclude: set[str] | None = None,
+    avoid_tokens: set[str] | None = None,
+    n=2,
+):
+    exclude = exclude or set()
+    avoid_tokens = avoid_tokens or set()
     out = []
+    primary_tokens = _query_tokens(primary.query) if primary else set()
+    needles = _theme_needles(theme_key)
+    scored: list[tuple[int, int, int, Query]] = []
     for q in QUERIES:
-        if q is primary:
+        if q is primary or q.query in exclude:
             continue
-        if any(t in q.query.lower() for t in theme_key.split("-")):
-            out.append(q)
+        hay = q.query.lower()
+        needle_hits = sum(1 for nd in needles if nd.lower() in hay)
+        if needle_hits == 0:
+            continue
+        q_tokens = _query_tokens(q.query)
+        overlap_with_primary = len(q_tokens & primary_tokens)
+        overlap_penalty = len(q_tokens & avoid_tokens)
+        scored.append((needle_hits, -overlap_with_primary - overlap_penalty, q.weekly_volume_estimate, q))
+    scored.sort(key=lambda x: (x[0], x[1], x[2]), reverse=True)
+    for _, _, _, q in scored:
+        out.append(q)
         if len(out) >= n:
             break
     return out
@@ -848,31 +907,116 @@ def _outline_for_theme(theme_key, _target_q):
             },
             {"h2": "FAQ", "bullets": ["Should we ever pay?", "Reporting obligations?"]},
         ],
-    }
-    return by_theme.get(
-        theme_key,
-        [
+        "espionage": [
             common_first,
-            {"h2": "Background", "bullets": ["…"]},
-            {"h2": "Analysis", "bullets": ["…"]},
-            {"h2": "FAQ", "bullets": ["…"]},
+            {
+                "h2": "Campaign profile",
+                "bullets": ["Threat actor objective", "Target sectors", "Geography and victim profile"],
+            },
+            {
+                "h2": "TTP breakdown",
+                "bullets": ["Initial access path", "Persistence model", "Collection/exfiltration indicators"],
+            },
+            {
+                "h2": "Defender playbook",
+                "bullets": ["Priority detections this week", "Containment checklist", "Executive reporting language"],
+            },
+            {"h2": "FAQ", "bullets": ["Who is most at risk?", "What telemetry matters first?", "What can wait?"]},
         ],
-    )
+        "bug-bounty": [
+            common_first,
+            {
+                "h2": "Program economics",
+                "bullets": ["Payout tiers", "Exploit class valuation", "Submission-to-payout timeline"],
+            },
+            {
+                "h2": "Researcher decision matrix",
+                "bullets": ["Where effort is rewarded", "Scope caveats", "Common rejection reasons"],
+            },
+            {
+                "h2": "Buyer guidance",
+                "bullets": ["How to benchmark your program", "When to raise payouts", "Abuse prevention controls"],
+            },
+            {"h2": "FAQ", "bullets": ["Are higher payouts always better?", "Which findings are overpaid?", "What should we publish?"]},
+        ],
+        "identity-cloud": [
+            common_first,
+            {
+                "h2": "Root causes",
+                "bullets": ["IAM sprawl patterns", "Policy drift sources", "Privilege escalation paths"],
+            },
+            {
+                "h2": "Hardening sequence",
+                "bullets": ["Immediate controls", "30-day remediation plan", "Owner/accountability model"],
+            },
+            {
+                "h2": "Validation checks",
+                "bullets": ["Least-privilege tests", "Break-glass review", "Continuous monitoring signals"],
+            },
+            {"h2": "FAQ", "bullets": ["How strict should policies be?", "What breaks when tightening IAM?", "How do we phase rollout?"]},
+        ],
+        "infostealers": [
+            common_first,
+            {
+                "h2": "Stealer ecosystem map",
+                "bullets": ["Top families this month", "Distribution channels", "Credential resale paths"],
+            },
+            {
+                "h2": "Detection and response",
+                "bullets": ["Host indicators", "Identity-layer detections", "Session revocation playbook"],
+            },
+            {
+                "h2": "Prevention controls",
+                "bullets": ["Endpoint hardening", "Browser/session protections", "User workflow changes"],
+            },
+            {"h2": "FAQ", "bullets": ["How fast do credentials leak?", "What logs catch early spread?", "What to reset first?"]},
+        ],
+    }
+    return by_theme.get(theme_key, [common_first, {"h2": "Background", "bullets": ["Scope", "Current signal", "Why now"]}, {"h2": "Analysis", "bullets": ["Observed pattern", "Operational impact", "Recommended action"]}, {"h2": "FAQ", "bullets": ["What changed?", "What should we do first?", "How do we measure progress?"]}])
 
 
 def _headline_for(theme_key, q: Query) -> str:
     if not q:
         return f"{THEMES[theme_key]['label']} this week"
     base = q.query
-    return base[0].upper() + base[1:] + " — what to do"
+    headline = base[0].upper() + base[1:]
+    if "what to do" in headline.lower():
+        return headline
+    return headline + " — what to do"
 
 
-def _headline_patterns(theme_key):
-    return {
-        "supply-chain": ["What is X?", "Why your <tool> misses Y", "X vs Y in 2026"],
-        "zero-day": ["CVE-XXXX-YYYY explained", "How to patch X today", "X exploit timeline"],
-        "ransomware": ["X group, explained", "Why X matters", "What CISOs should change"],
-    }.get(theme_key, ["What is X?", "How to do X", "X vs Y"])
+def _headline_patterns(theme_key, target_q: Query | None):
+    query_subject = "this threat"
+    if target_q:
+        cleaned = re.sub(r"^(what is|how to|why|best)\s+", "", target_q.query.strip(), flags=re.I)
+        query_subject = cleaned.strip(" ?") or query_subject
+    base = {
+        "supply-chain": [
+            f"What is {query_subject}?",
+            f"Why your SCA stack misses {query_subject}",
+            f"{query_subject} vs legacy CVE workflows in 2026",
+            f"How to audit {query_subject} in production",
+        ],
+        "zero-day": [
+            f"{query_subject} explained",
+            f"How to patch {query_subject} today",
+            f"{query_subject} exploit timeline",
+            f"Is {query_subject} exploitable in your environment?",
+        ],
+        "ransomware": [
+            f"{query_subject}, explained",
+            f"Why {query_subject} matters",
+            f"What CISOs should change after {query_subject}",
+            f"What changed this week in {query_subject}",
+        ],
+    }.get(theme_key, [f"What is {query_subject}?", f"How to handle {query_subject}", f"{query_subject} vs alternatives", f"{query_subject} checklist for teams"])
+    if not target_q:
+        return base[:3]
+    q_tokens = [t for t in re.findall(r"[a-z0-9]+", target_q.query.lower()) if len(t) >= 4][:2]
+    if not q_tokens:
+        return base[:3]
+    token_hint = " ".join(q_tokens)
+    return [base[0], f"{token_hint}: what to do now", base[2]]
 
 
 def synthesize_audit_fixes(audit_results, threshold=70):
