@@ -1,5 +1,18 @@
 /**
  * Ingest feed list + limits. Default feeds in code; override with INGEST_FEEDS JSON on Vercel.
+ *
+ * Optional X/Twitter ingest (runs after RSS feeds in `/api/ingest`):
+ * - `INGEST_X_QUERY` — optional recent-search query (`tweets/search/recent`). Omit to skip search-only ingest.
+ * - `X_BEARER_TOKEN` or `TWITTER_BEARER_TOKEN` — app bearer (search + Cantina timeline).
+ * - `INGEST_X_ENABLED` — set `0` / `false` / `no` to disable **all** X ingest (search + Cantina timeline).
+ * - `INGEST_X_MAX_RESULTS` — 10–100 (default 10). Recent search minimum page size is 10.
+ * - `INGEST_X_SOURCE_NAME` — optional `source_name` in DB for search (default `X (search)`).
+ *
+ * Cantina X timeline (always tries when bearer present unless disabled below — complements sparse blog RSS):
+ * - `INGEST_X_CANTINA_ENABLED` — set `0` / `false` / `no` to skip Cantina user timeline only.
+ * - `INGEST_X_CANTINA_USERNAME` — handle without `@` (default **`cantinasecurity`**, https://x.com/cantinasecurity).
+ * - `INGEST_X_CANTINA_MAX_RESULTS` — 5–100 (default 10). User timeline minimum page size is 5.
+ * - `INGEST_X_CANTINA_SOURCE_NAME` — optional DB `source_name` (default `Cantina (X)`).
  */
 
 export type IngestFeedConfig = {
@@ -48,6 +61,30 @@ export function getIngestDefaultItemLimit(): number {
 /**
  * Merges INGEST_FEEDS JSON with per-entry limits; falls back to DEFAULT_FEEDS if unset or invalid.
  */
+function isIngestXGloballyDisabled(): boolean {
+  const off = process.env.INGEST_X_ENABLED?.trim().toLowerCase();
+  return off === "0" || off === "false" || off === "no";
+}
+
+/** True when X recent-search ingest should run: query + bearer, and not explicitly disabled. */
+export function isIngestXSearchConfigured(): boolean {
+  const bearer = process.env.X_BEARER_TOKEN ?? process.env.TWITTER_BEARER_TOKEN;
+  const query = process.env.INGEST_X_QUERY?.trim();
+  if (!bearer || !query) return false;
+  if (isIngestXGloballyDisabled()) return false;
+  return true;
+}
+
+/** True when Cantina user timeline ingest should run (needs bearer; independent of `INGEST_X_QUERY`). */
+export function isIngestXCantinaTimelineConfigured(): boolean {
+  const bearer = process.env.X_BEARER_TOKEN ?? process.env.TWITTER_BEARER_TOKEN;
+  if (!bearer) return false;
+  if (isIngestXGloballyDisabled()) return false;
+  const off = process.env.INGEST_X_CANTINA_ENABLED?.trim().toLowerCase();
+  if (off === "0" || off === "false" || off === "no") return false;
+  return true;
+}
+
 export function loadIngestFeeds(): IngestFeedConfig[] {
   const raw = process.env.INGEST_FEEDS?.trim();
   if (!raw) {

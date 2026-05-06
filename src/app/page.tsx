@@ -12,7 +12,7 @@ import {
 } from "@/lib/incident-votes";
 import { buildFeedReceiptEmphasis } from "@/lib/feed-receipt";
 import type { FeedBarQuery } from "@/lib/feed-url";
-import { getAllIncidents, type IncidentType, type Severity } from "@/lib/incidents";
+import { getAllIncidents, getIncidentDataSourceLabel, type IncidentType, type Severity } from "@/lib/incidents";
 import type { SocialDataQuality } from "@/lib/incident-types";
 import Image from "next/image";
 import Link from "next/link";
@@ -315,6 +315,7 @@ export default async function Home({ searchParams }: HomeProps) {
     getAllIncidents(),
     getGracePluginFeed(githubUsername),
   ]);
+  const dataSourceLabel = getIncidentDataSourceLabel();
   const allSlugs = all.map((incident) => incident.slug);
   const communitySlugs = allSlugs.slice(0, FEED_COMMUNITY_SLUG_LIMIT);
   const [voteSummaryMap, commentCountMap, saveCountMap] = await Promise.all([
@@ -444,6 +445,7 @@ export default async function Home({ searchParams }: HomeProps) {
             allLen={all.length}
             todayCrit={counts.critical}
             actCount={counts.exploited}
+            dataSourceLabel={dataSourceLabel}
           />
         </div>
         <div className="page-head__stats">

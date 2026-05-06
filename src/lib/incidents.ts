@@ -27,6 +27,10 @@ export { formatIncidentDate } from "./format-incident-date";
 const CONTENT_DIR = path.join(process.cwd(), "content");
 const DATA_SOURCE = process.env.DATA_SOURCE ?? "markdown";
 
+export function getIncidentDataSourceLabel(): string {
+  return DATA_SOURCE === "supabase" ? "supabase" : "markdown";
+}
+
 const severityRank: Record<Severity, number> = {
   critical: 4,
   high: 3,
