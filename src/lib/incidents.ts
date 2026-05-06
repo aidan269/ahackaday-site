@@ -902,8 +902,7 @@ async function getAllSupabaseIncidents(): Promise<Incident[]> {
 async function loadAllIncidentsFromSource(): Promise<Incident[]> {
   let incidents: Incident[];
   if (DATA_SOURCE === "supabase") {
-    const dbIncidents = await getAllSupabaseIncidents();
-    incidents = dbIncidents.length > 0 ? dbIncidents : getAllMarkdownIncidents();
+    incidents = await getAllSupabaseIncidents();
   } else {
     incidents = getAllMarkdownIncidents();
   }

@@ -20,6 +20,7 @@ import { Suspense } from "react";
 
 /** Refresh feed periodically (Supabase / markdown) so fixes and new rows surface without only redeploying. */
 export const revalidate = 120;
+export const dynamic = "force-dynamic";
 
 type HomeProps = {
   searchParams: Promise<Record<string, string | string[] | undefined>>;

@@ -8,6 +8,7 @@ import { getAllIncidents } from "@/lib/incidents";
 import "./globals.css";
 
 const siteUrl = getPublicSiteUrl();
+export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
