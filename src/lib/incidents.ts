@@ -19,6 +19,7 @@ import type {
 import { INCIDENT_TYPE_OPTIONS } from "./incident-types";
 import { decodeHtmlEntities, stripInvisibleUnicode } from "./html-entities";
 import { omitEditorialListingNoise } from "./editorial-listing-filter";
+import { withTimeout } from "./promise-timeout";
 
 export type { Incident, IncidentEvidence, IncidentFrontmatter, IncidentType, SocialDataQuality, SocialTrend, Severity };
 export { INCIDENT_TYPE_OPTIONS };
@@ -821,34 +822,58 @@ function mergeIncident(existing: Incident, incoming: Incident): Incident {
   };
 }
 
+const SUPABASE_INCIDENTS_MS = 12_000;
+
 async function getAllSupabaseIncidents(): Promise<Incident[]> {
   const client = getSupabaseServerClient();
   if (!client) return [];
 
-  const { data, error } = await client
-    .from("incidents")
-    .select(
-      "id,canonical_id,canonical_version,merged_from,title,source_url,source_name,raw_content,claude_summary,severity,published_at,created_at",
-    )
-    .order("published_at", { ascending: false })
-    .limit(500);
+  const incidentsQuery = Promise.resolve(
+    client
+      .from("incidents")
+      .select(
+        "id,canonical_id,canonical_version,merged_from,title,source_url,source_name,raw_content,claude_summary,severity,published_at,created_at",
+      )
+      .order("published_at", { ascending: false })
+      .limit(500),
+  );
+  const { data, error } = await withTimeout(
+    incidentsQuery,
+    SUPABASE_INCIDENTS_MS,
+    { data: null, error: { message: "timeout" } } as unknown as Awaited<typeof incidentsQuery>,
+  );
 
   if (error || !data) {
-    console.error("Failed loading incidents from Supabase", error);
+    if (error && typeof error === "object" && "message" in error && error.message === "timeout") {
+      console.error("Timed out loading incidents from Supabase");
+    } else {
+      console.error("Failed loading incidents from Supabase", error);
+    }
     return [];
   }
   const rows = data as SupabaseIncidentRow[];
   const incidentIds = rows.map((row) => row.id);
   const metricByIncidentId = new Map<string, SupabaseSocialMetricRow>();
   if (incidentIds.length > 0) {
-    const { data: socialRows, error: socialError } = await client
-      .from("incident_social_metrics")
-      .select(
-        "incident_id,social_mentions_24h,social_trend,social_summary,social_delta_24h_pct,social_platform_split,social_keywords,source,updated_at,social_metric_explainers,x_mentions_24h,x_unique_authors_24h,x_verified_mentions_24h,x_retweet_sum_24h,x_like_sum_24h,x_quote_sum_24h,x_reply_sum_24h,x_heat_score,x_heat_trend,x_top_hashtags,x_top_terms",
-      )
-      .in("incident_id", incidentIds);
+    const socialQuery = Promise.resolve(
+      client
+        .from("incident_social_metrics")
+        .select(
+          "incident_id,social_mentions_24h,social_trend,social_summary,social_delta_24h_pct,social_platform_split,social_keywords,source,updated_at,social_metric_explainers,x_mentions_24h,x_unique_authors_24h,x_verified_mentions_24h,x_retweet_sum_24h,x_like_sum_24h,x_quote_sum_24h,x_reply_sum_24h,x_heat_score,x_heat_trend,x_top_hashtags,x_top_terms",
+        )
+        .in("incident_id", incidentIds),
+    );
+    const { data: socialRows, error: socialError } = await withTimeout(
+      socialQuery,
+      SUPABASE_INCIDENTS_MS,
+      { data: null, error: { message: "timeout" } } as unknown as Awaited<typeof socialQuery>,
+    );
     if (socialError) {
-      console.error("Failed loading social metrics from Supabase", socialError);
+      if (typeof socialError === "object" && "message" in socialError && socialError.message === "timeout") {
+        console.error("Timed out loading social metrics from Supabase");
+      } else {
+        console.error("Failed loading social metrics from Supabase", socialError);
+      }
     } else {
       for (const metric of (socialRows as SupabaseSocialMetricRow[] | null) ?? []) {
         metricByIncidentId.set(metric.incident_id, metric);
