@@ -249,7 +249,7 @@ export function IncidentOpsPack({ incident, incidentKey, incidentUrl, initialGra
       <div className="ops__hd">
         <div className="ops__hd__l">
           <div>
-            <div className="ops__name">Ops Pack</div>
+            <div className="ops__name">Grace Ops</div>
             <div className="ops__sub">triage-ready iocs + detections</div>
           </div>
         </div>
