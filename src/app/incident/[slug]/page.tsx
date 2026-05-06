@@ -22,14 +22,18 @@ import {
 } from "@/lib/incidents";
 
 export const revalidate = 120;
+export const dynamic = "force-dynamic";
 
 type IncidentPageProps = {
   params: Promise<{ slug: string }>;
 };
 
 export async function generateStaticParams() {
-  const incidents = await getAllIncidents();
-  return incidents.map((incident) => ({ slug: incident.slug }));
+  /**
+   * Incident detail pages include runtime enrichment (Grace + provenance).
+   * Rendering on demand avoids build-time slug fanout timeouts.
+   */
+  return [];
 }
 
 export async function generateMetadata({ params }: IncidentPageProps): Promise<Metadata> {
