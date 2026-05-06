@@ -20,6 +20,9 @@ ingest -> cluster (rule-based via tags) -> gap_detect -> audit (14-pt rubric)
 
 Run it: `python3 grace_ops_agent.py`
 Output: ./output/daily_pulse.json
+
+Pinned fixture for dashboard/tests (stdlib output drifts with clock RNG):
+../fixtures/daily_pulse.json
 """
 
 from __future__ import annotations
