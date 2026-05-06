@@ -1,15 +1,5 @@
 import type { IncidentClaimRecord, IncidentRevisionRecord } from "@/lib/incident-types";
 
-function safeLocalDateTime(value: string): string {
-  const parsed = new Date(value);
-  if (!Number.isFinite(parsed.getTime())) return "Unknown";
-  try {
-    return parsed.toLocaleString();
-  } catch {
-    return "Unknown";
-  }
-}
-
 function ConfidenceChip({ value }: { value: number | null }) {
   if (value === null || Number.isNaN(value)) return <span className="claim-conf">n/a</span>;
   const pct = Math.round(value * 100);
@@ -84,7 +74,7 @@ export function IncidentProvenancePanel({
                 <div className="rev-meta">
                   <span>r{r.revisionNo}</span>
                   <span>{r.source}</span>
-                  <span>{safeLocalDateTime(r.createdAt)}</span>
+                  <span>{new Date(r.createdAt).toLocaleString()}</span>
                 </div>
                 <div className="rev-fields">{r.changedFields.join(", ") || "snapshot"}</div>
                 {r.note ? <div className="rev-note">{r.note}</div> : null}

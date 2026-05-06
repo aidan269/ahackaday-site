@@ -26,17 +26,7 @@ export { INCIDENT_TYPE_OPTIONS };
 export { formatIncidentDate } from "./format-incident-date";
 
 const CONTENT_DIR = path.join(process.cwd(), "content");
-const DATA_SOURCE = process.env.DATA_SOURCE?.trim().toLowerCase();
-
-function resolveDataSource(): "supabase" | "markdown" {
-  if (DATA_SOURCE === "supabase" || DATA_SOURCE === "markdown") {
-    return DATA_SOURCE;
-  }
-  // Safe production default: if Supabase credentials are present, prefer live data.
-  const hasSupabaseUrl = Boolean(process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL);
-  const hasSupabaseKey = Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
-  return hasSupabaseUrl && hasSupabaseKey ? "supabase" : "markdown";
-}
+const DATA_SOURCE = process.env.DATA_SOURCE ?? "markdown";
 
 const severityRank: Record<Severity, number> = {
   critical: 4,
@@ -832,7 +822,7 @@ function mergeIncident(existing: Incident, incoming: Incident): Incident {
   };
 }
 
-const SUPABASE_INCIDENTS_MS = 30_000;
+const SUPABASE_INCIDENTS_MS = 12_000;
 
 async function getAllSupabaseIncidents(): Promise<Incident[]> {
   const client = getSupabaseServerClient();
@@ -893,9 +883,7 @@ async function getAllSupabaseIncidents(): Promise<Incident[]> {
 
   const deduped = new Map<string, Incident>();
   for (const incident of rows.map((row) => mapDbRowToIncident(row, metricByIncidentId.get(row.id)))) {
-    // Use stable identity keys for DB incidents; title/evidence-level dedupe was
-    // collapsing too aggressively when many rows shared similar summaries.
-    const key = incident.canonicalId || incident.sources[0] || incident.slug;
+    const key = dedupeFingerprint(incident);
     const existing = deduped.get(key);
     if (!existing) {
       deduped.set(key, incident);
@@ -913,8 +901,9 @@ async function getAllSupabaseIncidents(): Promise<Incident[]> {
 
 async function loadAllIncidentsFromSource(): Promise<Incident[]> {
   let incidents: Incident[];
-  if (resolveDataSource() === "supabase") {
-    incidents = await getAllSupabaseIncidents();
+  if (DATA_SOURCE === "supabase") {
+    const dbIncidents = await getAllSupabaseIncidents();
+    incidents = dbIncidents.length > 0 ? dbIncidents : getAllMarkdownIncidents();
   } else {
     incidents = getAllMarkdownIncidents();
   }
