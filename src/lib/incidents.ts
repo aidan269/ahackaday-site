@@ -26,7 +26,18 @@ export { INCIDENT_TYPE_OPTIONS };
 export { formatIncidentDate } from "./format-incident-date";
 
 const CONTENT_DIR = path.join(process.cwd(), "content");
-const DATA_SOURCE = process.env.DATA_SOURCE ?? "markdown";
+const DATA_SOURCE = (process.env.DATA_SOURCE ?? "markdown").trim().toLowerCase();
+
+function resolveDataSource(): "supabase" | "markdown" {
+  const hasSupabaseUrl = Boolean(process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL);
+  const hasSupabaseKey = Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
+  const hasSupabase = hasSupabaseUrl && hasSupabaseKey;
+  // In production, prefer live Supabase feed when credentials are available,
+  // even if DATA_SOURCE is left at markdown from older config.
+  if (process.env.NODE_ENV === "production" && hasSupabase) return "supabase";
+  if (DATA_SOURCE === "supabase") return "supabase";
+  return "markdown";
+}
 
 const severityRank: Record<Severity, number> = {
   critical: 4,
@@ -901,9 +912,8 @@ async function getAllSupabaseIncidents(): Promise<Incident[]> {
 
 async function loadAllIncidentsFromSource(): Promise<Incident[]> {
   let incidents: Incident[];
-  if (DATA_SOURCE === "supabase") {
-    const dbIncidents = await getAllSupabaseIncidents();
-    incidents = dbIncidents.length > 0 ? dbIncidents : getAllMarkdownIncidents();
+  if (resolveDataSource() === "supabase") {
+    incidents = await getAllSupabaseIncidents();
   } else {
     incidents = getAllMarkdownIncidents();
   }
