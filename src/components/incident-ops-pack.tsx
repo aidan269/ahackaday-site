@@ -1,6 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+
+import { buildOpsIocRows } from "@/lib/ops-iocs";
 
 type OpsPackProps = {
   incident: {
@@ -22,6 +24,17 @@ type OpsPackProps = {
   initialGraceState?: GraceState | null;
 };
 
+type IocType = "cve" | "ip" | "domain" | "url" | "hash" | "package" | "other";
+
+type TypedIoc = {
+  type: IocType;
+  value: string;
+  confidence: "high" | "mid" | "low";
+  score: number;
+};
+
+type ResponseTrack = "contain" | "hunt" | "patch" | "brief";
+
 type GraceState = {
   kpis: {
     north_star: number;
@@ -42,270 +55,139 @@ type GraceState = {
     origin: string;
   } | null;
   stale: boolean;
+  ioc_count: number;
+  extracted_indicators: string[];
 };
 
-type DigestOpportunityItem = {
-  opportunity_title: string;
-  why_now: string;
-  recommended_angle: string;
-  expected_impact: string;
-  confidence: string;
-  evidence_refs: string[];
-};
-
-type DigestRecommendationItem = {
-  action: string;
-  expected_impact: string;
-  confidence: string;
-  source: string;
-};
-
-type DigestDataQuality = {
-  completeness: number;
-  notes?: string[];
-};
-
-type GraceOpsDailyDigest = {
-  version: number;
-  digest_date: string;
-  generated_at: string;
-  themes: string[];
-  signals_summary: string | null;
-  opportunity_items: DigestOpportunityItem[];
-  recommendation_items: DigestRecommendationItem[];
-  feedback: string[];
-};
-
-function humanizeTheme(token: string): string {
-  const t = token.trim().toLowerCase();
-  if (!t) return token;
-  return t.replace(/[-_]+/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+function classifyIoc(value: string): IocType {
+  const v = value.trim();
+  if (!v) return "other";
+  if (/^CVE-\d{4}-\d+$/i.test(v)) return "cve";
+  if (/^(?:\d{1,3}\.){3}\d{1,3}$/.test(v)) return "ip";
+  if (/^https?:\/\/\S+/i.test(v)) return "url";
+  if (/^[a-f0-9]{32}$|^[a-f0-9]{40}$|^[a-f0-9]{64}$/i.test(v)) return "hash";
+  if (/^[a-z0-9.-]+\.[a-z]{2,}$/i.test(v)) return "domain";
+  if (/[a-z0-9_-]+\/[a-z0-9._-]+/i.test(v) || /^[a-z0-9._-]+$/i.test(v)) return "package";
+  return "other";
 }
 
-function sourceBadgeLabel(source: string): string {
-  if (source === "grace_workspace") return "Grace";
-  return "Feed";
+function toTxt(rows: TypedIoc[]) {
+  return rows.map((r) => `[${r.type}] ${r.value}`).join("\n");
 }
 
-function signalTier(score: number): { tier: string; caption: string } {
-  const n = Math.max(0, Math.min(100, Math.round(score)));
-  if (n >= 70) return { tier: "Strong", caption: "Solid vs typical incident pages in Grace." };
-  if (n >= 45) return { tier: "Growing", caption: "On track — tighten answer-first structure to lift further." };
-  if (n >= 25) return { tier: "Building", caption: "Diagnostic score — not a final grade." };
-  return { tier: "Early", caption: "Baseline — publish structured updates to move this." };
-}
-
-function formatOpportunityCopyBlock(item: DigestOpportunityItem): string {
-  const refs = item.evidence_refs.length > 0 ? `\nEvidence: ${item.evidence_refs.join(", ")}` : "";
-  return [
-    `${item.opportunity_title}`,
-    `Why now: ${item.why_now}`,
-    `Angle: ${item.recommended_angle}`,
-    `Impact: ${item.expected_impact}`,
-    `Confidence: ${item.confidence}`,
-  ].join("\n") + refs;
-}
-
-function formatRecommendationCopyBlock(item: DigestRecommendationItem): string {
-  return `${item.action}\nImpact: ${item.expected_impact}\nSource: ${sourceBadgeLabel(item.source)} · ${item.confidence}`;
-}
-
-async function copyToClipboard(text: string): Promise<boolean> {
-  if (!text) return false;
-  try {
-    if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
-      await navigator.clipboard.writeText(text);
-      return true;
-    }
-  } catch {
-    /* fall through */
-  }
-  try {
-    const ta = document.createElement("textarea");
-    ta.value = text;
-    ta.setAttribute("readonly", "");
-    ta.style.position = "fixed";
-    ta.style.left = "-9999px";
-    ta.style.top = "0";
-    document.body.appendChild(ta);
-    ta.focus();
-    ta.select();
-    const ok = document.execCommand("copy");
-    document.body.removeChild(ta);
-    return ok;
-  } catch {
-    return false;
-  }
-}
-
-/** Slim view model — keeps JSX shallow. */
-function buildGraceOpsPanelView(input: {
-  incidentCategory: string;
-  incidentTitle: string;
-  dailyDigest: GraceOpsDailyDigest | null;
-  sourceMode: string | null;
-  dataQuality: DigestDataQuality | null;
-  graceState: GraceState | null;
-  graceEnabled: boolean;
-}) {
-  const {
-    incidentCategory,
-    incidentTitle,
-    dailyDigest,
-    sourceMode,
-    dataQuality,
-    graceState,
-    graceEnabled,
-  } = input;
-
-  const aeoNorthStar = graceState?.kpis.north_star ?? 0;
-  const answerInclusion = graceState?.kpis.answer_inclusion ?? 0;
-  const freshness = graceState?.kpis.freshness ?? 0;
-  const tasks = graceState?.kpis.open_actions ?? 0;
-  const dailyHealth = Math.round((freshness + answerInclusion) / 2);
-  const pageTier = signalTier(dailyHealth);
-  const inclusionTier = signalTier(answerInclusion);
-  const rankTier = signalTier(aeoNorthStar);
-
-  const digestShort =
-    sourceMode === "hybrid" ? "Grace + feed"
-      : sourceMode === "local_fallback" ? "Feed only"
-        : sourceMode === "grace_workspace" ? "Grace"
-          : "—";
-
-  const themeLabels = (dailyDigest?.themes ?? [incidentCategory]).slice(0, 4).map(humanizeTheme);
-  const signalsLine = dailyDigest?.signals_summary ?? null;
-  const opportunities = (dailyDigest?.opportunity_items ?? []).slice(0, 3);
-  const actions = (dailyDigest?.recommendation_items ?? []).slice(0, 3);
-  const feedback = (dailyDigest?.feedback ?? []).slice(0, 4);
-
-  const completenessLabel =
-    typeof dataQuality?.completeness === "number" ? `${dataQuality.completeness}% ready` : "—";
-
-  const snapshotLine = `Today · ${completenessLabel} · ${digestShort} · ${tasks} open tasks`;
-
-  const opportunitiesCopy = opportunities.map(formatOpportunityCopyBlock).join("\n\n");
-  const actionsCopy = actions.map(formatRecommendationCopyBlock).join("\n\n");
-  const lane2Copy = [
-    `Anchor: ${incidentTitle}`,
-    "",
-    snapshotLine,
-    "",
-    "— ACTIONS —",
-    actions.length ? actionsCopy : "(none)",
-    "",
-    "— FEEDBACK —",
-    feedback.length ? feedback.join("\n") : "(none)",
-  ].join("\n");
-
-  const opportunitiesBody =
-    opportunities.length > 0
-      ? opportunities
-        .map((item, idx) =>
-          `${idx + 1}. ${item.opportunity_title} · ${item.confidence}\n   ${item.why_now}\n   Angle: ${item.recommended_angle}\n   Impact: ${item.expected_impact}${
-            item.evidence_refs.length ? `\n   Refs: ${item.evidence_refs.join(", ")}` : ""
-          }`,
-        )
-        .join("\n\n")
-      : "";
-
-  const lane2Body =
-    dailyDigest === null
-      ? "Loading…"
-      : [
-        actions.length > 0
-          ? actions
-            .map(
-              (item, idx) =>
-                `${idx + 1}. ${item.action}\n   Impact: ${item.expected_impact}\n   ${sourceBadgeLabel(item.source)} · ${item.confidence}`,
-            )
-            .join("\n\n")
-          : "No actions queued — draft a FAQ + comparison post from the themes in column 1.",
-        "\n— — —\n",
-        feedback.length > 0
-          ? feedback.map((line) => `• ${line}`).join("\n")
-          : "Lead with one blunt answer sentence, then bullets with dates.",
-      ].join("\n");
-
-  const graceStatusLabel = !graceEnabled
-    ? "grace off"
-    : !graceState
-      ? "connecting…"
-      : graceState.top_recommendation
-        ? "guidance live"
-        : "connected";
-
-  const headerDigest = digestShort;
-  const headerSignalsTitle = `${pageTier.caption} Freshness ${Math.round(freshness)} + answer-inclusion ${Math.round(answerInclusion)}. Open tasks: ${tasks}.`;
-
-  return {
-    themeLabels,
-    signalsLine,
-    opportunities,
-    actions,
-    feedback,
-    opportunitiesCopy,
-    lane2Copy,
-    opportunitiesBody,
-    lane2Body,
-    snapshotLine,
-    digestShort,
-    completenessLabel,
-    graceStatusLabel,
-    headerDigest,
-    headerSignalsTitle,
-    pageTier,
-    dailyHealth,
-    inclusionTier,
-    rankTier,
-    answerInclusion,
-    aeoNorthStar,
-    tasks,
-    loadingDigest: dailyDigest === null,
-    emptyOpportunities: dailyDigest !== null && opportunities.length === 0,
-  };
-}
-
-export function IncidentOpsPack({ incident, incidentKey, initialGraceState = null }: OpsPackProps) {
+export function IncidentOpsPack({ incident, incidentKey, incidentUrl, initialGraceState = null }: OpsPackProps) {
+  const [activeTab, setActiveTab] = useState<"all" | "network" | "vuln" | "packages">("all");
   const [graceState, setGraceState] = useState<GraceState | null>(initialGraceState);
-  const [dailyDigest, setDailyDigest] = useState<GraceOpsDailyDigest | null>(null);
-  const [sourceMode, setSourceMode] = useState<string | null>(null);
-  const [dataQuality, setDataQuality] = useState<DigestDataQuality | null>(null);
-  const [copyToast, setCopyToast] = useState<{ ok: boolean; msg: string } | null>(null);
-  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [runStatus, setRunStatus] = useState<"idle" | "queued" | "started" | "completed" | "failed">("idle");
+  const typedIocs = useMemo(() => {
+    return buildOpsIocRows(incident).map((row) => ({
+      value: row.value,
+      type: classifyIoc(row.value),
+      confidence: row.confidence,
+      score: row.score,
+    }));
+  }, [incident]);
+
+  const tabRows = useMemo(() => {
+    if (activeTab === "all") return typedIocs;
+    if (activeTab === "network") {
+      return typedIocs.filter((r) => r.type === "ip" || r.type === "domain" || r.type === "url");
+    }
+    if (activeTab === "vuln") return typedIocs.filter((r) => r.type === "cve" || r.type === "hash");
+    return typedIocs.filter((r) => r.type === "package");
+  }, [activeTab, typedIocs]);
+
+  const counts = useMemo(() => {
+    const network = typedIocs.filter((r) => r.type === "ip" || r.type === "domain" || r.type === "url").length;
+    const vuln = typedIocs.filter((r) => r.type === "cve" || r.type === "hash").length;
+    const packages = typedIocs.filter((r) => r.type === "package").length;
+    return { all: typedIocs.length, network, vuln, packages };
+  }, [typedIocs]);
+
+  const averageScore = useMemo(() => {
+    if (typedIocs.length === 0) return 0;
+    return Math.round(typedIocs.reduce((sum, row) => sum + row.score, 0) / typedIocs.length);
+  }, [typedIocs]);
+
+  const sigmaCoverage = Math.max(12, Math.min(95, Math.round(averageScore * 0.88)));
+  const yaraCoverage = Math.max(12, Math.min(95, Math.round(averageScore * 0.8)));
+
+  const sigmaRule = useMemo(() => {
+    const indicators = typedIocs.slice(0, 30).map((r) => `      - "${r.value.replace(/"/g, '\\"')}"`).join("\n");
+    return [
+      "title: AHackaday IOC starter detection",
+      `id: ahackaday-${incident.slug}`,
+      `description: IOC starter rule for ${incident.title}`,
+      "status: experimental",
+      "author: ahackaday",
+      "logsource:",
+      "  product: network",
+      "detection:",
+      "  selection_iocs:",
+      indicators || '      - "placeholder-ioc"',
+      "  condition: selection_iocs",
+      "falsepositives:",
+      "  - unknown",
+      `level: ${incident.severity === "critical" ? "high" : "medium"}`,
+    ].join("\n");
+  }, [incident.severity, incident.slug, incident.title, typedIocs]);
+
+  const yaraRule = useMemo(() => {
+    const strings = typedIocs
+      .slice(0, 20)
+      .map((r, i) => `    $ioc${i + 1} = "${r.value.replace(/"/g, '\\"')}" nocase`)
+      .join("\n");
+    return [
+      `rule ahackaday_${incident.slug.replace(/[^a-z0-9_]/gi, "_")}`,
+      "{",
+      "  meta:",
+      `    description = "IOC starter for ${incident.title.replace(/"/g, "'")}"`,
+      '    author = "ahackaday"',
+      "  strings:",
+      strings || '    $ioc1 = "placeholder-ioc" nocase',
+      "  condition:",
+      "    any of them",
+      "}",
+    ].join("\n");
+  }, [incident.slug, incident.title, typedIocs]);
+
+  async function copyText(value: string) {
+    try {
+      await navigator.clipboard.writeText(value);
+    } catch {
+      // Clipboard API can fail in restricted contexts
+    }
+  }
+
+  function download(filename: string, mime: string, content: string) {
+    const blob = new Blob([content], { type: mime });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function iconTypeClass(type: IocType): "h" | "d" | "i" {
+    if (type === "hash" || type === "cve") return "h";
+    if (type === "domain" || type === "url") return "d";
+    return "i";
+  }
 
   const graceEnabled = process.env.NEXT_PUBLIC_OPS_PACK_GRACE_ENABLED === "1";
 
-  const panel = useMemo(
-    () =>
-      buildGraceOpsPanelView({
-        incidentCategory: incident.category,
-        incidentTitle: incident.title,
-        dailyDigest,
-        sourceMode,
-        dataQuality,
-        graceState,
-        graceEnabled,
-      }),
-    [incident.category, incident.title, dailyDigest, sourceMode, dataQuality, graceState, graceEnabled],
-  );
-
-  const showCopyResult = useCallback((ok: boolean) => {
-    if (toastTimer.current) clearTimeout(toastTimer.current);
-    setCopyToast({
-      ok,
-      msg: ok ? "Copied to clipboard." : "Could not copy — try selecting text or check permissions.",
-    });
-    toastTimer.current = setTimeout(() => setCopyToast(null), 3200);
-  }, []);
-
-  const copyText = useCallback(
-    async (value: string) => {
-      const ok = await copyToClipboard(value);
-      showCopyResult(ok);
-    },
-    [showCopyResult],
-  );
+  function fallbackTrackPrompt(track: ResponseTrack): string {
+    const iocPreview = typedIocs.slice(0, 8).map((row) => row.value).join(", ") || "none";
+    return [
+      `Grace track: ${track.toUpperCase()}`,
+      `Incident: ${incident.title}`,
+      `Severity: ${incident.severity}`,
+      `IOC count: ${typedIocs.length}`,
+      `Top IOCs: ${iocPreview}`,
+      "Use available plugins to produce an actionable runbook in 8 bullets max.",
+    ].join("\n");
+  }
 
   async function refreshGraceState() {
     if (!graceEnabled) return;
@@ -313,72 +195,73 @@ export function IncidentOpsPack({ incident, incidentKey, initialGraceState = nul
       const response = await fetch(`/api/ops/incident-state?incident_key=${encodeURIComponent(incidentKey)}`);
       if (!response.ok) return;
       const data = await response.json() as { ok: boolean; state?: GraceState };
-      if (data.ok && data.state) setGraceState(data.state);
-    } catch {
-      /* ok */
-    }
-  }
-
-  async function refreshDailyDigest() {
-    if (!graceEnabled) return;
-    try {
-      const response = await fetch("/api/ops/weekly-aeo");
-      if (!response.ok) return;
-      const data = await response.json() as {
-        ok: boolean;
-        brief?: GraceOpsDailyDigest;
-        source_mode?: string;
-        data_quality?: DigestDataQuality;
-      };
-      if (data.ok && data.brief) {
-        setDailyDigest(data.brief);
-        if (typeof data.source_mode === "string") setSourceMode(data.source_mode);
-        if (data.data_quality) setDataQuality(data.data_quality);
+      if (data.ok && data.state) {
+        setGraceState(data.state);
+        if (data.state.latest_run?.status) {
+          setRunStatus(data.state.latest_run.status);
+        }
       }
     } catch {
-      /* ok */
+      // Grace fetch is best-effort for UI continuity.
     }
   }
 
   useEffect(() => {
     if (!graceEnabled) return;
-    const timer = setTimeout(() => {
-      void refreshGraceState();
-      void refreshDailyDigest();
-    }, 0);
-    return () => clearTimeout(timer);
+    if (runStatus === "queued" || runStatus === "started") {
+      const id = setInterval(() => {
+        void refreshGraceState();
+      }, 3000);
+      return () => clearInterval(id);
+    }
+    return undefined;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [incidentKey, graceEnabled]);
+  }, [runStatus, graceEnabled]);
 
-  useEffect(() => {
-    return () => {
-      if (toastTimer.current) clearTimeout(toastTimer.current);
-    };
-  }, []);
+  async function openTrack(track: ResponseTrack) {
+    if (graceEnabled) {
+      try {
+        setRunStatus("queued");
+        await fetch("/api/ops/run-incident", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            incident_key: incidentKey,
+            incident_url: incidentUrl,
+            incident_title: incident.title,
+            severity: incident.severity,
+            related_urls: incident.sources.slice(0, 8),
+            tags: [incident.category, track],
+          }),
+        });
+        await refreshGraceState();
+        return;
+      } catch {
+        setRunStatus("failed");
+      }
+    }
+
+    await copyText(fallbackTrackPrompt(track));
+  }
 
   return (
     <section className="ops">
-      {copyToast ? (
-        <div className={`ops-copy-toast${copyToast.ok ? "" : " ops-copy-toast--err"}`} role="status">
-          {copyToast.msg}
-        </div>
-      ) : null}
-
       <div className="ops__hd">
         <div className="ops__hd__l">
           <div>
-            <div className="ops__name">Grace Ops</div>
-            <div className="ops__sub">daily feed digest · incident signals from Grace</div>
+            <div className="ops__name">Ops Pack</div>
+            <div className="ops__sub">triage-ready iocs + detections</div>
           </div>
         </div>
-        <div className="ops__hd__r ops__hd__r--compact">
+        <div className="ops__hd__r">
           <span className="ops__fresh"><span className="dot" /> {graceState?.stale ? "stale" : "fresh"}</span>
-          <span className="ops__fresh">{panel.graceStatusLabel}</span>
-          <span className="ops__fresh">{panel.headerDigest}</span>
           {graceEnabled && graceState ? (
-            <span className="ops__fresh" title={panel.headerSignalsTitle}>
-              signals {panel.pageTier.tier} · {panel.dailyHealth}/100
-            </span>
+            <>
+              <span className="ops__fresh">north_star {graceState.kpis.north_star}</span>
+              <span className="ops__fresh">inclusion {graceState.kpis.answer_inclusion}</span>
+              <span className="ops__fresh">freshness {graceState.kpis.freshness}</span>
+              <span className="ops__fresh">open {graceState.kpis.open_actions}</span>
+            </>
           ) : null}
         </div>
       </div>
@@ -389,47 +272,83 @@ export function IncidentOpsPack({ incident, incidentKey, initialGraceState = nul
             <div className="lane__hd__l">
               <div className="lane__num">1</div>
               <div>
-                <div className="lane__title">Opportunities</div>
-                <div className="lane__hint">where to win vs Cantina · ranked by momentum</div>
+                <div className="lane__title">IOC Workbench</div>
+                <div className="lane__hint">typed indicators with fast copy and export actions</div>
               </div>
             </div>
-            <div className="lane__count"><b>{panel.opportunities.length}</b></div>
+            <div className="lane__count"><b>{graceState?.ioc_count ?? typedIocs.length}</b> total</div>
           </div>
-          <div className="rule-help">
-            <span>!</span>
-            <div className="rule-help__scroll">
-              <b>Themes:</b> {panel.themeLabels.join(" · ")}
-              {panel.signalsLine ? (
-                <>
-                  <br />
-                  <b>Signals:</b> {panel.signalsLine}
-                </>
-              ) : null}
-            </div>
-            <button
-              type="button"
-              className="btn-quiet"
-              disabled={!panel.opportunitiesCopy}
-              onClick={() => void copyText(panel.opportunitiesCopy)}
-            >
-              copy
+          <div className="ioc-tabs">
+            <button type="button" className={`ioc-tab${activeTab === "all" ? " active" : ""}`} onClick={() => setActiveTab("all")}>
+              all <span className="tag">{counts.all}</span>
+            </button>
+            <button type="button" className={`ioc-tab${activeTab === "network" ? " active" : ""}`} onClick={() => setActiveTab("network")}>
+              network <span className="tag">{counts.network}</span>
+            </button>
+            <button type="button" className={`ioc-tab${activeTab === "vuln" ? " active" : ""}`} onClick={() => setActiveTab("vuln")}>
+              vuln <span className="tag">{counts.vuln}</span>
+            </button>
+            <button type="button" className={`ioc-tab${activeTab === "packages" ? " active" : ""}`} onClick={() => setActiveTab("packages")}>
+              packages <span className="tag">{counts.packages}</span>
             </button>
           </div>
-          <article className="rule-card">
-            <div className="rule-card__body">
-              {panel.loadingDigest
-                ? "Loading…"
-                : panel.emptyOpportunities
-                  ? "No gap ranked yet — check ingest or try again after new posts."
-                  : panel.opportunitiesBody}
-            </div>
-            <div className="rule-card__foot">
-              <div className="rule-readiness" title={panel.inclusionTier.caption}>
-                answer inclusion · {panel.inclusionTier.tier} ({Math.round(panel.answerInclusion)}/100)
-                <span className="bar"><i style={{ width: `${Math.max(8, Math.min(100, panel.answerInclusion))}%` }} /></span>
+
+          {tabRows.length === 0 ? (
+            <div className="ioc-empty">
+              <div className="ioc-empty__icon">!</div>
+              <div className="ioc-empty__txt">
+                <b>No indicators in this slice yet.</b>
+                <span>Switch tabs or export the full IOC set.</span>
               </div>
             </div>
-          </article>
+          ) : (
+            <>
+              <div className="ioc-list">
+                {(graceState?.extracted_indicators?.length
+                  ? graceState.extracted_indicators.slice(0, 20).map((value) => ({
+                    value,
+                    type: classifyIoc(value),
+                    confidence: "mid" as const,
+                    score: 72,
+                  }))
+                  : tabRows.slice(0, 20)
+                ).map((row) => (
+                  <div key={`${row.type}-${row.value}`} className="ioc-row">
+                    <span className={`ioc-row__type ${iconTypeClass(row.type)}`}>{row.type[0]}</span>
+                    <span className="ioc-row__val">{row.value}</span>
+                    <span className="ioc-row__conf">
+                      <span className={`conf-bar ${row.confidence}`}>
+                        <i /><i /><i />
+                      </span>
+                    </span>
+                    <span className="ioc-row__act">
+                      <button type="button" className="ioc-act" onClick={() => void copyText(row.value)}>copy</button>
+                    </span>
+                  </div>
+                ))}
+              </div>
+              <div className="ioc-bulk">
+                <div className="ioc-bulk__txt"><b>{graceState?.ioc_count ?? typedIocs.length}</b> indicators staged for handoff.</div>
+                <button type="button" className="btn-quiet" onClick={() => void copyText(toTxt(typedIocs))}>copy all</button>
+                <button type="button" className="btn-quiet" onClick={() => download(`${incident.slug}-iocs.txt`, "text/plain", toTxt(typedIocs))}>
+                  txt
+                </button>
+                <button
+                  type="button"
+                  className="btn-primary"
+                  onClick={() =>
+                    download(
+                      `${incident.slug}-iocs.json`,
+                      "application/json",
+                      JSON.stringify(typedIocs, null, 2),
+                    )
+                  }
+                >
+                  json
+                </button>
+              </div>
+            </>
+          )}
         </div>
 
         <div className="lane">
@@ -437,35 +356,110 @@ export function IncidentOpsPack({ incident, incidentKey, initialGraceState = nul
             <div className="lane__hd__l">
               <div className="lane__num">2</div>
               <div>
-                <div className="lane__title">Actions & feedback</div>
-                <div className="lane__hint">queue for today · plus edit notes (same scroll)</div>
+                <div className="lane__title">Rule Studio</div>
+                <div className="lane__hint">starter detections generated from this IOC set</div>
               </div>
             </div>
-            <div className="lane__count"><b>{panel.actions.length}</b> · <b>{panel.feedback.length}</b></div>
+            <div className="lane__count"><b>2</b> formats</div>
           </div>
+
           <div className="rule-help">
-            <span>#</span>
-            <div className="rule-help__scroll">
-              <b>{panel.snapshotLine}</b>
-              <br />
-              <b>Anchor:</b> {incident.title}
+            <span>!</span>
+            <span><b>Draft output:</b> validate and tune before production rollout.</span>
+            <button type="button" className="btn-quiet" onClick={() => void copyText(`${sigmaRule}\n\n${yaraRule}`)}>copy all</button>
+          </div>
+
+          <div className="rule-cards">
+            <article className="rule-card">
+              <div className="rule-card__hd">
+                <div className="rule-card__hd__l">
+                  <span className="rule-kind">sigma</span>
+                  <span className="rule-status">draft</span>
+                </div>
+                <button type="button" className="btn-quiet" onClick={() => void copyText(sigmaRule)}>copy</button>
+              </div>
+              <div className="rule-card__body">{sigmaRule}</div>
+              <div className="rule-card__foot">
+                <div className="rule-readiness">
+                  coverage
+                  <span className="bar"><i style={{ width: `${sigmaCoverage}%` }} /></span>
+                </div>
+              </div>
+            </article>
+
+            <article className="rule-card">
+              <div className="rule-card__hd">
+                <div className="rule-card__hd__l">
+                  <span className="rule-kind">yara</span>
+                  <span className="rule-status">draft</span>
+                </div>
+                <button type="button" className="btn-quiet" onClick={() => void copyText(yaraRule)}>copy</button>
+              </div>
+              <div className="rule-card__body">{yaraRule}</div>
+              <div className="rule-card__foot">
+                <div className="rule-readiness">
+                  coverage
+                  <span className="bar"><i style={{ width: `${yaraCoverage}%` }} /></span>
+                </div>
+              </div>
+            </article>
+          </div>
+        </div>
+
+        <div className="lane">
+          <div className="lane__hd">
+            <div className="lane__hd__l">
+              <div className="lane__num">3</div>
+              <div>
+                <div className="lane__title">Response Tracks</div>
+                <div className="lane__hint">fast operational tracks from this incident snapshot</div>
+              </div>
             </div>
-            <button type="button" className="btn-quiet" onClick={() => void copyText(panel.lane2Copy)}>
-              copy all
+            <div className="lane__count">
+              <b>4</b> tracks
+              {graceEnabled && graceState?.top_recommendation ? (
+                <span className="tag" style={{ marginLeft: 8 }}>
+                  {graceState.top_recommendation.status}
+                </span>
+              ) : null}
+            </div>
+          </div>
+          {graceEnabled && graceState?.top_recommendation ? (
+            <div className="rule-help">
+              <span>!</span>
+              <span>
+                <b>Top Grace action:</b> {graceState.top_recommendation.title}
+              </span>
+              <span className="tag">{graceState.top_recommendation.status}</span>
+            </div>
+          ) : null}
+          <div className="resp-grid">
+            <button type="button" className="resp-card danger" onClick={() => void openTrack("contain")}>
+              <span className="resp-card__icon">!</span>
+              <div className="resp-card__title">Contain</div>
+              <div className="resp-card__desc">Block indicators and isolate impacted assets.</div>
+              <div className="resp-card__target"><span>target</span><b>soc</b></div>
+            </button>
+            <button type="button" className="resp-card calm" onClick={() => void openTrack("hunt")}>
+              <span className="resp-card__icon">i</span>
+              <div className="resp-card__title">Hunt</div>
+              <div className="resp-card__desc">Sweep recent telemetry for indicator hits.</div>
+              <div className="resp-card__target"><span>target</span><b>detection</b></div>
+            </button>
+            <button type="button" className="resp-card go" onClick={() => void openTrack("patch")}>
+              <span className="resp-card__icon">{">"}</span>
+              <div className="resp-card__title">Patch</div>
+              <div className="resp-card__desc">Prioritize remediation from CVE evidence.</div>
+              <div className="resp-card__target"><span>target</span><b>it ops</b></div>
+            </button>
+            <button type="button" className="resp-card" onClick={() => void openTrack("brief")}>
+              <span className="resp-card__icon">#</span>
+              <div className="resp-card__title">Brief</div>
+              <div className="resp-card__desc">Export concise incident notes for leadership.</div>
+              <div className="resp-card__target"><span>target</span><b>exec</b></div>
             </button>
           </div>
-          <article className="rule-card">
-            <div className="rule-card__body">{panel.lane2Body}</div>
-            <div className="rule-card__foot">
-              <div
-                className="rule-readiness"
-                title={`${panel.rankTier.caption} Tasks: ${panel.tasks}.`}
-              >
-                rank · {panel.rankTier.tier} ({Math.round(panel.aeoNorthStar)}/100)
-                <span className="bar"><i style={{ width: `${Math.max(8, Math.min(100, panel.aeoNorthStar))}%` }} /></span>
-              </div>
-            </div>
-          </article>
+          <div className="resp-foot">source-backed <b>{incident.sources.length}</b> refs</div>
         </div>
       </div>
     </section>

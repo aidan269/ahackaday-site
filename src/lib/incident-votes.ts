@@ -1,9 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
 
-import { withTimeout } from "@/lib/promise-timeout";
-
-const SUPABASE_QUERY_MS = 10_000;
-
 export type IncidentVoteSummary = {
   upvotes: number;
   downvotes: number;
@@ -19,14 +15,10 @@ export async function getIncidentVoteSummaryMap(slugs: string[]): Promise<Map<st
   if (!url || !key) return out;
 
   const supabase = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
-  const voteQuery = Promise.resolve(
-    supabase.from("user_incident_votes").select("incident_slug,vote").in("incident_slug", slugs),
-  );
-  const { data, error } = await withTimeout(
-    voteQuery,
-    SUPABASE_QUERY_MS,
-    { data: null, error: { message: "timeout" } } as unknown as Awaited<typeof voteQuery>,
-  );
+  const { data, error } = await supabase
+    .from("user_incident_votes")
+    .select("incident_slug,vote")
+    .in("incident_slug", slugs);
   if (error || !data) return out;
 
   for (const row of data as Array<{ incident_slug: string; vote: number }>) {
@@ -49,14 +41,10 @@ export async function getIncidentSaveCountMap(slugs: string[]): Promise<Map<stri
   if (!url || !key) return out;
 
   const supabase = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
-  const savedQuery = Promise.resolve(
-    supabase.from("user_saved_incidents").select("incident_slug").in("incident_slug", slugs),
-  );
-  const { data, error } = await withTimeout(
-    savedQuery,
-    SUPABASE_QUERY_MS,
-    { data: null, error: { message: "timeout" } } as unknown as Awaited<typeof savedQuery>,
-  );
+  const { data, error } = await supabase
+    .from("user_saved_incidents")
+    .select("incident_slug")
+    .in("incident_slug", slugs);
   if (error || !data) return out;
 
   for (const row of data as Array<{ incident_slug: string }>) {
@@ -75,14 +63,10 @@ export async function getIncidentCommentCountMap(slugs: string[]): Promise<Map<s
   if (!url || !key) return out;
 
   const supabase = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
-  const commentQuery = Promise.resolve(
-    supabase.from("incident_comments").select("incident_slug").in("incident_slug", slugs),
-  );
-  const { data, error } = await withTimeout(
-    commentQuery,
-    SUPABASE_QUERY_MS,
-    { data: null, error: { message: "timeout" } } as unknown as Awaited<typeof commentQuery>,
-  );
+  const { data, error } = await supabase
+    .from("incident_comments")
+    .select("incident_slug")
+    .in("incident_slug", slugs);
   if (error || !data) return out;
 
   for (const row of data as Array<{ incident_slug: string }>) {

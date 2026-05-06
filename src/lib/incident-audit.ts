@@ -1,9 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 
 import type { IncidentClaimRecord, IncidentRevisionRecord } from "@/lib/incident-types";
-import { withTimeout } from "@/lib/promise-timeout";
-
-const AUDIT_QUERY_TIMEOUT_MS = 10_000;
 
 function getServiceClient() {
   const url = process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -22,49 +19,20 @@ export async function fetchIncidentClaimsAndRevisions(sourceRowIds: string[]): P
   const supabase = getServiceClient();
   if (!supabase) return empty;
 
-  const claimsQuery = Promise.resolve(
+  const [{ data: claimRows, error: claimErr }, { data: revRows, error: revErr }] = await Promise.all([
     supabase
       .from("incident_claims")
       .select("id,field,value,source_url,snippet,confidence,inferred_by,created_at")
       .in("incident_id", sourceRowIds)
       .order("created_at", { ascending: false })
       .limit(200),
-  );
-  const revisionsQuery = Promise.resolve(
     supabase
       .from("incident_revisions")
       .select("id,revision_no,changed_fields,previous_values,new_values,source,note,created_at")
       .in("incident_id", sourceRowIds)
       .order("created_at", { ascending: false })
       .limit(50),
-  );
-
-  let claimRows: unknown = null;
-  let revRows: unknown = null;
-  let claimErr: unknown = null;
-  let revErr: unknown = null;
-
-  try {
-    const [claimsResult, revisionsResult] = await Promise.all([
-      withTimeout(
-        claimsQuery,
-        AUDIT_QUERY_TIMEOUT_MS,
-        { data: null, error: { message: "timeout" } } as unknown as Awaited<typeof claimsQuery>,
-      ),
-      withTimeout(
-        revisionsQuery,
-        AUDIT_QUERY_TIMEOUT_MS,
-        { data: null, error: { message: "timeout" } } as unknown as Awaited<typeof revisionsQuery>,
-      ),
-    ]);
-    claimRows = claimsResult.data;
-    revRows = revisionsResult.data;
-    claimErr = claimsResult.error;
-    revErr = revisionsResult.error;
-  } catch (error) {
-    console.error("fetchIncidentClaimsAndRevisions failed open", error);
-    return empty;
-  }
+  ]);
 
   if (claimErr) {
     console.error("fetchIncidentClaims failed", claimErr);

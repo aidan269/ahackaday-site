@@ -11,11 +11,6 @@ import {
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const stateCoverage = {
-  total: 0,
-  withTopRecommendation: 0,
-};
-
 export async function GET(request: Request) {
   if (!isOpsPackGraceEnabled() || isOpsPackGraceRollbackEnabled()) {
     return NextResponse.json({ ok: false, error: "Grace Ops disabled by feature flag" }, { status: 404 });
@@ -37,22 +32,6 @@ export async function GET(request: Request) {
       workspaceId,
       requestId,
     });
-    stateCoverage.total += 1;
-    if (state.top_recommendation) {
-      stateCoverage.withTopRecommendation += 1;
-    }
-    if (stateCoverage.total % 20 === 0) {
-      const pct = Number(
-        ((stateCoverage.withTopRecommendation / Math.max(1, stateCoverage.total)) * 100).toFixed(2),
-      );
-      console.log(JSON.stringify({
-        level: "info",
-        event: "grace_incident_state_top_recommendation_coverage",
-        sample_size: stateCoverage.total,
-        with_top_recommendation: stateCoverage.withTopRecommendation,
-        coverage_pct: pct,
-      }));
-    }
 
     if (isOpsPackGraceParallelValidateEnabled()) {
       console.log(JSON.stringify({

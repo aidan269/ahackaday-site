@@ -23,7 +23,6 @@ const DEFAULT_FEEDS: IngestFeedConfig[] = [
   /** Main site redirects to Feedburner; this URL is stable for fetch+parse. */
   { url: "https://feeds.feedburner.com/TheHackersNews", source: "TheHackerNews", itemLimit: 8 },
   { url: "https://www.securityweek.com/feed/", source: "SecurityWeek", itemLimit: 8 },
-  { url: "https://cantina.security/feed/", source: "Cantina", itemLimit: 8 },
 ];
 
 function intEnv(name: string, fallback: number): number {

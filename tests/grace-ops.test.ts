@@ -1,17 +1,15 @@
 import assert from "node:assert/strict";
-import fs from "node:fs";
-import path from "node:path";
 import test from "node:test";
 
 import {
   buildGraceWeeklyPayload,
-  fetchDailyAeoDigest,
   fetchIncidentState,
   forwardRecommendationAction,
   generateIncidentKey,
   normalizeIncidentUrl,
   resolveGraceWorkspaceId,
   runIncident,
+  WorkspaceMappingError,
 } from "../src/lib/grace-ops";
 
 const realFetch = global.fetch;
@@ -47,10 +45,12 @@ test("payload builder dedupes and keeps absolute urls", () => {
   assert.deepEqual(payload.url_buckets.related, ["https://example.test/b"]);
 });
 
-test("workspace resolver falls back to default workspace when mapping is missing", async () => {
+test("workspace resolver throws typed error for missing mapping", async () => {
   process.env.GRACE_WORKSPACE_MAP_JSON = "{}";
-  const workspaceId = await resolveGraceWorkspaceId("tenant_missing");
-  assert.equal(workspaceId, "default");
+  await assert.rejects(
+    () => resolveGraceWorkspaceId("tenant_missing"),
+    (error: unknown) => error instanceof WorkspaceMappingError,
+  );
 });
 
 test("run trigger succeeds and returns run id", async () => {
@@ -141,70 +141,6 @@ test("incident state falls back to stale cache when grace unavailable", async ()
   const fallback = await fetchIncidentState({ incidentKey: "inc_cached", workspaceId: "ws_a" });
   assert.equal(fallback.stale, true);
   assert.equal(fallback.kpis.north_star, 61);
-});
-
-test("daily digest fetch maps digest_date and opportunities", async () => {
-  process.env.GRACE_SERVICE_ORIGIN = "https://grace.example.test";
-  process.env.GRACE_WORKSPACE_MAP_JSON = JSON.stringify({ tenant_a: "ws_a" });
-  global.fetch = async (input: string | URL) => {
-    const url = String(input);
-    if (url.includes("/api/ops/weekly-aeo")) {
-      return mockJsonResponse({
-        week_of: "2026-05-05",
-        generated_at: "2026-05-05T00:00:00.000Z",
-        topics: ["identity"],
-        opportunities: ["identity: rising now (2 AHackaday signals vs 0 Cantina hits)"],
-        recommendations: ["Publish an answer-first brief for identity."],
-        feedback: ["Daily digest seed: Identity provider exploit update"],
-      });
-    }
-    throw new Error(`unexpected url: ${url}`);
-  };
-
-  const digest = await fetchDailyAeoDigest({ tenantId: "tenant_a" });
-  assert.equal(digest.digest_date, "2026-05-05");
-  assert.ok(digest.opportunities.length >= 1);
-});
-
-test("known-good incident-state fixture contains Grace recommendation payload", () => {
-  const fixturePath = path.join(process.cwd(), "tests/fixtures/grace-incident-state.good.json");
-  const fixture = JSON.parse(fs.readFileSync(fixturePath, "utf8")) as {
-    ok: boolean;
-    state: {
-      top_recommendation: { id: string; title: string; status: string } | null;
-      recommendation_counts_by_status: Record<string, number>;
-      kpis: { north_star: number; answer_inclusion: number; freshness: number; open_actions: number };
-    };
-  };
-  assert.equal(fixture.ok, true);
-  assert.ok(fixture.state.top_recommendation);
-  assert.ok(fixture.state.recommendation_counts_by_status.todo >= 1);
-  assert.ok(fixture.state.kpis.freshness >= 1);
-});
-
-test("known-good daily digest fixture contains V2 marketing digest payload", () => {
-  const fixturePath = path.join(process.cwd(), "tests/fixtures/grace-daily-aeo.good.json");
-  const fixture = JSON.parse(fs.readFileSync(fixturePath, "utf8")) as {
-    ok: boolean;
-    source_mode?: string;
-    data_quality?: { completeness: number };
-    brief: {
-      version?: number;
-      digest_date: string;
-      themes: string[];
-      opportunity_items: Array<{ opportunity_title: string }>;
-      recommendation_items: Array<{ action: string; source: string }>;
-      feedback: string[];
-    };
-  };
-  assert.equal(fixture.ok, true);
-  assert.ok(fixture.source_mode === "hybrid");
-  assert.ok(fixture.brief.digest_date.length > 0);
-  assert.ok((fixture.brief.version ?? 0) >= 2);
-  assert.ok(fixture.brief.opportunity_items.length >= 1);
-  assert.ok(fixture.brief.recommendation_items.length >= 1);
-  assert.ok(fixture.brief.feedback.length >= 1);
-  assert.ok(typeof fixture.data_quality?.completeness === "number");
 });
 
 test.after(() => {

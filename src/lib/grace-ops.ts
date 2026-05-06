@@ -3,12 +3,6 @@ import { createHash, randomUUID } from "node:crypto";
 import { createClient } from "@supabase/supabase-js";
 
 import type { Severity } from "@/lib/incident-types";
-import {
-  rawGraceWeeklyAeoPayloadToGraceOpsDigest,
-  type GraceOpsDailyDigest,
-} from "@/lib/ops-weekly-aeo";
-
-export type GraceDailyAeoDigest = GraceOpsDailyDigest;
 
 const INCIDENT_STATE_STALE_MS = 1000 * 60 * 15;
 const INCIDENT_STATE_CACHE_TTL_MS = 1000 * 60 * 20;
@@ -111,7 +105,11 @@ function getGraceOrigin(): string {
 }
 
 function getGraceApiKey(): string {
-  return process.env.GRACE_SERVICE_API_KEY?.trim() ?? "";
+  const key = process.env.GRACE_SERVICE_API_KEY?.trim();
+  if (!key) {
+    throw new GraceOpsConfigError("Missing GRACE_SERVICE_API_KEY");
+  }
+  return key;
 }
 
 function getWorkspaceMappingFromEnv(tenantId: string): string | null {
@@ -158,32 +156,6 @@ export async function resolveGraceWorkspaceId(explicitTenantId?: string): Promis
       workspaceCache.set(tenantId, { workspaceId: mapped, expiresAt: now + WORKSPACE_CACHE_TTL_MS });
       return mapped;
     }
-  }
-
-  try {
-    const discovery = await graceFetch<{ workspaces?: Array<{ id?: string; workspace_id?: string }> }>(
-      "/api/discover",
-      { method: "GET" },
-      getCorrelationIds({}),
-    );
-    const firstWorkspace = discovery.workspaces?.[0];
-    const discoveredId = firstWorkspace?.id ?? firstWorkspace?.workspace_id;
-    if (typeof discoveredId === "string" && discoveredId.trim()) {
-      workspaceCache.set(tenantId, { workspaceId: discoveredId, expiresAt: now + WORKSPACE_CACHE_TTL_MS });
-      return discoveredId;
-    }
-  } catch {
-    // discovery fallback is best-effort
-  }
-
-  const globalFallbackWorkspace = process.env.GRACE_WORKSPACE_ID?.trim() || "default";
-  if (globalFallbackWorkspace) {
-    workspaceCache.set(tenantId, { workspaceId: globalFallbackWorkspace, expiresAt: now + WORKSPACE_CACHE_TTL_MS });
-    logEvent("warn", "grace_workspace_fallback_used", {
-      tenant_id: tenantId,
-      workspace_id: globalFallbackWorkspace,
-    });
-    return globalFallbackWorkspace;
   }
 
   throw new WorkspaceMappingError(`Missing Grace workspace mapping for tenant '${tenantId}'`);
@@ -241,8 +213,8 @@ async function graceFetch<T>(
         ...init,
         headers: {
           "Content-Type": "application/json",
+          "x-api-key": key,
           "x-request-id": correlation.request_id,
-          ...(key ? { "x-api-key": key } : {}),
           ...(init.headers ?? {}),
         },
       });
@@ -546,25 +518,6 @@ export async function forwardRecommendationAction(input: {
     requestId: correlation.request_id,
   });
 }
-
-export async function fetchDailyAeoDigest(input?: {
-  tenantId?: string;
-  requestId?: string;
-}): Promise<GraceDailyAeoDigest> {
-  const workspaceId = await resolveGraceWorkspaceId(input?.tenantId);
-  const correlation = getCorrelationIds({
-    requestId: input?.requestId,
-    workspaceId,
-  });
-  const response = await graceFetch<Record<string, unknown>>(
-    `/api/ops/weekly-aeo?workspace_id=${encodeURIComponent(workspaceId)}&source=ahackaday`,
-    { method: "GET" },
-    correlation,
-  );
-  return rawGraceWeeklyAeoPayloadToGraceOpsDigest(response);
-}
-
-export const fetchWeeklyAeoBrief = fetchDailyAeoDigest;
 
 export function parsePollingParams(url: URL): { intervalMs: number; timeoutMs: number } {
   const interval = Math.min(15000, Math.max(1500, Number(url.searchParams.get("poll_interval_ms") ?? "3000")));
