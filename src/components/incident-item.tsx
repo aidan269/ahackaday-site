@@ -35,10 +35,27 @@ function rel(iso: string) {
 
 type Props = { incident: Incident; index?: number; practitionerBadge?: boolean };
 
+const CANTINA_PILL_STYLE: CSSProperties = {
+  fontSize: "9px",
+  letterSpacing: "0.01em",
+  textTransform: "lowercase",
+  borderRadius: "999px",
+  padding: "2px 8px",
+  border: "1px solid rgba(250, 94, 6, 0.5)",
+  color: "var(--brand-orange)",
+  background: "color-mix(in srgb, var(--brand-orange) 10%, transparent)",
+  lineHeight: 1,
+};
+
 function socialQualityChip(q?: SocialDataQuality): string {
   if (q === "live_measured") return "live measured";
   if (q === "live_zero") return "live · zero";
   return "pending scan";
+}
+
+function isCantinaTweetIncident(incident: Incident): boolean {
+  const primarySource = incident.sources[0]?.toLowerCase() ?? "";
+  return primarySource.includes("x.com/cantinasecurity/") || primarySource.includes("twitter.com/cantinasecurity/");
 }
 
 export function IncidentItem({ incident, practitionerBadge }: Props) {
@@ -63,6 +80,7 @@ export function IncidentItem({ incident, practitionerBadge }: Props) {
   const socialPreviewText = platformSplitPreview ?? socialPreviewParts.join(" · ");
   const iocCount = buildOpsIocValues(incident).length;
   const opsLine = `${iocCount} ioc · sgm · yra`;
+  const isCantinaTweet = isCantinaTweetIncident(incident);
 
   const saved = isSaved(incident.slug);
   const read = isRead(incident.slug);
@@ -96,6 +114,11 @@ export function IncidentItem({ incident, practitionerBadge }: Props) {
             <span className="social-q-chip" title="Social data confidence band">
               {socialQualityChip(incident.socialDataQuality)}
             </span>
+            {isCantinaTweet ? (
+              <span style={CANTINA_PILL_STYLE} title="Source is Cantina's X timeline">
+                Cantina tweet
+              </span>
+            ) : null}
             {practitionerBadge ? (
               <span
                 className="practitioner-badge"
@@ -147,12 +170,16 @@ export function IncidentItem({ incident, practitionerBadge }: Props) {
 export function IncidentRow({ incident }: Props) {
   const sev = SEV_COLOR[incident.severity];
   const style = { ["--sev" as string]: sev } as CSSProperties;
+  const isCantinaTweet = isCantinaTweetIncident(incident);
 
   return (
     <Link href={`/incident/${incident.slug}`} className="row" style={style}>
       <div className="row__date">{fmtShort(incident.date)}</div>
       <div className={`row__sev sev-${incident.severity}`}>{incident.severity}</div>
-      <div className="row__cat">{incident.category}</div>
+      <div className="row__cat">
+        {incident.category}
+        {isCantinaTweet ? <span style={CANTINA_PILL_STYLE}>cantina tweet</span> : null}
+      </div>
       <div className="row__title">{incident.title}</div>
       <div className="row__affected">{truncateForDisplay(incident.affected, 160)}</div>
       <div className="row__arrow">›</div>
@@ -164,6 +191,7 @@ export function IncidentRow({ incident }: Props) {
 export function IncidentTimelineItem({ incident }: Props) {
   const sev = SEV_COLOR[incident.severity];
   const style = { ["--sev" as string]: sev } as CSSProperties;
+  const isCantinaTweet = isCantinaTweetIncident(incident);
 
   return (
     <Link href={`/incident/${incident.slug}`} className="tl-item" style={style}>
@@ -171,6 +199,7 @@ export function IncidentTimelineItem({ incident }: Props) {
         <span>{formatIncidentDate(incident.date)}</span>
         <span style={{ color: sev }}>■ {incident.severity}</span>
         <span>{incident.category}</span>
+        {isCantinaTweet ? <span style={CANTINA_PILL_STYLE}>cantina tweet</span> : null}
       </div>
       <h3 className="tl-item__title">{incident.title}</h3>
       <p className="tl-item__sum">{incident.summary}</p>
