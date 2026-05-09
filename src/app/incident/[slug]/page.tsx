@@ -16,10 +16,9 @@ import { SocialPlatformGraph } from "@/components/social-platform-graph";
 import { getPublicSiteUrl } from "@/lib/ecosystem";
 import { fetchIncidentState, generateIncidentKey, isOpsPackGraceEnabled, resolveGraceWorkspaceId } from "@/lib/grace-ops";
 import { fetchIncidentClaimsAndRevisions } from "@/lib/incident-audit";
-import type { SocialDataQuality } from "@/lib/incident-types";
+import type { Incident, SocialDataQuality } from "@/lib/incident-types";
 import { fetchContentData } from "@/lib/grace-ops/data";
 import { getServerSupabaseUser } from "@/lib/supabase-server";
-import { deriveVulnLabel } from "@/lib/incident-vuln";
 import {
   formatIncidentDate,
   getAllIncidents,
@@ -126,6 +125,26 @@ function normalizeKeywordForDisplay(value: string): string {
   return value.replace(/^#+/, "").trim().toLowerCase();
 }
 
+function normalizeForDedupe(s: string): string {
+  return s.replace(/\s+/g, " ").trim().toLowerCase();
+}
+
+/**
+ * The social rail stacks below the article on narrow viewports; a long "summary" line
+ * can read like duplicate article copy. Only show narrative prose when we have measured
+ * signal and it is not the same text as the editorial summary.
+ */
+function shouldShowSocialNarrative(
+  incident: Pick<Incident, "socialDataQuality" | "summary" | "socialSummary">,
+): boolean {
+  const q = incident.socialDataQuality;
+  if (q !== "live_measured" && q !== "live_zero") return false;
+  const raw = (incident.socialSummary ?? "").trim();
+  if (raw.length < 12) return false;
+  if (normalizeForDedupe(raw) === normalizeForDedupe(incident.summary)) return false;
+  return true;
+}
+
 export default async function IncidentPage({ params }: IncidentPageProps) {
   const { slug } = await params;
   const incident = await getIncidentBySlug(slug);
@@ -151,17 +170,6 @@ export default async function IncidentPage({ params }: IncidentPageProps) {
   const auditBundle = await fetchIncidentClaimsAndRevisions(incident.sourceRowIds ?? []);
   const trackingId = incident.cve || incident.evidence.cves[0] || null;
   const sections = Array.isArray(incident.content) ? incident.content : [];
-  const vulnLabel = deriveVulnLabel({
-    title: incident.title,
-    evidence: incident.evidence,
-    cve: incident.cve,
-  });
-  const keyFactCve = trackingId ?? "—";
-  const keyFactCvss = incident.cvssScore?.trim() || "—";
-  const keyFactAffected = incident.affected?.trim() || "—";
-  const keyFactPatched = incident.patchedIn?.trim() || "—";
-  const keyFactDisclosed = formatIncidentDate(incident.date);
-  const keyFactExploited = incident.exploited ? "Yes" : "No";
   const socialMentionsLabel =
     incident.socialDataQuality === "pending"
       ? "pending scan"
@@ -206,6 +214,7 @@ export default async function IncidentPage({ params }: IncidentPageProps) {
     { label: "replies", value: xReplies },
     { label: "quotes", value: xQuotes },
   ];
+  const showSocialNarrative = shouldShowSocialNarrative(incident);
 
   return (
     <main className="shell">
@@ -232,66 +241,7 @@ export default async function IncidentPage({ params }: IncidentPageProps) {
               </div>
             </div>
             <h1 className="detail__title">{incident.title}</h1>
-            <dl className="detail__keyfacts" aria-label="Key facts">
-              <div className="detail__keyfacts-row">
-                <dt>CVE</dt>
-                <dd>{keyFactCve}</dd>
-              </div>
-              <div className="detail__keyfacts-row">
-                <dt>CVSS</dt>
-                <dd>{keyFactCvss}</dd>
-              </div>
-              <div className="detail__keyfacts-row">
-                <dt>Affected</dt>
-                <dd>{keyFactAffected}</dd>
-              </div>
-              <div className="detail__keyfacts-row">
-                <dt>Patched in</dt>
-                <dd>{keyFactPatched}</dd>
-              </div>
-              <div className="detail__keyfacts-row">
-                <dt>Disclosed</dt>
-                <dd>{keyFactDisclosed}</dd>
-              </div>
-              <div className="detail__keyfacts-row">
-                <dt>Exploited in wild</dt>
-                <dd>{keyFactExploited}</dd>
-              </div>
-            </dl>
-            <p className="detail__lead">{incident.summary}</p>
           </div>
-
-          <div className="detail__meta">
-            <div className="detail__meta-affected">
-              <span className="k">{`What is affected by ${vulnLabel}?`}</span>
-              <span className="v">{incident.affected}</span>
-            </div>
-            <div>
-              <span className="k">{`How do I mitigate ${vulnLabel}?`}</span>
-              <span className="v">{incident.mitigationStatus}</span>
-            </div>
-            {trackingId && (
-              <div>
-                <span className="k">tracking id</span>
-                <span className="v" style={{ color: "var(--brand-orange)" }}>{trackingId}</span>
-              </div>
-            )}
-            <div>
-              <span className="k">{`When was ${vulnLabel} disclosed?`}</span>
-              <span className="v">{formatIncidentDate(incident.date)}</span>
-            </div>
-          </div>
-
-          <IncidentDock
-            incident={incident}
-            incidentKey={incidentKey}
-            incidentUrl={incidentUrl}
-            initialGraceState={initialGraceState}
-            contentData={contentData}
-            triageStale={Boolean(initialGraceState?.stale)}
-          />
-
-          <IncidentComments incidentSlug={incident.slug} />
 
           <div className="detail__body">
             {sections.length > 0
@@ -309,6 +259,17 @@ export default async function IncidentPage({ params }: IncidentPageProps) {
                     .map((para, idx) => <p key={idx}>{para}</p>)
                 : null}
           </div>
+
+          <IncidentDock
+            incident={incident}
+            incidentKey={incidentKey}
+            incidentUrl={incidentUrl}
+            initialGraceState={initialGraceState}
+            contentData={contentData}
+            triageStale={Boolean(initialGraceState?.stale)}
+          />
+
+          <IncidentComments incidentSlug={incident.slug} />
 
           <details className="detail__sources detail__sources--collapsed">
             <summary>
@@ -390,10 +351,12 @@ export default async function IncidentPage({ params }: IncidentPageProps) {
                   ))}
                 </div>
               </div>
-              <div className="detail__social-summary">
-                <span className="k">summary</span>
-                <span className="v">{socialSummary}</span>
-              </div>
+              {showSocialNarrative ? (
+                <div className="detail__social-summary">
+                  <span className="k">cross-platform summary</span>
+                  <span className="v">{socialSummary}</span>
+                </div>
+              ) : null}
             </div>
           </div>
         </div>

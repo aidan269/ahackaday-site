@@ -20,6 +20,7 @@ const WINDOW_OPTS = [
 
 const SOCIAL_OPTS = [
   { value: "all", label: "All sources" },
+  { value: "aeo-high", label: "AEO · high score" },
   { value: "twitter-mentions", label: "X · high mentions" },
   { value: "reddit-mentions", label: "Reddit · high mentions" },
   { value: "github-mentions", label: "GitHub · high mentions" },
@@ -260,13 +261,15 @@ export function FeedBar({ receiptCount, receiptTotal, receiptEmphasis, filteredS
                 "Source"
               ) : (
                 <b>
-                  {query.social === "twitter-mentions"
-                    ? "X"
-                    : query.social === "reddit-mentions"
-                      ? "Reddit"
-                      : query.social === "github-mentions"
-                        ? "GitHub"
-                        : (socialOpt?.label ?? "Source")}
+                  {query.social === "aeo-high"
+                    ? "AEO"
+                    : query.social === "twitter-mentions"
+                      ? "X"
+                      : query.social === "reddit-mentions"
+                        ? "Reddit"
+                        : query.social === "github-mentions"
+                          ? "GitHub"
+                          : (socialOpt?.label ?? "Source")}
                 </b>
               )
             }

@@ -1078,7 +1078,7 @@ main.shell { max-width: 1560px; margin: 0 auto; padding: 48px 40px 160px; positi
 .detail__grace.open-in-grace--disabled { align-self: center; }
 .detail__head { padding: 24px 0 32px; border-bottom: 1px solid var(--border); margin-bottom: 28px; }
 .detail__tags { display: flex; gap: 14px; align-items: center; font-size: 10.5px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--fg-3); margin-bottom: 18px; flex-wrap: wrap; }
-.detail__title { font-size: clamp(32px, 4.8vw, 56px); line-height: 1.0; font-weight: 500; letter-spacing: -0.04em; color: var(--fg); margin: 0 0 16px; max-width: 16ch; text-wrap: balance; }
+.detail__title { font-size: clamp(32px, 4.8vw, 56px); line-height: 1.0; font-weight: 500; letter-spacing: -0.04em; color: var(--fg); margin: 0; max-width: 16ch; text-wrap: balance; }
 .detail__lead { font-size: 15px; line-height: 1.65; color: var(--fg-2); max-width: 72ch; margin: 0; }
 
 .detail__keyfacts {
@@ -3326,6 +3326,38 @@ a.open-in-grace:focus-visible {
 .resp-foot { margin-top: 10px; font-family: var(--mono); font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-3); display: flex; align-items: center; gap: 8px; }
 .resp-foot b { color: var(--ink); font-weight: 700; }
 .resp-foot::before { content: ""; width: 14px; height: 1px; background: var(--ink-5); }
+
+/* Response tracks: preview only until Grace run wiring is stable */
+.lane__muted-stack { position: relative; margin-top: 2px; min-height: 100px; }
+.lane__muted-inner {
+  filter: blur(6px);
+  opacity: 0.42;
+  pointer-events: none;
+  user-select: none;
+}
+.lane__muted-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: auto;
+  cursor: default;
+}
+.lane__muted-badge {
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: color-mix(in srgb, var(--paper) 90%, transparent);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 6px 24px rgba(26, 24, 21, 0.07);
+}
 
 /* Content tab (AEO) */
 .content-num-sec { margin-bottom: 22px; }

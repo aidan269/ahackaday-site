@@ -394,8 +394,8 @@ async function runPhaseE(
         ['score_card', html.includes("content-score__sub") && /\d/.test(html)],
         ['edits', html.includes("content-rec-card") || html.includes("<details")],
         ['triage_tab', html.includes("ops__tab")],
-        ['key_facts', html.includes('class="detail__keyfacts"')],
-        ['subhead', html.includes("What is affected by")],
+        ['detail_body', html.includes('class="detail__body"')],
+        ['detail_title', html.includes('class="detail__title"')],
         ['methodology_link', html.includes("/about/methodology")],
       ];
       // #region agent log

@@ -43,6 +43,9 @@ const SEVERITY_ORDER: Record<Severity, number> = {
   low: 1,
 };
 
+/** Matches ScoreCard “high” tier — citation-worthiness feed filter. */
+const HIGH_AEO_SCORE_MIN = 75;
+
 function getPlatformMentions(incident: IncidentRow, platform: "x" | "reddit" | "github"): number {
   if (incident.socialDataQuality !== "live_measured") return 0;
   if (typeof incident.socialMentions24h !== "number") return 0;
@@ -362,6 +365,10 @@ export default async function Home({ searchParams }: HomeProps) {
     if (qq) {
       const hay = [i.title, i.summary, i.affected, i.category].join(" ").toLowerCase();
       if (!hay.includes(qq)) return false;
+    }
+    if (socialValue === "aeo-high") {
+      const s = i.aeoScore;
+      if (typeof s !== "number" || Number.isNaN(s) || s < HIGH_AEO_SCORE_MIN) return false;
     }
     if (socialValue === "twitter-mentions" && getPlatformMentions(i, "x") < 20) return false;
     if (socialValue === "reddit-mentions" && getPlatformMentions(i, "reddit") < 20) return false;

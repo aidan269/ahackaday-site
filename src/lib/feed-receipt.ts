@@ -3,6 +3,7 @@ import { DEFAULT_FEED_QUERY } from "@/lib/feed-url";
 
 function socialLabel(social: string): string | null {
   if (social === "all") return null;
+  if (social === "aeo-high") return "AEO · high score";
   if (social === "twitter-mentions") return "X · mentions";
   if (social === "reddit-mentions") return "Reddit · mentions";
   if (social === "github-mentions") return "GitHub · mentions";
