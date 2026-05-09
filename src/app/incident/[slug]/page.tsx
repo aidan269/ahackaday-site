@@ -4,7 +4,9 @@ import { notFound } from "next/navigation";
 
 import { AskAI } from "@/components/ask-ai";
 import { IncidentComments } from "@/components/incident-comments";
-import { IncidentOpsPack } from "@/components/incident-ops-pack";
+import { IncidentByline } from "@/components/IncidentByline";
+import { IncidentDock } from "@/components/grace-ops/IncidentDock";
+import { ScoreChip } from "@/components/grace-ops/ScoreChip";
 import { IncidentProvenancePanel } from "@/components/incident-provenance";
 import { IncidentTrackControls } from "@/components/incident-track-controls";
 import { IncidentVoteControls } from "@/components/incident-vote-controls";
@@ -15,13 +17,17 @@ import { getPublicSiteUrl } from "@/lib/ecosystem";
 import { fetchIncidentState, generateIncidentKey, isOpsPackGraceEnabled, resolveGraceWorkspaceId } from "@/lib/grace-ops";
 import { fetchIncidentClaimsAndRevisions } from "@/lib/incident-audit";
 import type { SocialDataQuality } from "@/lib/incident-types";
+import { fetchContentData } from "@/lib/grace-ops/data";
+import { getServerSupabaseUser } from "@/lib/supabase-server";
+import { deriveVulnLabel } from "@/lib/incident-vuln";
 import {
   formatIncidentDate,
   getAllIncidents,
   getIncidentBySlug,
 } from "@/lib/incidents";
 
-export const revalidate = 120;
+/** Session cookies + `getServerSupabaseUser()` require per-request rendering (admin Content tab). */
+export const dynamic = "force-dynamic";
 
 type IncidentPageProps = {
   params: Promise<{ slug: string }>;
@@ -139,9 +145,23 @@ export default async function IncidentPage({ params }: IncidentPageProps) {
     }
   }
 
+  const viewer = await getServerSupabaseUser();
+  const contentData = await fetchContentData(slug, viewer?.id ?? null);
+
   const auditBundle = await fetchIncidentClaimsAndRevisions(incident.sourceRowIds ?? []);
   const trackingId = incident.cve || incident.evidence.cves[0] || null;
   const sections = Array.isArray(incident.content) ? incident.content : [];
+  const vulnLabel = deriveVulnLabel({
+    title: incident.title,
+    evidence: incident.evidence,
+    cve: incident.cve,
+  });
+  const keyFactCve = trackingId ?? "—";
+  const keyFactCvss = incident.cvssScore?.trim() || "—";
+  const keyFactAffected = incident.affected?.trim() || "—";
+  const keyFactPatched = incident.patchedIn?.trim() || "—";
+  const keyFactDisclosed = formatIncidentDate(incident.date);
+  const keyFactExploited = incident.exploited ? "Yes" : "No";
   const socialMentionsLabel =
     incident.socialDataQuality === "pending"
       ? "pending scan"
@@ -201,6 +221,10 @@ export default async function IncidentPage({ params }: IncidentPageProps) {
                 <span style={{ color: "var(--fg-2)" }}>{formatIncidentDate(incident.date)}</span>
                 <SeverityChipExplainer severity={incident.severity} rationale={incident.severityInference ?? []} />
                 <span>{incident.category}</span>
+                <span className="detail__aeo-score-wrap">
+                  <span className="detail__aeo-score-label">AEO score</span>
+                  <ScoreChip score={contentData?.total_score ?? null} />
+                </span>
               </div>
               <div className="detail__bar-stack">
                 <IncidentTrackControls incidentSlug={incident.slug} />
@@ -208,16 +232,42 @@ export default async function IncidentPage({ params }: IncidentPageProps) {
               </div>
             </div>
             <h1 className="detail__title">{incident.title}</h1>
+            <dl className="detail__keyfacts" aria-label="Key facts">
+              <div className="detail__keyfacts-row">
+                <dt>CVE</dt>
+                <dd>{keyFactCve}</dd>
+              </div>
+              <div className="detail__keyfacts-row">
+                <dt>CVSS</dt>
+                <dd>{keyFactCvss}</dd>
+              </div>
+              <div className="detail__keyfacts-row">
+                <dt>Affected</dt>
+                <dd>{keyFactAffected}</dd>
+              </div>
+              <div className="detail__keyfacts-row">
+                <dt>Patched in</dt>
+                <dd>{keyFactPatched}</dd>
+              </div>
+              <div className="detail__keyfacts-row">
+                <dt>Disclosed</dt>
+                <dd>{keyFactDisclosed}</dd>
+              </div>
+              <div className="detail__keyfacts-row">
+                <dt>Exploited in wild</dt>
+                <dd>{keyFactExploited}</dd>
+              </div>
+            </dl>
             <p className="detail__lead">{incident.summary}</p>
           </div>
 
           <div className="detail__meta">
             <div className="detail__meta-affected">
-              <span className="k">what&apos;s affected</span>
+              <span className="k">{`What is affected by ${vulnLabel}?`}</span>
               <span className="v">{incident.affected}</span>
             </div>
             <div>
-              <span className="k">mitigation status</span>
+              <span className="k">{`How do I mitigate ${vulnLabel}?`}</span>
               <span className="v">{incident.mitigationStatus}</span>
             </div>
             {trackingId && (
@@ -227,22 +277,37 @@ export default async function IncidentPage({ params }: IncidentPageProps) {
               </div>
             )}
             <div>
-              <span className="k">first reported</span>
+              <span className="k">{`When was ${vulnLabel} disclosed?`}</span>
               <span className="v">{formatIncidentDate(incident.date)}</span>
             </div>
           </div>
 
-          <IncidentOpsPack incident={incident} incidentKey={incidentKey} incidentUrl={incidentUrl} initialGraceState={initialGraceState} />
+          <IncidentDock
+            incident={incident}
+            incidentKey={incidentKey}
+            incidentUrl={incidentUrl}
+            initialGraceState={initialGraceState}
+            contentData={contentData}
+            triageStale={Boolean(initialGraceState?.stale)}
+          />
 
           <IncidentComments incidentSlug={incident.slug} />
 
           <div className="detail__body">
-            {sections.map((sec, idx) => (
-              <div key={idx}>
-                <h3>{sec.h}</h3>
-                <p>{sec.p}</p>
-              </div>
-            ))}
+            {sections.length > 0
+              ? sections.map((sec, idx) => (
+                  <div key={idx}>
+                    <h3>{sec.h}</h3>
+                    <p>{sec.p}</p>
+                  </div>
+                ))
+              : typeof incident.content === "string" && incident.content.trim()
+                ? incident.content
+                    .split(/\n\n+/)
+                    .map((p) => p.trim())
+                    .filter(Boolean)
+                    .map((para, idx) => <p key={idx}>{para}</p>)
+                : null}
           </div>
 
           <details className="detail__sources detail__sources--collapsed">
@@ -258,12 +323,9 @@ export default async function IncidentPage({ params }: IncidentPageProps) {
             />
           </details>
 
-          <div className="signoff">
+          <IncidentByline publishedAt={incident.date} />
+          <div className="signoff signoff--compact">
             <em>
-              Curated {formatIncidentDate(incident.date)} by the ahackaday team.
-              <span className="sep">/</span>
-              Sources verified.
-              <span className="sep">/</span>
               Brief grounded in {incident.sources.length} source{incident.sources.length === 1 ? "" : "s"}.
             </em>
           </div>

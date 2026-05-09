@@ -19,6 +19,7 @@ import type {
 import { INCIDENT_TYPE_OPTIONS } from "./incident-types";
 import { decodeHtmlEntities, stripInvisibleUnicode } from "./html-entities";
 import { omitEditorialListingNoise } from "./editorial-listing-filter";
+import { deriveCvssScore, deriveMitigationStatusFromSignals, derivePatchedIn } from "./incident-derived";
 
 export type { Incident, IncidentEvidence, IncidentFrontmatter, IncidentType, SocialDataQuality, SocialTrend, Severity };
 export { INCIDENT_TYPE_OPTIONS };
@@ -355,6 +356,57 @@ function dedupeBodyAgainstSummary(title: string, summary: string, body: string):
   return normalized;
 }
 
+function countSentences(text: string): number {
+  const t = normalizeDisplayText(text);
+  if (!t) return 0;
+  return t.split(/(?<=[.!?])\s+/).filter((s) => s.replace(/\s/g, "").length >= 8).length;
+}
+
+/**
+ * If the base article string has fewer than four sentences, splice in briefing and source material
+ * so LLMs and readers get enough factual surface to cite.
+ */
+function buildEnrichedArticleBody(input: {
+  base: string;
+  summary: string;
+  realWorldImpact: string;
+  whyCare: string;
+  actionItems: string[];
+  rawExcerpt: string;
+  severityRationale: string[];
+  sourceName: string;
+}): string {
+  if (countSentences(input.base) >= 4) return input.base;
+
+  const snippets: string[] = [];
+  const seen = new Set<string>();
+
+  const add = (s: string) => {
+    const t = trimToCompleteSentence(normalizeDisplayText(s));
+    if (!t || t.length < 20) return;
+    const key = t.slice(0, 56).toLowerCase();
+    if (seen.has(key)) return;
+    seen.add(key);
+    snippets.push(t);
+  };
+
+  add(input.base);
+  add(input.realWorldImpact);
+  add(input.whyCare);
+  add(input.summary);
+  for (const a of input.actionItems.slice(0, 2)) add(a);
+  for (const r of input.severityRationale.slice(0, 2)) add(r);
+
+  const rawCompact = normalizeDisplayText(input.rawExcerpt.replace(/\s+/g, " ").slice(0, 520));
+  if (rawCompact.length > 100) {
+    const clipped = trimToCompleteSentence(rawCompact + (rawCompact.endsWith(".") ? "" : "."));
+    add(clipped);
+  }
+  add(`Primary reporting traced to ${normalizeDisplayText(input.sourceName)}.`);
+
+  return sanitizeArticleBody(snippets.join(" "));
+}
+
 function sanitizeArticleBody(body: string): string {
   let cleaned = normalizeDisplayText(body);
   const cutMarkers = [
@@ -422,15 +474,6 @@ function mapDbRowToIncident(row: SupabaseIncidentRow, socialMetrics?: SupabaseSo
     "Apply vendor guidance or compensating controls in priority order.",
     "Track follow-up updates from primary sources and adjust response.",
   ];
-  const content = parsedBriefing
-    ? trimToCompleteSentence(parsedBriefing.realWorldImpact)
-    : sanitizeArticleBody(
-        dedupeBodyAgainstSummary(
-          cleanTitle,
-          summary,
-          row.raw_content.trim() || row.claude_summary.trim() || "Awaiting analyst summary.",
-        ),
-      );
   const incidentSeverityBase = normalizeSeverity(parsedBriefing?.severity ?? row.severity);
   const incidentExploited = parsedBriefing?.exploited ?? inferredExploited;
   const incidentCategory = classifyIncidentType(row);
@@ -444,6 +487,29 @@ function mapDbRowToIncident(row: SupabaseIncidentRow, socialMetrics?: SupabaseSo
     base: incidentSeverityBase,
   });
   const incidentSeverity = severityPack.severity;
+  const contentBase = parsedBriefing
+    ? trimToCompleteSentence(parsedBriefing.realWorldImpact)
+    : sanitizeArticleBody(
+        dedupeBodyAgainstSummary(
+          cleanTitle,
+          summary,
+          row.raw_content.trim() || row.claude_summary.trim() || "Awaiting analyst summary.",
+        ),
+      );
+  const content = buildEnrichedArticleBody({
+    base: contentBase,
+    summary,
+    realWorldImpact: parsedBriefing?.realWorldImpact || defaultImpact,
+    whyCare: parsedBriefing?.whyCare || defaultWhyCare,
+    actionItems: parsedBriefing?.actionItems.length ? parsedBriefing.actionItems : defaultActions,
+    rawExcerpt: row.raw_content,
+    severityRationale: severityPack.rationale,
+    sourceName: row.source_name,
+  });
+  const mitigationStatus = deriveMitigationStatusFromSignals(row.raw_content, summary);
+  const advisoryText = `${row.raw_content}\n${cleanTitle}`;
+  const cvssScore = deriveCvssScore(advisoryText);
+  const patchedIn = derivePatchedIn(advisoryText);
   const socialPulse = deriveSocialPulse({
     severity: incidentSeverity,
     exploited: incidentExploited,
@@ -479,7 +545,9 @@ function mapDbRowToIncident(row: SupabaseIncidentRow, socialMetrics?: SupabaseSo
     exploited: incidentExploited,
     category: incidentCategory,
     cve: parsedBriefing?.evidence.cves[0] ?? /CVE-\d{4}-\d+/i.exec(cleanTitle)?.[0],
-    mitigationStatus: "Monitoring updates",
+    mitigationStatus,
+    cvssScore,
+    patchedIn,
     sources: [row.source_url],
     content,
     socialMentions24h:
@@ -685,16 +753,31 @@ function getMarkdownIncidentBySlug(slug: string): Incident | null {
     evidence: createEmptyEvidence(),
     base: normalizeSeverity(data.severity),
   });
+  const mdBody = normalizeDisplayText(parsed.content.trim());
+  const mdMitigation = normalizeDisplayText(String(data.mitigationStatus ?? ""));
+  const mdAdvisory = `${mdBody}\n${mdTitle}`;
+  const content = buildEnrichedArticleBody({
+    base: mdBody,
+    summary: tldr,
+    realWorldImpact,
+    whyCare,
+    actionItems,
+    rawExcerpt: mdBody,
+    severityRationale: severityPackMd.rationale,
+    sourceName: "markdown frontmatter",
+  });
   return {
     ...data,
     title: mdTitle,
     affected: normalizeDisplayText(String(data.affected ?? "")),
     category: mdCategory,
-    mitigationStatus: normalizeDisplayText(String(data.mitigationStatus ?? "")),
+    mitigationStatus: mdMitigation || deriveMitigationStatusFromSignals(parsed.content, tldr),
+    cvssScore: deriveCvssScore(mdAdvisory),
+    patchedIn: derivePatchedIn(mdAdvisory),
     severity: severityPackMd.severity,
     summary: tldr,
     slug,
-    content: normalizeDisplayText(parsed.content.trim()),
+    content,
     tldr,
     realWorldImpact,
     whyCare,
@@ -902,6 +985,29 @@ export async function getIncidentBySlug(slug: string): Promise<Incident | null> 
   const hit = incidents.find((incident) => incident.slug === slug);
   if (hit) return hit;
   return getMarkdownIncidentBySlug(slug);
+}
+
+/** Load a single Supabase-backed incident by primary row UUID (for AEO workers / admin). */
+export async function getIncidentBySourceRowId(id: string): Promise<Incident | null> {
+  if (DATA_SOURCE !== "supabase") return null;
+  const client = getSupabaseServerClient();
+  if (!client) return null;
+  const { data: row, error } = await client
+    .from("incidents")
+    .select(
+      "id,canonical_id,canonical_version,merged_from,title,source_url,source_name,raw_content,claude_summary,severity,published_at,created_at",
+    )
+    .eq("id", id)
+    .maybeSingle();
+  if (error || !row) return null;
+  const { data: socialRow } = await client
+    .from("incident_social_metrics")
+    .select(
+      "incident_id,social_mentions_24h,social_trend,social_summary,social_delta_24h_pct,social_platform_split,social_keywords,source,updated_at,social_metric_explainers,x_mentions_24h,x_unique_authors_24h,x_verified_mentions_24h,x_retweet_sum_24h,x_like_sum_24h,x_quote_sum_24h,x_reply_sum_24h,x_heat_score,x_heat_trend,x_top_hashtags,x_top_terms",
+    )
+    .eq("incident_id", id)
+    .maybeSingle();
+  return mapDbRowToIncident(row as SupabaseIncidentRow, socialRow as SupabaseSocialMetricRow | undefined);
 }
 
 export async function getIncidentSlugs(): Promise<string[]> {

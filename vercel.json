@@ -3,6 +3,14 @@
     {
       "path": "/api/social/refresh?limit=8",
       "schedule": "*/30 * * * *"
+    },
+    {
+      "path": "/api/aeo/score/cron",
+      "schedule": "0 2 * * *"
+    },
+    {
+      "path": "/api/aeo/digest",
+      "schedule": "0 9 * * 1"
     }
   ]
 }

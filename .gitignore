@@ -41,3 +41,10 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 .env*.local
+
+# supabase CLI cache (linked project metadata)
+supabase/.temp/
+
+# Nested prototype repos / generated pulses (not site source)
+grace.ai/
+grace-ops/prototype/output/

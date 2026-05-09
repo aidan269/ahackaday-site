@@ -104,6 +104,10 @@ export type IncidentFrontmatter = {
   socialMetricsUpdatedAt?: string;
   /** Aggregated community ranking signal (votes/comments/saves). */
   communityScore?: number;
+  /** Parsed CVSS numeric score from advisory text, if found. */
+  cvssScore?: string | null;
+  /** Heuristic patched-in / fixed-in line from advisory text. */
+  patchedIn?: string | null;
 };
 
 export type IncidentEvidence = {
