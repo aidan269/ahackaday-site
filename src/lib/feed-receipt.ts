@@ -26,7 +26,7 @@ function focusLabel(focus: string): string | null {
   if (focus === "google") return "Google";
   if (focus === "microsoft") return "Microsoft";
   if (focus === "anthropic") return "Anthropic";
-  if (focus === "openai") return "OpenAI";
+  if (focus === "cantina") return "Cantina";
   return focus;
 }
 

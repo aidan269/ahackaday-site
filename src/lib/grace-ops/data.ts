@@ -1,6 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 
 import type { ContentData, TopicQueueItem } from "@/components/grace-ops/types";
+import type { Incident } from "@/lib/incident-types";
 import { deriveVulnLabel } from "@/lib/incident-vuln";
 import { getIncidentBySlug } from "@/lib/incidents";
 import { isAeoAdminUserId } from "@/lib/aeo/admin";
@@ -92,4 +93,34 @@ export async function fetchContentData(slug: string, viewerUserId: string | null
 /** @deprecated Use fetchContentData; triage data is assembled client-side in TriageTab. */
 export async function fetchTriageData(_slug: string): Promise<{ updated_at: string | null }> {
   return { updated_at: null };
+}
+
+/** Batch-load `total_score` from `aeo_scores` for feed cards (UUID-keyed incidents). */
+export async function fetchAeoScoresByIncidentIds(ids: string[]): Promise<Map<string, number>> {
+  const unique = [...new Set(ids.filter(Boolean))];
+  if (unique.length === 0) return new Map();
+  const supabase = getServiceClient();
+  if (!supabase) return new Map();
+
+  const { data, error } = await supabase.from("aeo_scores").select("incident_id, total_score").in("incident_id", unique);
+  if (error || !data) return new Map();
+
+  const m = new Map<string, number>();
+  for (const row of data) {
+    const id = row.incident_id as string;
+    m.set(id, Number(row.total_score));
+  }
+  return m;
+}
+
+/** Attach `aeoScore` to incidents that map to Supabase row ids (markdown-only rows get `null`). */
+export async function attachFeedAeoScores(incidents: Incident[]): Promise<Incident[]> {
+  const ids = incidents.map((i) => i.sourceRowIds?.[0]).filter((id): id is string => Boolean(id));
+  const scores = await fetchAeoScoresByIncidentIds(ids);
+  return incidents.map((inc) => {
+    const uuid = inc.sourceRowIds?.[0];
+    if (!uuid) return { ...inc, aeoScore: null };
+    const n = scores.get(uuid);
+    return { ...inc, aeoScore: n ?? null };
+  });
 }

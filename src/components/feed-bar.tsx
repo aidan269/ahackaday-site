@@ -41,7 +41,7 @@ const FOCUS_OPTS = [
   { value: "google", label: "Google" },
   { value: "microsoft", label: "Microsoft" },
   { value: "anthropic", label: "Anthropic" },
-  { value: "openai", label: "OpenAI" },
+  { value: "cantina", label: "Cantina" },
 ] as const;
 
 const SORT_OPTS = [

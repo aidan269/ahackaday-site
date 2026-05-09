@@ -717,7 +717,12 @@ main.shell { max-width: 1560px; margin: 0 auto; padding: 48px 40px 160px; positi
   justify-items: start;
 }
 .card__date .rel { display: block; font-size: 10px; color: var(--fg-muted); margin-top: 2px; }
-.card__main { min-width: 0; }
+.card__main { min-width: 0; display: flex; flex-direction: column; gap: 0; align-self: stretch; }
+.card__link--stack {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
 .card__tagline { display: flex; gap: 10px; align-items: center; font-size: 10.5px; color: var(--fg-3); margin-bottom: 8px; flex-wrap: wrap; }
 .card__flag { margin-left: auto; font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--sev-critical); }
 .card__time {
@@ -763,6 +768,13 @@ main.shell { max-width: 1560px; margin: 0 auto; padding: 48px 40px 160px; positi
   line-height: 1.4;
   font-style: italic;
 }
+.card__line .card__line-score {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  font-style: normal;
+}
+.card__line .card__line-score .score-chip { font-style: normal; }
 .card__line .card__cve { font-style: normal; flex-shrink: 0; }
 .card__cve { margin-left: 4px; border: 1px solid rgba(250,94,6,0.35); background: rgba(250,94,6,0.08); border-radius: 6px; padding: 2px 7px; font-size: 10px; letter-spacing: 0.08em; color: var(--brand-orange); text-transform: uppercase; }
 .card__social-inline {
@@ -1071,11 +1083,10 @@ main.shell { max-width: 1560px; margin: 0 auto; padding: 48px 40px 160px; positi
 
 .detail__keyfacts {
   margin: 0 0 20px;
-  padding: 14px 18px;
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  background: rgba(250, 94, 6, 0.06);
-  border-left: 4px solid var(--brand-orange);
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background: transparent;
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
   gap: 10px 20px;
@@ -1819,6 +1830,13 @@ body.has-sidebar main.shell {
   justify-content: center;
   flex-shrink: 0;
   color: currentColor;
+}
+.sidebar__focus-brand-icon {
+  display: block;
+  width: 14px;
+  height: 14px;
+  object-fit: contain;
+  opacity: 0.92;
 }
 
 .sidebar__count {

@@ -1,13 +1,21 @@
 "use client";
 
-export function ScoreChip({ score }: { score: number | null }) {
+export function ScoreChip({
+  score,
+  incidentHref,
+}: {
+  score: number | null;
+  /** Feed cards: navigate to incident page Grace Ops dock (full URL path, no origin). */
+  incidentHref?: string;
+}) {
   if (score == null) {
     return <span className="score-chip score-chip--na">—</span>;
   }
   const tier = score >= 75 ? "hi" : score >= 50 ? "mid" : "lo";
+  const href = incidentHref ? `${incidentHref}#grace-ops-dock` : "#grace-ops-dock";
   return (
     <a
-      href="#grace-ops-dock"
+      href={href}
       className={`score-chip score-chip--${tier}`}
       onClick={(e) => {
         try {
@@ -15,6 +23,7 @@ export function ScoreChip({ score }: { score: number | null }) {
         } catch {
           // ignore
         }
+        if (incidentHref) return;
         const el = document.getElementById("grace-ops-dock");
         if (el) {
           e.preventDefault();

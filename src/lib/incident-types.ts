@@ -108,6 +108,8 @@ export type IncidentFrontmatter = {
   cvssScore?: string | null;
   /** Heuristic patched-in / fixed-in line from advisory text. */
   patchedIn?: string | null;
+  /** AEO citation-worthiness score (0–100) when loaded from `aeo_scores` (e.g. feed). */
+  aeoScore?: number | null;
 };
 
 export type IncidentEvidence = {

@@ -6,8 +6,8 @@ import { useCallback, useState, type CSSProperties, type MouseEvent } from "reac
 import { useEmotionalPreferences } from "@/components/emotional-preferences-provider";
 import { IncidentVoteControls } from "@/components/incident-vote-controls";
 import { formatIncidentDate } from "@/lib/format-incident-date";
+import { ScoreChip } from "@/components/grace-ops/ScoreChip";
 import type { Incident, Severity, SocialDataQuality } from "@/lib/incident-types";
-import { buildOpsIocValues } from "@/lib/ops-iocs";
 import { truncateForDisplay } from "@/lib/truncate-display";
 
 const SEV_COLOR: Record<Severity, string> = {
@@ -78,8 +78,6 @@ export function IncidentItem({ incident, practitionerBadge }: Props) {
     ? `X ${incident.socialPlatformSplit.x}% · Reddit ${incident.socialPlatformSplit.reddit}% · GitHub ${incident.socialPlatformSplit.github}%`
     : null;
   const socialPreviewText = platformSplitPreview ?? socialPreviewParts.join(" · ");
-  const iocCount = buildOpsIocValues(incident).length;
-  const opsLine = `${iocCount} ioc · sgm · yra`;
   const isCantinaTweet = isCantinaTweetIncident(incident);
 
   const saved = isSaved(incident.slug);
@@ -106,8 +104,8 @@ export function IncidentItem({ incident, practitionerBadge }: Props) {
         <span className="rel">{rel(incident.date)}</span>
         <IncidentVoteControls incidentSlug={incident.slug} compact />
       </div>
-      <Link href={`/incident/${incident.slug}`} className="card__link" prefetch style={{ display: "contents" }}>
-        <div className="card__main">
+      <div className="card__main">
+        <Link href={`/incident/${incident.slug}`} className="card__link card__link--stack" prefetch>
           <div className="card__tagline">
             <span className={`sev-chip sev-${incident.severity}`} style={style}>{incident.severity}</span>
             <span className="cat-chip">{incident.category}</span>
@@ -132,20 +130,22 @@ export function IncidentItem({ incident, practitionerBadge }: Props) {
           </div>
           <h2 className="card__title">{incident.title}</h2>
           <p className="card__sum">{incident.summary}</p>
-          <div className="card__line">
-            <span className="k">ops</span>
-            <span className="card__line-v">{opsLine}</span>
-            {socialPreviewText && (
-              <>
-                <span className="card__meta-sep" aria-hidden>·</span>
-                <span className="k">social</span>
-                <span className="card__social-inline">{socialPreviewText}</span>
-              </>
-            )}
-            {cve && <span className="card__cve">{cve}</span>}
-          </div>
+        </Link>
+        <div className="card__line">
+          <span className="k">aeo</span>
+          <span className="card__line-score">
+            <ScoreChip score={incident.aeoScore ?? null} incidentHref={`/incident/${incident.slug}`} />
+          </span>
+          {socialPreviewText && (
+            <>
+              <span className="card__meta-sep" aria-hidden>·</span>
+              <span className="k">social</span>
+              <span className="card__social-inline">{socialPreviewText}</span>
+            </>
+          )}
+          {cve && <span className="card__cve">{cve}</span>}
         </div>
-      </Link>
+      </div>
       <button
         type="button"
         className={`card__star${saved ? " is-on" : ""}`}

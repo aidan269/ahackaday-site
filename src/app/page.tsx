@@ -12,6 +12,7 @@ import {
 } from "@/lib/incident-votes";
 import { buildFeedReceiptEmphasis } from "@/lib/feed-receipt";
 import type { FeedBarQuery } from "@/lib/feed-url";
+import { attachFeedAeoScores } from "@/lib/grace-ops/data";
 import { getAllIncidents, getIncidentDataSourceLabel, type IncidentType, type Severity } from "@/lib/incidents";
 import type { SocialDataQuality } from "@/lib/incident-types";
 import Image from "next/image";
@@ -311,10 +312,11 @@ export default async function Home({ searchParams }: HomeProps) {
   };
 
   const githubUsername = process.env.GITHUB_USERNAME || process.env.NEXT_PUBLIC_GITHUB_USERNAME || "aidan269";
-  const [all, gracePluginFeed] = await Promise.all([
+  const [allRaw, gracePluginFeed] = await Promise.all([
     getAllIncidents(),
     getGracePluginFeed(githubUsername),
   ]);
+  const all = await attachFeedAeoScores(allRaw);
   const dataSourceLabel = getIncidentDataSourceLabel();
   const allSlugs = all.map((incident) => incident.slug);
   const communitySlugs = allSlugs.slice(0, FEED_COMMUNITY_SLUG_LIMIT);

@@ -195,19 +195,17 @@ function IconAnthropic() {
   );
 }
 
-/** Hex blossom (OpenAI-adjacent). */
-function IconOpenAI() {
+/** Cantina — matches primary-source URLs from Cantina / Cantina X timeline. */
+function IconCantina() {
   return (
-    <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden>
-      <path
-        d="M7 2.2 9.9 4.1 9.9 7.9 7 9.8 4.1 7.9 4.1 4.1z"
-        stroke="currentColor"
-        strokeWidth="1.2"
-        fill="none"
-        strokeLinejoin="round"
-      />
-      <circle cx="7" cy="6" r="1.1" fill="currentColor" />
-    </svg>
+    <img
+      src="/cantina-logo.svg"
+      alt=""
+      width={14}
+      height={14}
+      className="sidebar__focus-brand-icon"
+      aria-hidden
+    />
   );
 }
 
@@ -221,8 +219,8 @@ function CompanyFocusIcon({ id }: { id: CompanyFocusId }) {
       return <IconMicrosoft />;
     case "anthropic":
       return <IconAnthropic />;
-    case "openai":
-      return <IconOpenAI />;
+    case "cantina":
+      return <IconCantina />;
     default: {
       const _x: never = id;
       return _x;
@@ -236,7 +234,7 @@ const COMPANY_FOCUS_LABELS: Record<CompanyFocusId, string> = {
   google: "google",
   microsoft: "microsoft",
   anthropic: "anthropic",
-  openai: "openai",
+  cantina: "cantina",
 };
 
 function SidebarBody({ counts, filters }: Props & { filters: UrlFilters }) {
