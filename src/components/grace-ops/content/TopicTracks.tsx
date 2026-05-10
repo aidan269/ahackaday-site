@@ -10,8 +10,6 @@ const KINDS: { icon: string; label: string; target: string }[] = [
 ];
 
 export function TopicTracks({ topics }: { topics: TopicQueueItem[] }) {
-  if (topics.length === 0) return null;
-
   async function spinDraft(topic: TopicQueueItem) {
     const res = await fetch("/api/cms/drafts", {
       method: "POST",
@@ -24,6 +22,40 @@ export function TopicTracks({ topics }: { topics: TopicQueueItem[] }) {
     }
     const j = await res.json().catch(() => ({}));
     window.alert((j as { error?: string }).error || "Request failed");
+  }
+
+  if (topics.length === 0) {
+    return (
+      <div className="lane__muted-stack content-topic-tracks--empty">
+        <div className="lane__muted-inner" aria-hidden>
+          <div className="content-topic-grid">
+            {KINDS.map((meta, idx) => (
+              <article key={meta.label} className="content-topic-card">
+                <div className="content-topic-card__hd">
+                  <span className={`content-topic-icon content-topic-icon--${idx % 4}`}>{meta.icon}</span>
+                  <div>
+                    <div className="content-topic-kind">{meta.label}</div>
+                    <div className="content-topic-target">
+                      target <b>{meta.target}</b>
+                    </div>
+                  </div>
+                </div>
+                <p className="content-topic-query">
+                  <strong>Digest topic query when matched to this incident</strong>
+                </p>
+                <p className="content-topic-tldr">Suggested angle from the weekly digest queue.</p>
+                <button type="button" className="btn-primary content-topic-spin" tabIndex={-1}>
+                  spin up draft
+                </button>
+              </article>
+            ))}
+          </div>
+        </div>
+        <div className="lane__muted-overlay" role="presentation">
+          <span className="lane__muted-badge">Topic tracks unavailable</span>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -41,7 +73,9 @@ export function TopicTracks({ topics }: { topics: TopicQueueItem[] }) {
                 </div>
               </div>
             </div>
-            <p className="content-topic-query"><strong>{topic.target_query}</strong></p>
+            <p className="content-topic-query">
+              <strong>{topic.target_query}</strong>
+            </p>
             <p className="content-topic-tldr">{topic.draft_tldr_40w}</p>
             <button type="button" className="btn-primary content-topic-spin" onClick={() => void spinDraft(topic)}>
               spin up draft

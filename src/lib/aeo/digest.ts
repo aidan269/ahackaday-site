@@ -39,7 +39,8 @@ export async function runDigest(now = new Date()): Promise<RunDigestResult> {
 
   const weekStart = utcMondayContaining(now);
   const end = new Date(now);
-  const start = new Date(end.getTime() - 7 * 864e5);
+  const lookbackDays = Math.min(365, Math.max(1, Number(process.env.AEO_DIGEST_LOOKBACK_DAYS ?? "7") || 7));
+  const start = new Date(end.getTime() - lookbackDays * 864e5);
 
   const { data: scores, error: sErr } = await supabase
     .from("aeo_scores")

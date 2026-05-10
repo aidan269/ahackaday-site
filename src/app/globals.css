@@ -1081,6 +1081,61 @@ main.shell { max-width: 1560px; margin: 0 auto; padding: 48px 40px 160px; positi
 .detail__title { font-size: clamp(32px, 4.8vw, 56px); line-height: 1.0; font-weight: 500; letter-spacing: -0.04em; color: var(--fg); margin: 0; max-width: 16ch; text-wrap: balance; }
 .detail__lead { font-size: 15px; line-height: 1.65; color: var(--fg-2); max-width: 72ch; margin: 0; }
 
+/* Incident detail — headline + lede (GT America) */
+.incident__title {
+  font-family: "GT America", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-size: 48px;
+  font-weight: 700;
+  line-height: 1.04;
+  letter-spacing: -0.028em;
+  color: var(--fg);
+  max-width: 22ch;
+  text-wrap: balance;
+  margin: 0 0 18px;
+}
+@media (max-width: 720px) {
+  .incident__title {
+    font-size: 34px;
+    letter-spacing: -0.022em;
+  }
+}
+.incident__lede {
+  font-family: "GT America", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-size: 22px;
+  font-weight: 400;
+  line-height: 1.42;
+  letter-spacing: -0.012em;
+  color: var(--fg-2);
+  max-width: 56ch;
+  text-wrap: pretty;
+  margin: 0 0 28px;
+}
+.incident__lede em {
+  font-style: normal;
+  background: linear-gradient(transparent 65%, rgba(250, 94, 6, 0.18) 65%);
+  padding: 0 2px;
+  color: var(--fg);
+}
+@media (max-width: 720px) {
+  .incident__lede {
+    font-size: 18px;
+    line-height: 1.45;
+  }
+}
+
+/* Incident article — body copy readability */
+article.detail .detail__body p {
+  font-size: 16px;
+  line-height: 1.72;
+  letter-spacing: -0.01em;
+}
+@media (max-width: 720px) {
+  article.detail .detail__body p {
+    font-size: 15px;
+    line-height: 1.68;
+  }
+}
+
 .detail__keyfacts {
   margin: 0 0 20px;
   padding: 0;
@@ -3462,6 +3517,10 @@ a.open-in-grace:focus-visible {
 }
 .content-edits-public { margin-top: 4px; }
 .content-edits-public__sum { cursor: pointer; font-size: 12px; color: var(--ink-3); }
+
+.content-topic-tracks--empty {
+  min-height: 140px;
+}
 
 .content-topic-grid {
   display: grid;

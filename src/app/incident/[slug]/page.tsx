@@ -240,7 +240,8 @@ export default async function IncidentPage({ params }: IncidentPageProps) {
                 <IncidentVoteControls incidentSlug={incident.slug} />
               </div>
             </div>
-            <h1 className="detail__title">{incident.title}</h1>
+            <h1 className="incident__title">{incident.title}</h1>
+            {incident.summary.trim() ? <p className="incident__lede">{incident.summary}</p> : null}
           </div>
 
           <div className="detail__body">

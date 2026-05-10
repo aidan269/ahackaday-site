@@ -989,7 +989,7 @@ export async function getIncidentBySlug(slug: string): Promise<Incident | null> 
 
 /** Load a single Supabase-backed incident by primary row UUID (for AEO workers / admin). */
 export async function getIncidentBySourceRowId(id: string): Promise<Incident | null> {
-  if (DATA_SOURCE !== "supabase") return null;
+  /** UUID lookups are DB-only; do not gate on DATA_SOURCE so CLI/cron can score when env omits DATA_SOURCE=supabase. */
   const client = getSupabaseServerClient();
   if (!client) return null;
   const { data: row, error } = await client

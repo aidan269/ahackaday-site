@@ -395,7 +395,11 @@ async function runPhaseE(
         ['edits', html.includes("content-rec-card") || html.includes("<details")],
         ['triage_tab', html.includes("ops__tab")],
         ['detail_body', html.includes('class="detail__body"')],
-        ['detail_title', html.includes('class="detail__title"')],
+        [
+          'detail_title',
+          html.includes('class="incident__title"') ||
+            html.includes('class="detail__title"'),
+        ],
         ['methodology_link', html.includes("/about/methodology")],
       ];
       // #region agent log
