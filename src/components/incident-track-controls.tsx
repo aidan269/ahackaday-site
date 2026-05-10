@@ -6,7 +6,14 @@ import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
 
 const DEFAULT_THRESHOLD = 3;
 
-export function IncidentTrackControls({ incidentSlug }: { incidentSlug: string }) {
+export function IncidentTrackControls({
+  incidentSlug,
+  compact = false,
+}: {
+  incidentSlug: string;
+  /** Shorter copy + tighter layout for the incident header toolbar. */
+  compact?: boolean;
+}) {
   const [following, setFollowing] = useState(false);
   const [threshold, setThreshold] = useState<number>(DEFAULT_THRESHOLD);
   const [loading, setLoading] = useState(true);
@@ -75,7 +82,10 @@ export function IncidentTrackControls({ incidentSlug }: { incidentSlug: string }
   const th = Number.isFinite(threshold) && threshold > 0 ? Math.round(threshold) : DEFAULT_THRESHOLD;
 
   return (
-    <div className="track-controls track-controls--pill" aria-busy={saving}>
+    <div
+      className={["track-controls", "track-controls--pill", compact ? "track-controls--compact" : ""].filter(Boolean).join(" ")}
+      aria-busy={saving}
+    >
       <span className="track-controls__bell" aria-hidden>
         🔔
       </span>
@@ -87,10 +97,12 @@ export function IncidentTrackControls({ incidentSlug }: { incidentSlug: string }
         title={
           following
             ? "Stop mention alerts for this incident"
-            : "Email when cross-platform mentions reach your threshold (requires sign-in)"
+            : compact
+              ? `Notify when mentions ≥ ${th} (sign in)`
+              : "Email when cross-platform mentions reach your threshold (requires sign-in)"
         }
       >
-        {following ? "Stop alerts" : "Notify me when mentions"}
+        {compact ? (following ? "On" : "Alert") : following ? "Stop alerts" : "Notify me when mentions"}
       </button>
       <span className="track-controls__ge" aria-hidden>
         ≥

@@ -32,11 +32,6 @@ import {
   getIncidentBySlug,
 } from "@/lib/incidents";
 
-function truncateMetaLabel(value: string, max = 44): string {
-  const t = value.trim();
-  if (t.length <= max) return t;
-  return `${t.slice(0, max - 1)}…`;
-}
 
 /** Session cookies + `getServerSupabaseUser()` require per-request rendering (admin Content tab). */
 export const dynamic = "force-dynamic";
@@ -258,39 +253,26 @@ export default async function IncidentPage({ params }: IncidentPageProps) {
   return (
     <main className="shell">
       <div className="detail-with-ai view-fade">
-        <article className={`detail ${incident.severity === "critical" ? "is-critical" : ""}`}>
+        <article className={`detail detail--incident ${incident.severity === "critical" ? "is-critical" : ""}`}>
           <div className="detail__bar">
             <Link href="/" className="back-link">back to feed</Link>
           </div>
 
           <div className="detail__head">
-            <div className="detail__head-top">
-              <div className="detail__head-row">
-                <div className="detail__head-meta">
-                  <div className="detail__head-meta__left">
-                    <span className="detail__meta-date">{formatIncidentDate(incident.date)}</span>
-                    <SeverityChipExplainer severity={incident.severity} rationale={incident.severityInference ?? []} />
-                  </div>
-                  <div className="detail__head-meta__right">
-                    <span className="detail__meta-chip">{incident.category}</span>
-                    {(incident.mitigationStatus ?? "").trim() ? (
-                      <span
-                        className="detail__meta-chip detail__meta-chip--soft"
-                        title={incident.mitigationStatus}
-                      >
-                        {truncateMetaLabel(incident.mitigationStatus ?? "")}
-                      </span>
-                    ) : null}
-                    <span className="detail__aeo-pill">
-                      <span className="detail__aeo-pill__lab">AEO</span>
-                      <ScoreChip score={contentData?.total_score ?? null} />
-                    </span>
-                  </div>
-                </div>
-                <div className="detail__bar-stack">
-                  <IncidentTrackControls incidentSlug={incident.slug} />
-                  <IncidentVoteControls incidentSlug={incident.slug} caption="IS THIS USEFUL?" />
-                </div>
+            <div className="detail__head-toolbar">
+              <div className="detail__toolbar-cluster detail__toolbar-cluster--primary">
+                <span className="detail__meta-date">{formatIncidentDate(incident.date)}</span>
+                <SeverityChipExplainer severity={incident.severity} rationale={incident.severityInference ?? []} />
+                <span className="detail__meta-chip detail__meta-chip--category">{incident.category}</span>
+              </div>
+              <div className="detail__toolbar-cluster detail__toolbar-cluster--actions">
+                <ScoreChip score={contentData?.total_score ?? null} />
+                <IncidentTrackControls incidentSlug={incident.slug} compact />
+                <IncidentVoteControls
+                  incidentSlug={incident.slug}
+                  compact
+                  groupAriaLabel="Was this write-up useful?"
+                />
               </div>
             </div>
             {cmsByline ? <p className="incident__byline">{cmsByline}</p> : null}

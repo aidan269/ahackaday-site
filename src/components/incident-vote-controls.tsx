@@ -17,11 +17,14 @@ export function IncidentVoteControls({
   /** When true, use a stacked layout suited to the narrow feed card date column. */
   compact = false,
   caption,
+  /** Accessible name for the vote control group (incident toolbar). */
+  groupAriaLabel,
 }: {
   incidentSlug: string;
   compact?: boolean;
   /** Short mono label above the vote stack (incident detail header). */
   caption?: string | null;
+  groupAriaLabel?: string;
 }) {
   const prefs = useEmotionalPreferencesOptional();
   const userEmail = prefs?.userEmail ?? null;
@@ -130,6 +133,8 @@ export function IncidentVoteControls({
         compact ? "vote-controls--reddit-narrow" : "vote-controls--reddit-wide",
         caption ? "vote-controls--captioned" : "",
       ].filter(Boolean).join(" ")}
+      role={groupAriaLabel ? "group" : undefined}
+      aria-label={groupAriaLabel}
     >
       {caption ? <span className="vote-controls__caption">{caption}</span> : null}
       <button
