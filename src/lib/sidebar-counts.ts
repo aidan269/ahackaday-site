@@ -13,6 +13,7 @@ export type SidebarCounts = {
   high: number;
   medium: number;
   low: number;
+  unclassified: number;
   zeroDay: number;
   ransomware: number;
   ai: number;
@@ -26,6 +27,7 @@ export function computeSidebarCounts(all: Incident[]): SidebarCounts {
     high: 0,
     medium: 0,
     low: 0,
+    unclassified: 0,
     zeroDay: 0,
     ransomware: 0,
     ai: 0,

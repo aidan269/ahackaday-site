@@ -29,6 +29,7 @@
   --sev-high: #FF5A4E;
   --sev-medium: #F2B100;
   --sev-low: #7DE2B5;
+  --sev-unclassified: #9A9A9E;
 
   --ease: cubic-bezier(0.22, 1, 0.36, 1);
 }
@@ -705,6 +706,9 @@ main.shell { max-width: 1560px; margin: 0 auto; padding: 48px 40px 160px; positi
 .card--low {
   opacity: 0.84;
 }
+.card--unclassified {
+  background: color-mix(in srgb, var(--sev-unclassified) 2.5%, #fff);
+}
 
 .card__date {
   font-size: 11.5px;
@@ -745,6 +749,11 @@ main.shell { max-width: 1560px; margin: 0 auto; padding: 48px 40px 160px; positi
   background: color-mix(in srgb, var(--sev-high) 14%, transparent);
   border-color: color-mix(in srgb, var(--sev-high) 52%, transparent);
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--sev-high) 40%, transparent) inset;
+}
+.sev-chip.sev-unclassified {
+  background: color-mix(in srgb, var(--sev-unclassified) 12%, transparent);
+  border-color: color-mix(in srgb, var(--sev-unclassified) 45%, transparent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--sev-unclassified) 28%, transparent) inset;
 }
 .cat-chip { color: var(--fg-3); font-size: 11px; }
 .cat-chip::before { content: ""; }
@@ -933,59 +942,92 @@ main.shell { max-width: 1560px; margin: 0 auto; padding: 48px 40px 160px; positi
   gap: 8px 16px;
   margin-bottom: 10px;
 }
-/* Stack track/vote out of flow so row height follows tags only (avoids tall flex sibling gap above title). */
 .detail__head-top {
-  position: relative;
-  margin-bottom: 12px;
+  margin-bottom: 14px;
 }
-.detail__head-top .detail__tags {
-  margin-bottom: 0;
-  min-width: 0;
-  padding-right: clamp(104px, 32vw, 228px);
+.detail__head-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px 24px;
+  width: 100%;
 }
-.detail__aeo-score-wrap {
+.detail__head-meta {
+  flex: 1;
+  min-width: min(100%, 260px);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 20px;
+}
+.detail__head-meta__left,
+.detail__head-meta__right {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 14px;
+}
+.detail__meta-date {
+  font-size: 10.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--fg-3);
+}
+.detail__meta-chip {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--fg-2);
+  padding: 4px 9px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--bg) 96%, var(--fg-2));
+}
+.detail__meta-chip--soft {
+  font-weight: 500;
+  color: var(--fg-3);
+  max-width: min(42vw, 220px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.detail__aeo-pill {
   display: inline-flex;
   align-items: center;
   gap: 6px;
+  padding: 2px 10px 2px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--bg-elev-1);
 }
-.detail__aeo-score-label {
-  font-size: 0.72rem;
-  font-weight: 600;
-  color: var(--fg-2);
-  letter-spacing: 0.05em;
+.detail__aeo-pill__lab {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
-}
-.detail__head-top .detail__bar-stack {
-  position: absolute;
-  top: 0;
-  right: 0;
-  z-index: 1;
+  color: var(--fg-3);
 }
 .detail__bar-stack {
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  gap: 8px;
+  gap: 10px;
   flex-shrink: 0;
 }
 
 @media (max-width: 900px) {
-  .detail__head-top {
-    display: flex;
+  .detail__head-row {
     flex-direction: column;
     align-items: stretch;
-    gap: 10px;
   }
-  .detail__head-top .detail__tags {
-    padding-right: 0;
-  }
-  .detail__head-top .detail__bar-stack {
-    position: static;
+  .detail__bar-stack {
     flex-direction: row;
     flex-wrap: wrap;
     justify-content: flex-end;
     align-items: flex-start;
-    z-index: auto;
   }
 }
 .vote-controls {
@@ -1056,6 +1098,19 @@ main.shell { max-width: 1560px; margin: 0 auto; padding: 48px 40px 160px; positi
   font-size: 13px;
   min-width: 1.5rem;
 }
+.vote-controls--captioned.vote-controls--reddit .vote-controls__caption {
+  grid-column: 1 / -1;
+  justify-self: end;
+}
+.vote-controls__caption {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--fg-3);
+  margin: 0;
+  line-height: 1.2;
+}
 /* Comment thread: same pattern, tighter. */
 .vote-controls--reddit-thread {
   padding: 4px 4px;
@@ -1082,6 +1137,14 @@ main.shell { max-width: 1560px; margin: 0 auto; padding: 48px 40px 160px; positi
 .detail__lead { font-size: 15px; line-height: 1.65; color: var(--fg-2); max-width: 72ch; margin: 0; }
 
 /* Incident detail — headline + lede (GT America) */
+.incident__byline {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--ink-2);
+  margin: 0 0 14px;
+  max-width: 72ch;
+}
 .incident__title {
   font-family: "GT America", "Helvetica Neue", Helvetica, Arial, sans-serif;
   font-size: 48px;
@@ -5167,19 +5230,67 @@ a.open-in-grace:focus-visible {
   gap: 8px;
   font-size: 10px;
 }
-.track-controls__alert {
+.track-controls--pill {
   display: inline-flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 6px;
+  gap: 6px 10px;
+  padding: 6px 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.96);
+  font-size: 11px;
+}
+.track-controls__bell {
+  font-size: 14px;
+  line-height: 1;
+  opacity: 0.92;
+}
+.track-controls__cta {
+  border: none;
+  background: transparent;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--fg-2);
+  cursor: pointer;
+  padding: 4px 2px;
+  letter-spacing: -0.01em;
+}
+.track-controls__cta:hover {
+  color: var(--brand-orange);
+}
+.track-controls__cta.is-on {
+  color: var(--brand-orange);
+}
+.track-controls__ge {
+  font-family: var(--font-mono);
+  font-size: 12px;
   color: var(--fg-3);
 }
-.track-controls__alert input {
-  width: 88px;
+.track-controls__threshold {
+  width: 44px;
   border: 1px solid var(--border);
   border-radius: 6px;
   padding: 4px 6px;
   background: var(--bg);
   color: var(--fg);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  text-align: center;
+}
+.track-controls__threshold-wrap {
+  margin: 0;
+}
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 .prov-grid {
   display: grid;

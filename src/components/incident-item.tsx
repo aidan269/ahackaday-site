@@ -15,6 +15,7 @@ const SEV_COLOR: Record<Severity, string> = {
   high: "var(--sev-high)",
   medium: "var(--sev-medium)",
   low: "var(--sev-low)",
+  unclassified: "var(--sev-unclassified)",
 };
 
 function fmtShort(iso: string) {

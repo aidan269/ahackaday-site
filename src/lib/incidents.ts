@@ -37,6 +37,7 @@ const severityRank: Record<Severity, number> = {
   high: 3,
   medium: 2,
   low: 1,
+  unclassified: 0,
 };
 
 type SupabaseIncidentRow = {
@@ -92,8 +93,13 @@ type StructuredBriefing = {
 };
 
 function normalizeSeverity(value: unknown): Severity {
-  if (value === "critical" || value === "high" || value === "medium" || value === "low") return value;
-  return "medium";
+  if (value === undefined || value === null) return "unclassified";
+  if (typeof value !== "string") return "unclassified";
+  const v = value.trim().toLowerCase();
+  if (v === "") return "unclassified";
+  if (v === "critical" || v === "high" || v === "medium" || v === "low") return v;
+  if (v === "unclassified" || v === "unknown" || v === "tbd") return "unclassified";
+  return "unclassified";
 }
 
 function maxSeverity(a: Severity, b: Severity): Severity {
@@ -681,6 +687,7 @@ function deriveSocialPulse(input: {
     high: 650,
     medium: 280,
     low: 140,
+    unclassified: 120,
   };
 
   let mentions = baseBySeverity[input.severity];
@@ -694,6 +701,7 @@ function deriveSocialPulse(input: {
   if (input.exploited) velocityScore += 3;
   if (input.severity === "critical") velocityScore += 2;
   if (input.severity === "high") velocityScore += 1;
+  if (input.severity === "unclassified") velocityScore -= 1;
   if (/zero-day|ransom|breach|active|campaign|exploit/i.test(text)) velocityScore += 2;
   if (/patch|resolved|contained|postmortem|recovery/i.test(text)) velocityScore -= 2;
   velocityScore += (stableHash % 5) - 2;
@@ -1091,6 +1099,8 @@ export function getSeverityTone(severity: Severity): string {
       return "text-amber-300 border-amber-500/50 bg-amber-500/10";
     case "low":
       return "text-emerald-300 border-emerald-500/50 bg-emerald-500/10";
+    case "unclassified":
+      return "text-zinc-400 border-zinc-500/50 bg-zinc-500/10";
     default:
       return "text-zinc-300 border-zinc-500/50 bg-zinc-500/10";
   }

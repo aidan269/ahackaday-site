@@ -24,6 +24,7 @@ const SEV_COLOR: Record<Severity, string> = {
   high: "var(--sev-high)",
   medium: "var(--sev-medium)",
   low: "var(--sev-low)",
+  unclassified: "var(--sev-unclassified)",
 };
 
 function toMonthKey(date: Date) {
@@ -175,6 +176,7 @@ export default async function CalendarPage({ searchParams }: CalendarPageProps) 
             <option value="high">high</option>
             <option value="medium">medium</option>
             <option value="low">low</option>
+            <option value="unclassified">unclassified</option>
           </select>
         </div>
         <div className="cal-filter">
@@ -207,6 +209,7 @@ export default async function CalendarPage({ searchParams }: CalendarPageProps) 
         <span className="cal-legend__item"><i style={{ ["--sev" as string]: "var(--sev-high)" } as CSSProperties} />high</span>
         <span className="cal-legend__item"><i style={{ ["--sev" as string]: "var(--sev-medium)" } as CSSProperties} />medium</span>
         <span className="cal-legend__item"><i style={{ ["--sev" as string]: "var(--sev-low)" } as CSSProperties} />low</span>
+        <span className="cal-legend__item"><i style={{ ["--sev" as string]: "var(--sev-unclassified)" } as CSSProperties} />unclassified</span>
         <span className="cal-legend__item"><i className="is-exploited" />exploited-in-the-wild</span>
       </div>
 

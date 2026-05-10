@@ -357,6 +357,7 @@ function computeMetricsProxy(input: {
     high: 70,
     medium: 50,
     low: 30,
+    unclassified: 25,
   };
   const base = severityBase[input.severity] ?? 50;
   const relatedLift = Math.min(15, input.relatedCount * 3);

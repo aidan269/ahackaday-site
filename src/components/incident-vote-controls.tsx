@@ -16,9 +16,12 @@ export function IncidentVoteControls({
   incidentSlug,
   /** When true, use a stacked layout suited to the narrow feed card date column. */
   compact = false,
+  caption,
 }: {
   incidentSlug: string;
   compact?: boolean;
+  /** Short mono label above the vote stack (incident detail header). */
+  caption?: string | null;
 }) {
   const prefs = useEmotionalPreferencesOptional();
   const userEmail = prefs?.userEmail ?? null;
@@ -125,8 +128,10 @@ export function IncidentVoteControls({
         "vote-controls",
         "vote-controls--reddit",
         compact ? "vote-controls--reddit-narrow" : "vote-controls--reddit-wide",
-      ].join(" ")}
+        caption ? "vote-controls--captioned" : "",
+      ].filter(Boolean).join(" ")}
     >
+      {caption ? <span className="vote-controls__caption">{caption}</span> : null}
       <button
         type="button"
         className={`vote-controls__btn${state.viewerVote === 1 ? " is-active is-up" : ""}`}

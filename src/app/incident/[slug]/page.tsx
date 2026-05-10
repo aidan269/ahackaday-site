@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import type { ReactNode } from "react";
 import { notFound } from "next/navigation";
 
 import { AskAI } from "@/components/ask-ai";
@@ -20,10 +21,22 @@ import type { Incident, SocialDataQuality } from "@/lib/incident-types";
 import { fetchContentData } from "@/lib/grace-ops/data";
 import { getServerSupabaseUser } from "@/lib/supabase-server";
 import {
+  extractBylineFromSummary,
+  filterBodyParagraphs,
+  filterIncidentBodySections,
+  firstSentence,
+} from "@/lib/incident-detail-display";
+import {
   formatIncidentDate,
   getAllIncidents,
   getIncidentBySlug,
 } from "@/lib/incidents";
+
+function truncateMetaLabel(value: string, max = 44): string {
+  const t = value.trim();
+  if (t.length <= max) return t;
+  return `${t.slice(0, max - 1)}…`;
+}
 
 /** Session cookies + `getServerSupabaseUser()` require per-request rendering (admin Content tab). */
 export const dynamic = "force-dynamic";
@@ -43,7 +56,8 @@ export async function generateMetadata({ params }: IncidentPageProps): Promise<M
   if (!incident) return { title: "Incident Not Found" };
   const siteUrl = getPublicSiteUrl();
   const title = `${incident.title} | AHackaday`;
-  const description = incident.summary;
+  const ledeForMeta = extractBylineFromSummary(incident.summary).lede.trim();
+  const description = ledeForMeta || incident.summary.trim();
   const url = `/incident/${incident.slug}`;
   const canonical = new URL(url, siteUrl).toString();
   const image = new URL(`/incident/${incident.slug}/opengraph-image`, siteUrl).toString();
@@ -169,7 +183,10 @@ export default async function IncidentPage({ params }: IncidentPageProps) {
 
   const auditBundle = await fetchIncidentClaimsAndRevisions(incident.sourceRowIds ?? []);
   const trackingId = incident.cve || incident.evidence.cves[0] || null;
-  const sections = Array.isArray(incident.content) ? incident.content : [];
+  const { byline: cmsByline, lede: ledeText } = extractBylineFromSummary(incident.summary);
+  const ledeFirstSentence = firstSentence(ledeText);
+  const contentSections = Array.isArray(incident.content) ? incident.content : [];
+  const flatBodyString = typeof incident.content === "string" ? incident.content.trim() : "";
   const socialMentionsLabel =
     incident.socialDataQuality === "pending"
       ? "pending scan"
@@ -216,6 +233,28 @@ export default async function IncidentPage({ params }: IncidentPageProps) {
   ];
   const showSocialNarrative = shouldShowSocialNarrative(incident);
 
+  let detailBody: ReactNode = null;
+  if (contentSections.length > 0) {
+    const filteredSections = filterIncidentBodySections(
+      contentSections as { h: string; p: string }[],
+      incident.title,
+      ledeFirstSentence,
+    );
+    detailBody = filteredSections.map((sec, idx) => (
+      <div key={`${sec.h}-${idx}`}>
+        <h3>{sec.h}</h3>
+        {sec.p.trim() ? <p>{sec.p}</p> : null}
+      </div>
+    ));
+  } else if (flatBodyString) {
+    const paras = flatBodyString
+      .split(/\n\n+/)
+      .map((p) => p.trim())
+      .filter(Boolean);
+    const filteredParas = filterBodyParagraphs(paras, incident.title, ledeFirstSentence);
+    detailBody = filteredParas.map((para, idx) => <p key={idx}>{para}</p>);
+  }
+
   return (
     <main className="shell">
       <div className="detail-with-ai view-fade">
@@ -226,40 +265,40 @@ export default async function IncidentPage({ params }: IncidentPageProps) {
 
           <div className="detail__head">
             <div className="detail__head-top">
-              <div className="detail__tags">
-                <span style={{ color: "var(--fg-2)" }}>{formatIncidentDate(incident.date)}</span>
-                <SeverityChipExplainer severity={incident.severity} rationale={incident.severityInference ?? []} />
-                <span>{incident.category}</span>
-                <span className="detail__aeo-score-wrap">
-                  <span className="detail__aeo-score-label">AEO score</span>
-                  <ScoreChip score={contentData?.total_score ?? null} />
-                </span>
-              </div>
-              <div className="detail__bar-stack">
-                <IncidentTrackControls incidentSlug={incident.slug} />
-                <IncidentVoteControls incidentSlug={incident.slug} />
+              <div className="detail__head-row">
+                <div className="detail__head-meta">
+                  <div className="detail__head-meta__left">
+                    <span className="detail__meta-date">{formatIncidentDate(incident.date)}</span>
+                    <SeverityChipExplainer severity={incident.severity} rationale={incident.severityInference ?? []} />
+                  </div>
+                  <div className="detail__head-meta__right">
+                    <span className="detail__meta-chip">{incident.category}</span>
+                    {(incident.mitigationStatus ?? "").trim() ? (
+                      <span
+                        className="detail__meta-chip detail__meta-chip--soft"
+                        title={incident.mitigationStatus}
+                      >
+                        {truncateMetaLabel(incident.mitigationStatus ?? "")}
+                      </span>
+                    ) : null}
+                    <span className="detail__aeo-pill">
+                      <span className="detail__aeo-pill__lab">AEO</span>
+                      <ScoreChip score={contentData?.total_score ?? null} />
+                    </span>
+                  </div>
+                </div>
+                <div className="detail__bar-stack">
+                  <IncidentTrackControls incidentSlug={incident.slug} />
+                  <IncidentVoteControls incidentSlug={incident.slug} caption="IS THIS USEFUL?" />
+                </div>
               </div>
             </div>
+            {cmsByline ? <p className="incident__byline">{cmsByline}</p> : null}
             <h1 className="incident__title">{incident.title}</h1>
-            {incident.summary.trim() ? <p className="incident__lede">{incident.summary}</p> : null}
+            {ledeText.trim() ? <p className="incident__lede">{ledeText}</p> : null}
           </div>
 
-          <div className="detail__body">
-            {sections.length > 0
-              ? sections.map((sec, idx) => (
-                  <div key={idx}>
-                    <h3>{sec.h}</h3>
-                    <p>{sec.p}</p>
-                  </div>
-                ))
-              : typeof incident.content === "string" && incident.content.trim()
-                ? incident.content
-                    .split(/\n\n+/)
-                    .map((p) => p.trim())
-                    .filter(Boolean)
-                    .map((para, idx) => <p key={idx}>{para}</p>)
-                : null}
-          </div>
+          <div className="detail__body">{detailBody}</div>
 
           <IncidentDock
             incident={incident}

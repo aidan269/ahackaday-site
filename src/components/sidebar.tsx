@@ -314,6 +314,14 @@ function SidebarBody({ counts, filters }: Props & { filters: UrlFilters }) {
           <span>medium</span>
           <span className="sidebar__count">{counts.medium}</span>
         </Link>
+        <Link
+          href={buildFeedHref({ severity: "unclassified" })}
+          className={`sidebar__item${sevActive("unclassified") ? " is-active" : ""}`}
+        >
+          <span className="sidebar__sev-dot" style={{ ["--sev" as string]: "var(--sev-unclassified)" } as CSSProperties} />
+          <span>unclassified</span>
+          <span className="sidebar__count">{counts.unclassified}</span>
+        </Link>
       </nav>
 
       <div className="sidebar__section-label">focus</div>

@@ -41,6 +41,7 @@ const SEVERITY_ORDER: Record<Severity, number> = {
   high: 3,
   medium: 2,
   low: 1,
+  unclassified: 0,
 };
 
 /** Matches ScoreCard “high” tier — citation-worthiness feed filter. */
@@ -369,6 +370,7 @@ export default async function Home({ searchParams }: HomeProps) {
     if (socialValue === "aeo-high") {
       const s = i.aeoScore;
       if (typeof s !== "number" || Number.isNaN(s) || s < HIGH_AEO_SCORE_MIN) return false;
+      if (i.severity === "unclassified") return false;
     }
     if (socialValue === "twitter-mentions" && getPlatformMentions(i, "x") < 20) return false;
     if (socialValue === "reddit-mentions" && getPlatformMentions(i, "reddit") < 20) return false;

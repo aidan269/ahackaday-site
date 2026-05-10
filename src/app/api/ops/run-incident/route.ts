@@ -21,7 +21,13 @@ type RequestBody = {
 };
 
 function isSeverity(value: string | undefined): value is Severity {
-  return value === "critical" || value === "high" || value === "medium" || value === "low";
+  return (
+    value === "critical"
+    || value === "high"
+    || value === "medium"
+    || value === "low"
+    || value === "unclassified"
+  );
 }
 
 export async function POST(request: Request) {

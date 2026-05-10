@@ -1,4 +1,4 @@
-export type Severity = "critical" | "high" | "medium" | "low";
+export type Severity = "critical" | "high" | "medium" | "low" | "unclassified";
 export type SocialTrend = "up" | "flat" | "down";
 
 /** Provenance for merged social metrics (Supabase + /api/social/refresh). */
@@ -57,7 +57,8 @@ export type IncidentRevisionRecord = {
 export type IncidentFrontmatter = {
   title: string;
   date: string;
-  severity: Severity;
+  /** When omitted or invalid in source YAML, loaders normalize to `unclassified`. */
+  severity?: Severity;
   affected: string;
   summary: string;
   category: string;
@@ -120,7 +121,9 @@ export type IncidentEvidence = {
   systems: string[];
 };
 
-export type Incident = IncidentFrontmatter & {
+export type Incident = Omit<IncidentFrontmatter, "severity"> & {
+  /** Resolved after load — invalid/missing source values become `unclassified`. */
+  severity: Severity;
   slug: string;
   content: string | Array<{ h: string; p: string }>;
   tldr: string;

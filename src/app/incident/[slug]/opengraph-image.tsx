@@ -1,5 +1,6 @@
 import { ImageResponse } from "next/og";
 
+import type { Severity } from "@/lib/incident-types";
 import { getIncidentBySlug } from "@/lib/incidents";
 
 export const runtime = "nodejs";
@@ -13,17 +14,18 @@ type Props = {
   params: Promise<{ slug: string }>;
 };
 
-const SEV_COLOR = {
+const SEV_COLOR: Record<Severity, string> = {
   critical: "#FF5A4E",
   high: "#F76707",
   medium: "#F2B100",
   low: "#7DE2B5",
-} as const;
+  unclassified: "#8E8E93",
+};
 
 export default async function Image({ params }: Props) {
   const { slug } = await params;
   const incident = await getIncidentBySlug(slug);
-  const severity = incident?.severity ?? "medium";
+  const severity = incident?.severity ?? "unclassified";
   const sevColor = SEV_COLOR[severity];
 
   return new ImageResponse(

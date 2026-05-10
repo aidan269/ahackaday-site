@@ -109,7 +109,13 @@ function toApiIncidentDetail(
 }
 
 function isSeverity(value: string): value is Severity {
-  return value === "critical" || value === "high" || value === "medium" || value === "low";
+  return (
+    value === "critical"
+    || value === "high"
+    || value === "medium"
+    || value === "low"
+    || value === "unclassified"
+  );
 }
 
 function isIncidentType(value: string): value is IncidentType {

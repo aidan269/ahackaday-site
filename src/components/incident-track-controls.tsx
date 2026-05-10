@@ -4,9 +4,11 @@ import { useCallback, useEffect, useState } from "react";
 
 import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
 
+const DEFAULT_THRESHOLD = 3;
+
 export function IncidentTrackControls({ incidentSlug }: { incidentSlug: string }) {
   const [following, setFollowing] = useState(false);
-  const [threshold, setThreshold] = useState<string>("");
+  const [threshold, setThreshold] = useState<number>(DEFAULT_THRESHOLD);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -24,7 +26,9 @@ export function IncidentTrackControls({ incidentSlug }: { incidentSlug: string }
           | null;
         if (!active || !body?.ok) return;
         setFollowing(body.following);
-        setThreshold(body.mentionAlertThreshold != null ? String(body.mentionAlertThreshold) : "");
+        if (body.mentionAlertThreshold != null && body.mentionAlertThreshold > 0) {
+          setThreshold(body.mentionAlertThreshold);
+        }
       } finally {
         if (active) setLoading(false);
       }
@@ -36,7 +40,7 @@ export function IncidentTrackControls({ incidentSlug }: { incidentSlug: string }
   }, [incidentSlug]);
 
   const persist = useCallback(
-    async (nextFollow: boolean, nextThreshold?: string) => {
+    async (nextFollow: boolean, nextThreshold: number) => {
       setSaving(true);
       try {
         const token = await getSupabaseBrowserClient()?.auth.getSession().then((r) => r.data.session?.access_token ?? null);
@@ -44,10 +48,6 @@ export function IncidentTrackControls({ incidentSlug }: { incidentSlug: string }
           alert("Sign in to track incidents.");
           return;
         }
-        const parsed =
-          nextThreshold === undefined || nextThreshold.trim() === ""
-            ? null
-            : Number.parseInt(nextThreshold, 10);
         const res = await fetch(`/api/incident-follow/${encodeURIComponent(incidentSlug)}`, {
           method: "POST",
           headers: {
@@ -56,12 +56,12 @@ export function IncidentTrackControls({ incidentSlug }: { incidentSlug: string }
           },
           body: JSON.stringify({
             follow: nextFollow,
-            mentionAlertThreshold: nextFollow ? parsed : null,
+            mentionAlertThreshold: nextFollow ? Math.max(1, Math.round(nextThreshold)) : null,
           }),
         });
         const body = (await res.json().catch(() => null)) as { ok?: boolean } | null;
         if (!res.ok || !body?.ok) {
-          alert("Could not update follow state.");
+          alert("Could not update notifications.");
           return;
         }
         setFollowing(nextFollow);
@@ -72,26 +72,45 @@ export function IncidentTrackControls({ incidentSlug }: { incidentSlug: string }
     [incidentSlug],
   );
 
+  const th = Number.isFinite(threshold) && threshold > 0 ? Math.round(threshold) : DEFAULT_THRESHOLD;
+
   return (
-    <div className="track-controls">
+    <div className="track-controls track-controls--pill" aria-busy={saving}>
+      <span className="track-controls__bell" aria-hidden>
+        🔔
+      </span>
       <button
         type="button"
-        className={`btn-quiet${following ? " is-on" : ""}`}
+        className={`track-controls__cta${following ? " is-on" : ""}`}
         disabled={loading || saving}
-        onClick={() => void persist(!following, threshold)}
+        onClick={() => void persist(!following, th)}
+        title={
+          following
+            ? "Stop mention alerts for this incident"
+            : "Email when cross-platform mentions reach your threshold (requires sign-in)"
+        }
       >
-        {following ? "tracking" : "track incident"}
+        {following ? "Stop alerts" : "Notify me when mentions"}
       </button>
-      <label className="track-controls__alert">
-        <span className="k">alert ≥ mentions</span>
+      <span className="track-controls__ge" aria-hidden>
+        ≥
+      </span>
+      <label className="track-controls__threshold-wrap">
+        <span className="sr-only">Mention threshold</span>
         <input
           type="number"
-          min={0}
-          placeholder="optional"
-          value={threshold}
-          disabled={!following || saving}
-          onChange={(e) => setThreshold(e.target.value)}
-          onBlur={() => following && void persist(true, threshold)}
+          min={1}
+          step={1}
+          className="track-controls__threshold"
+          value={th}
+          disabled={loading || saving}
+          onChange={(e) => {
+            const n = Number.parseInt(e.target.value, 10);
+            setThreshold(Number.isFinite(n) && n > 0 ? n : DEFAULT_THRESHOLD);
+          }}
+          onBlur={() => {
+            if (following) void persist(true, th);
+          }}
         />
       </label>
     </div>
