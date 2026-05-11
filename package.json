@@ -9,7 +9,8 @@
     "lint": "eslint",
     "test:quality": "node --import tsx --test tests/*.test.ts",
     "aeo:backfill": "tsx scripts/aeo-backfill.ts",
-    "aeo:recent": "tsx scripts/aeo-backfill.ts --recent 30 --concurrency 2"
+    "aeo:recent": "tsx scripts/aeo-backfill.ts --recent 30 --concurrency 2",
+    "aeo:rescore-recent": "tsx scripts/aeo-backfill.ts --recent 30 --force --concurrency 2"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.90.0",

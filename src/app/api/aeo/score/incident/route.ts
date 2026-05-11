@@ -30,9 +30,9 @@ export async function POST(req: Request) {
   const denied = assertCronAuthorized(req);
   if (denied) return denied;
 
-  let body: { incidentId?: string };
+  let body: { incidentId?: string; force?: boolean };
   try {
-    body = (await req.json()) as { incidentId?: string };
+    body = (await req.json()) as { incidentId?: string; force?: boolean };
   } catch {
     return NextResponse.json({ ok: false, error: "Invalid JSON" }, { status: 400 });
   }
@@ -40,6 +40,7 @@ export async function POST(req: Request) {
   if (!incidentId) {
     return NextResponse.json({ ok: false, error: "incidentId required" }, { status: 400 });
   }
+  const forceRescore = body.force === true;
 
   const incident = await fetchIncidentContent(incidentId);
   if (!incident) {
@@ -48,7 +49,10 @@ export async function POST(req: Request) {
 
   const contentHash = crypto.createHash("sha256").update(incident.content).digest("hex");
   const last = await lastScore(incidentId);
-  if (shouldSkipAeoRescore({ lastContentHash: last?.content_hash ?? null, lastScoredAt: last?.scored_at ?? null, contentHash })) {
+  if (
+    !forceRescore
+    && shouldSkipAeoRescore({ lastContentHash: last?.content_hash ?? null, lastScoredAt: last?.scored_at ?? null, contentHash })
+  ) {
     await touchScoredAt(incidentId);
     return NextResponse.json({ ok: true, skipped: "unchanged" });
   }

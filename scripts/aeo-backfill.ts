@@ -8,6 +8,8 @@
  *   npx tsx scripts/aeo-backfill.ts --limit 20 --concurrency 3
  *   npx tsx scripts/aeo-backfill.ts --recent 30
  *   npx tsx scripts/aeo-backfill.ts --recent=15 --concurrency 2
+ *   npx tsx scripts/aeo-backfill.ts --recent 30 --force
+ *     (re-score N most recently published rows; bypasses 7-day unchanged skip; requires --recent or --limit)
  *   npx tsx scripts/aeo-backfill.ts --digest-only
  *
  * Digest uses scores from the last 7 days (`runDigest`); newly scored rows use `scored_at = now()`
@@ -22,7 +24,11 @@ import pLimit from "p-limit";
 
 import { POST as scoreIncidentPost } from "../src/app/api/aeo/score/incident/route";
 import { GET as digestGet } from "../src/app/api/aeo/digest/route";
-import { listIncidentIdsMissingAeoScores, listRecentIncidentIdsMissingAeoScores } from "../src/lib/aeo/backfill";
+import {
+  listIncidentIdsMissingAeoScores,
+  listRecentIncidentIdsByPublished,
+  listRecentIncidentIdsMissingAeoScores,
+} from "../src/lib/aeo/backfill";
 
 function loadEnvLocal() {
   const p = resolve(process.cwd(), ".env.local");
@@ -52,10 +58,12 @@ function parseArgs(argv: string[]) {
   let verbose = false;
   let limit: number | null = null;
   let recent: number | null = null;
+  let force = false;
   let concurrency = 4;
   for (let i = 0; i < argv.length; i += 1) {
     const a = argv[i];
     if (a === "--dry-run") dryRun = true;
+    else if (a === "--force") force = true;
     else if (a === "--digest-only") digestOnly = true;
     else if (a === "--no-digest") skipDigest = true;
     else if (a === "--verbose" || a === "-v") verbose = true;
@@ -74,6 +82,7 @@ function parseArgs(argv: string[]) {
     verbose,
     limit: limit != null && Number.isFinite(limit) ? limit : null,
     recent: recentN,
+    force,
     concurrency,
   };
 }
@@ -115,19 +124,37 @@ async function main() {
 
   const supabase = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
   const missing = await listIncidentIdsMissingAeoScores(supabase);
-  const queue =
-    args.recent != null
-      ? await listRecentIncidentIdsMissingAeoScores(supabase, args.recent)
-      : args.limit != null
-        ? missing.slice(0, args.limit)
-        : missing;
+
+  if (args.force && args.recent == null && args.limit == null) {
+    console.error("[aeo-backfill] --force requires --recent N or --limit N (caps LLM cost).");
+    process.exit(1);
+  }
+
+  let queue: string[];
+  let mode: string;
+  if (args.force) {
+    const n = args.recent ?? args.limit ?? 0;
+    queue = await listRecentIncidentIdsByPublished(supabase, Math.max(1, Math.floor(n)));
+    mode = "recent_published_force_rescore";
+  } else if (args.recent != null) {
+    queue = await listRecentIncidentIdsMissingAeoScores(supabase, args.recent);
+    mode = "recent_missing";
+  } else if (args.limit != null) {
+    queue = missing.slice(0, args.limit);
+    mode = "all_missing_capped";
+  } else {
+    queue = missing;
+    mode = "all_missing";
+  }
 
   console.log(
     JSON.stringify({
       phase: "plan",
       missing_total: missing.length,
-      mode: args.recent != null ? "recent_missing" : "all_missing",
+      mode,
       recent_take: args.recent ?? null,
+      limit: args.limit ?? null,
+      force: args.force,
       queued: queue.length,
       dry_run: args.dryRun,
       concurrency: args.concurrency,
@@ -160,7 +187,7 @@ async function main() {
               "Content-Type": "application/json",
               Authorization: `Bearer ${secret}`,
             },
-            body: JSON.stringify({ incidentId }),
+            body: JSON.stringify({ incidentId, ...(args.force ? { force: true } : {}) }),
           });
           const res = await scoreIncidentPost(workerReq);
           const ms = Date.now() - t0;

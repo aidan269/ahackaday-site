@@ -48,3 +48,14 @@ export async function listRecentIncidentIdsMissingAeoScores(
   const ids = (rows ?? []).map((r) => r.id as string);
   return takeMissingFromRecentOrder(ids, have, take);
 }
+
+/** Most recently published incidents (by `published_at`), regardless of AEO row. */
+export async function listRecentIncidentIdsByPublished(supabase: SupabaseClient, take: number): Promise<string[]> {
+  const { data: rows, error } = await supabase
+    .from("incidents")
+    .select("id")
+    .order("published_at", { ascending: false })
+    .limit(take);
+  if (error) throw error;
+  return (rows ?? []).map((r) => r.id as string);
+}
