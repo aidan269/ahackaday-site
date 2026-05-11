@@ -6,6 +6,8 @@
  *   npx tsx scripts/aeo-backfill.ts
  *   npx tsx scripts/aeo-backfill.ts --dry-run
  *   npx tsx scripts/aeo-backfill.ts --limit 20 --concurrency 3
+ *   npx tsx scripts/aeo-backfill.ts --recent 30
+ *   npx tsx scripts/aeo-backfill.ts --recent=15 --concurrency 2
  *   npx tsx scripts/aeo-backfill.ts --digest-only
  *
  * Digest uses scores from the last 7 days (`runDigest`); newly scored rows use `scored_at = now()`
@@ -20,7 +22,7 @@ import pLimit from "p-limit";
 
 import { POST as scoreIncidentPost } from "../src/app/api/aeo/score/incident/route";
 import { GET as digestGet } from "../src/app/api/aeo/digest/route";
-import { listIncidentIdsMissingAeoScores } from "../src/lib/aeo/backfill";
+import { listIncidentIdsMissingAeoScores, listRecentIncidentIdsMissingAeoScores } from "../src/lib/aeo/backfill";
 
 function loadEnvLocal() {
   const p = resolve(process.cwd(), ".env.local");
@@ -49,6 +51,7 @@ function parseArgs(argv: string[]) {
   let skipDigest = false;
   let verbose = false;
   let limit: number | null = null;
+  let recent: number | null = null;
   let concurrency = 4;
   for (let i = 0; i < argv.length; i += 1) {
     const a = argv[i];
@@ -58,15 +61,19 @@ function parseArgs(argv: string[]) {
     else if (a === "--verbose" || a === "-v") verbose = true;
     else if (a === "--limit") limit = Number(argv[++i]);
     else if (a?.startsWith("--limit=")) limit = Number(a.split("=")[1]);
+    else if (a === "--recent") recent = Number(argv[++i]);
+    else if (a?.startsWith("--recent=")) recent = Number(a.split("=")[1]);
     else if (a === "--concurrency") concurrency = Math.max(1, Number(argv[++i]) || 4);
     else if (a?.startsWith("--concurrency=")) concurrency = Math.max(1, Number(a.split("=")[1]) || 4);
   }
+  const recentN = recent != null && Number.isFinite(recent) && recent > 0 ? Math.floor(recent) : null;
   return {
     dryRun,
     digestOnly,
     skipDigest,
     verbose,
     limit: limit != null && Number.isFinite(limit) ? limit : null,
+    recent: recentN,
     concurrency,
   };
 }
@@ -108,12 +115,19 @@ async function main() {
 
   const supabase = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
   const missing = await listIncidentIdsMissingAeoScores(supabase);
-  const queue = args.limit != null ? missing.slice(0, args.limit) : missing;
+  const queue =
+    args.recent != null
+      ? await listRecentIncidentIdsMissingAeoScores(supabase, args.recent)
+      : args.limit != null
+        ? missing.slice(0, args.limit)
+        : missing;
 
   console.log(
     JSON.stringify({
       phase: "plan",
       missing_total: missing.length,
+      mode: args.recent != null ? "recent_missing" : "all_missing",
+      recent_take: args.recent ?? null,
       queued: queue.length,
       dry_run: args.dryRun,
       concurrency: args.concurrency,
