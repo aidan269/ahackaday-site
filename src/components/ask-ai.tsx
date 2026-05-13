@@ -96,23 +96,38 @@ export function AskAI({ incident }: { incident: Incident }) {
     }
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [state.kind, promptId, role, tone, input]);
+  }, [state.kind, promptId, role, tone, input, pulledKeywords]);
 
   useEffect(() => {
     if (!bodyRef.current) return;
     bodyRef.current.scrollTop = 0;
   }, [state.kind, state.kind === "answered" ? state.answer : ""]);
 
-  async function onGenerate() {
+  function buildAskPayload(): { question: string; apiPromptId: PromptId | null } | null {
     const freeText = input.trim();
-    const effectivePrompt = freeText || (promptId ? PROMPT_TEXT[promptId] : "");
-    if (!effectivePrompt || state.kind === "thinking") return;
+    const kwRaw = pulledKeywords?.length ? pulledKeywords.join(", ") : "";
+    const kw = kwRaw.length > 2800 ? `${kwRaw.slice(0, 2797)}...` : kwRaw;
+    if (freeText) {
+      return { question: freeText, apiPromptId: promptId };
+    }
+    const play = promptId ? PROMPT_TEXT[promptId] : "";
+    if (play && kw) return { question: `${play}\n\nKeywords: ${kw}`, apiPromptId: promptId };
+    if (play) return { question: play, apiPromptId: promptId };
+    if (kw) return { question: `${PROMPT_TEXT.tldr}\n\nKeywords: ${kw}`, apiPromptId: "tldr" };
+    return null;
+  }
+
+  async function onGenerate() {
+    const payload = buildAskPayload();
+    if (!payload || state.kind === "thinking") return;
+    const { question, apiPromptId } = payload;
+    const displayPromptId = input.trim() ? promptId : apiPromptId;
     setError(null);
     setShowCitations(false);
     const startedAt = Date.now();
     const reqId = reqIdRef.current + 1;
     reqIdRef.current = reqId;
-    setState({ kind: "thinking", promptId, role, tone, startedAt });
+    setState({ kind: "thinking", promptId: displayPromptId, role, tone, startedAt });
     try {
       if (!supabase) {
         setState({ kind: "resting" });
@@ -136,8 +151,8 @@ export function AskAI({ incident }: { incident: Incident }) {
           incidentSlug: incident.slug,
           role,
           tone,
-          promptId,
-          question: freeText || undefined,
+          promptId: apiPromptId ?? undefined,
+          question,
         }),
       });
       const json = (await r.json()) as { text?: string; error?: string };
@@ -151,7 +166,7 @@ export function AskAI({ incident }: { incident: Incident }) {
       }
       setState({
         kind: "answered",
-        promptId,
+        promptId: displayPromptId,
         role,
         tone,
         answer: text || "(Ask AI returned an empty response.)",
@@ -214,11 +229,6 @@ ${incident.sources.join("\n")}`;
     } catch {}
   }
 
-  function useKeywordsInQuestion(words: string[]) {
-    const line = `Using these keywords from the brief (${words.length} terms): ${words.join(", ")} — `;
-    setInput((prev) => (prev.trim() ? `${prev.trim()}\n\n${line}` : line));
-  }
-
   return (
     <div className="askai">
       <div className="askai__head">
@@ -246,9 +256,6 @@ ${incident.sources.join("\n")}`;
             <span className="askai__kw-count">{pulledKeywords.length} terms</span>
             <button type="button" className="askai__kw-action" onClick={() => copyKeywordsList(pulledKeywords)}>
               Copy
-            </button>
-            <button type="button" className="askai__kw-action" onClick={() => useKeywordsInQuestion(pulledKeywords)}>
-              Use in question
             </button>
           </>
         ) : pulledKeywords && pulledKeywords.length === 0 ? (
@@ -315,9 +322,13 @@ ${incident.sources.join("\n")}`;
           ? "● est. 4 sec · cancel any time with esc"
           : input.trim()
             ? `Ask Grace: "${input.trim().slice(0, 40)}${input.trim().length > 40 ? "..." : ""}"`
-            : promptId
-              ? `One next move → Generate ${promptTitle} for ${role}`
-              : "Pick a play above, or type your question"}
+            : pulledKeywords && pulledKeywords.length > 0
+              ? promptId
+                ? `Pull keywords → Generate · ${promptTitle} · ${role}`
+                : `Pull keywords → Generate · TL;DR · ${role}`
+              : promptId
+                ? `One next move → Generate ${promptTitle} for ${role}`
+                : "Pick a play, pull keywords, or type your question"}
       </div>
 
       <div className="askai__body" ref={bodyRef}>
@@ -389,7 +400,7 @@ ${incident.sources.join("\n")}`;
             Cancel
           </button>
         ) : (
-          <button type="submit" disabled={!input.trim() && !promptId}>
+          <button type="submit" disabled={!input.trim() && !promptId && !(pulledKeywords && pulledKeywords.length > 0)}>
             Generate
           </button>
         )}
