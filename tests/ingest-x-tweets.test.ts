@@ -1,8 +1,15 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
+import { listCantinaTimelineHandlesForIngest } from "../src/lib/cantina-x-timeline";
 import { isIngestXCantinaTimelineConfigured, isIngestXSearchConfigured } from "../src/lib/ingest-config";
-import { DEFAULT_CANTINA_X_USERNAME, fetchIngestXCantinaUserTimeline, fetchIngestXTweets } from "../src/lib/ingest-x-tweets";
+import {
+  DEFAULT_CANTINA_X_USERNAME,
+  fetchIngestXCantinaUserTimeline,
+  fetchIngestXTweets,
+  fetchIngestXTweetsByIds,
+  parseXTweetIdFromStatusUrl,
+} from "../src/lib/ingest-x-tweets";
 
 const envKeys = [
   "X_BEARER_TOKEN",
@@ -15,6 +22,7 @@ const envKeys = [
   "INGEST_X_CANTINA_USERNAME",
   "INGEST_X_CANTINA_MAX_RESULTS",
   "INGEST_X_CANTINA_SOURCE_NAME",
+  "INGEST_X_CANTINA_EXTRA_USERNAMES",
 ] as const;
 
 const snapshot: Partial<Record<(typeof envKeys)[number], string | undefined>> = {};
@@ -136,6 +144,82 @@ test("fetchIngestXCantinaUserTimeline maps user tweets with default handle", asy
   assert.equal(result.items.length, 1);
   assert.equal(result.items[0]?.link, "https://x.com/cantinasecurity/status/888");
   assert.equal(result.items[0]?.sourceName, "Cantina (X)");
+});
+
+test("parseXTweetIdFromStatusUrl extracts id", () => {
+  assert.equal(parseXTweetIdFromStatusUrl("https://x.com/p_misirov/status/2054256309986545763"), "2054256309986545763");
+  assert.equal(parseXTweetIdFromStatusUrl("https://twitter.com/foo/status/1"), "1");
+  assert.equal(parseXTweetIdFromStatusUrl("https://example.com"), null);
+});
+
+test("fetchIngestXTweetsByIds maps lookup response", async () => {
+  delete process.env.TWITTER_BEARER_TOKEN;
+  process.env.X_BEARER_TOKEN = "b";
+  const payload = {
+    data: [
+      {
+        id: "2054256309986545763",
+        text: "Hello from lookup.",
+        author_id: "u9",
+        created_at: "2026-05-10T08:00:00.000Z",
+      },
+    ],
+    includes: { users: [{ id: "u9", username: "p_misirov" }] },
+  };
+  const mockFetch: typeof fetch = async (input) => {
+    assert.ok(String(input).includes("api.x.com/2/tweets?"));
+    assert.ok(String(input).includes("ids=2054256309986545763"));
+    return new Response(JSON.stringify(payload), { status: 200, headers: { "Content-Type": "application/json" } });
+  };
+  const idToSourceName = new Map([["2054256309986545763", "Cantina (X)"]]);
+  const result = await fetchIngestXTweetsByIds(mockFetch, ["2054256309986545763"], idToSourceName);
+  assert.equal(result.ok, true);
+  if (!result.ok) return;
+  assert.equal(result.items.length, 1);
+  assert.equal(result.missingIds.length, 0);
+  assert.equal(result.items[0]?.link, "https://x.com/p_misirov/status/2054256309986545763");
+  assert.equal(result.items[0]?.sourceName, "Cantina (X)");
+});
+
+test("listCantinaTimelineHandlesForIngest includes p_misirov by default and respects empty extras", () => {
+  delete process.env.INGEST_X_CANTINA_USERNAME;
+  delete process.env.INGEST_X_CANTINA_EXTRA_USERNAMES;
+  assert.deepEqual(listCantinaTimelineHandlesForIngest(), ["cantinasecurity", "p_misirov"]);
+
+  process.env.INGEST_X_CANTINA_EXTRA_USERNAMES = "";
+  assert.deepEqual(listCantinaTimelineHandlesForIngest(), ["cantinasecurity"]);
+
+  delete process.env.INGEST_X_CANTINA_EXTRA_USERNAMES;
+});
+
+test("fetchIngestXCantinaUserTimeline uses explicit username when passed", async () => {
+  delete process.env.TWITTER_BEARER_TOKEN;
+  process.env.X_BEARER_TOKEN = "test-bearer";
+  process.env.INGEST_X_CANTINA_USERNAME = "cantinasecurity";
+  delete process.env.INGEST_X_ENABLED;
+
+  const userPayload = { data: { id: "uid99", username: "p_misirov" } };
+  const tweetsPayload = {
+    data: [{ id: "777", text: "Note from Pavel.", created_at: "2026-05-06T10:00:00.000Z" }],
+    meta: { result_count: 1 },
+  };
+
+  const mockFetch: typeof fetch = async (input) => {
+    const u = String(input);
+    if (u.includes("/users/by/username/p_misirov")) {
+      return new Response(JSON.stringify(userPayload), { status: 200, headers: { "Content-Type": "application/json" } });
+    }
+    if (u.includes("/users/uid99/tweets")) {
+      return new Response(JSON.stringify(tweetsPayload), { status: 200, headers: { "Content-Type": "application/json" } });
+    }
+    assert.fail(`unexpected fetch URL: ${u}`);
+  };
+
+  const result = await fetchIngestXCantinaUserTimeline(mockFetch, "p_misirov");
+  assert.equal(result.ok, true);
+  if (!result.ok) return;
+  assert.equal(result.username, "p_misirov");
+  assert.equal(result.items[0]?.link, "https://x.com/p_misirov/status/777");
 });
 
 test("isIngestXCantinaTimelineConfigured respects bearer and toggles", () => {

@@ -10,7 +10,10 @@
     "test:quality": "node --import tsx --test tests/*.test.ts",
     "aeo:backfill": "tsx scripts/aeo-backfill.ts",
     "aeo:recent": "tsx scripts/aeo-backfill.ts --recent 30 --concurrency 2",
-    "aeo:rescore-recent": "tsx scripts/aeo-backfill.ts --recent 30 --force --concurrency 2"
+    "aeo:rescore-recent": "tsx scripts/aeo-backfill.ts --recent 30 --force --concurrency 2",
+    "aeo:score-url": "tsx scripts/aeo-score-source-url.ts",
+    "ingest:x-status": "tsx scripts/ingest-x-status-url.ts",
+    "ingest:aeo-x": "tsx scripts/ingest-aeo-x-top.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.90.0",

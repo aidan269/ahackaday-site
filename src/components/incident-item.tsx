@@ -6,6 +6,7 @@ import { useCallback, useState, type CSSProperties, type MouseEvent } from "reac
 import { useEmotionalPreferences } from "@/components/emotional-preferences-provider";
 import { IncidentVoteControls } from "@/components/incident-vote-controls";
 import { formatIncidentDate } from "@/lib/format-incident-date";
+import { isCantinaTimelineTweetSourceUrl } from "@/lib/cantina-x-timeline";
 import { ScoreChip } from "@/components/grace-ops/ScoreChip";
 import type { Incident, Severity, SocialDataQuality } from "@/lib/incident-types";
 import { truncateForDisplay } from "@/lib/truncate-display";
@@ -55,8 +56,8 @@ function socialQualityChip(q?: SocialDataQuality): string {
 }
 
 function isCantinaTweetIncident(incident: Incident): boolean {
-  const primarySource = incident.sources[0]?.toLowerCase() ?? "";
-  return primarySource.includes("x.com/cantinasecurity/") || primarySource.includes("twitter.com/cantinasecurity/");
+  const primarySource = incident.sources[0] ?? "";
+  return isCantinaTimelineTweetSourceUrl(primarySource);
 }
 
 export function IncidentItem({ incident, practitionerBadge }: Props) {

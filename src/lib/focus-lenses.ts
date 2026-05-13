@@ -1,3 +1,4 @@
+import { isCantinaSourcedUrl } from "@/lib/cantina-x-timeline";
 import type { Incident } from "@/lib/incident-types";
 
 export const COMPANY_FOCUS_IDS = ["cisco", "google", "microsoft", "anthropic", "cantina"] as const;
@@ -31,9 +32,9 @@ export function parseFocusLens(raw: string): FocusLens {
   return "all";
 }
 
-/** Primary sources linked from Cantina properties or Cantina’s X account. */
+/** Primary sources linked from Cantina properties or Cantina-branded X timelines (incl. bundled team handles). */
 function isCantinaSourcedIncident(i: Pick<Incident, "sources">): boolean {
-  return (i.sources ?? []).some((u) => /cantinasecurity|cantina\.security/i.test(u));
+  return (i.sources ?? []).some((u) => isCantinaSourcedUrl(u));
 }
 
 export function matchesCompanyFocus(

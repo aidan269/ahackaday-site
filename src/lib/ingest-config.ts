@@ -11,8 +11,18 @@
  * Cantina X timeline (always tries when bearer present unless disabled below — complements sparse blog RSS):
  * - `INGEST_X_CANTINA_ENABLED` — set `0` / `false` / `no` to skip Cantina user timeline only.
  * - `INGEST_X_CANTINA_USERNAME` — handle without `@` (default **`cantinasecurity`**, https://x.com/cantinasecurity).
+ * - `INGEST_X_CANTINA_EXTRA_USERNAMES` — comma-separated extra handles ingested with the same `source_name` as Cantina (X) (default **`p_misirov`** when unset). Set to empty to skip extras.
  * - `INGEST_X_CANTINA_MAX_RESULTS` — 5–100 (default 10). User timeline minimum page size is 5.
- * - `INGEST_X_CANTINA_SOURCE_NAME` — optional DB `source_name` (default `Cantina (X)`).
+ * - `INGEST_X_DIRECT_STATUS_SOURCE_NAME` — optional `source_name` for non-Cantina-tracked status URLs (default `X (status lookup)`).
+ *
+ * Targeted tweet ingest (`POST /api/ingest` with JSON body, same `Authorization: Bearer $CRON_SECRET`):
+ * - `xStatusUrls` — array of `https://x.com/.../status/<id>` URLs; uses `GET /2/tweets?ids=` (not limited to timeline depth).
+ * - `onlyXStatusUrls` — when `true`, skips RSS + X search + Cantina timeline for this run (recommended for one-off URLs).
+ *
+ * X search from top AEO (`POST /api/ingest` JSON, needs X bearer + scored `aeo_scores`):
+ * - `xSearchFromTopAeo` — `true` or `{ incidentLimit?, maxQueryChars? }`: builds `tweets/search/recent` query from keywords in highest-`total_score` incidents (+ diagnosis + snippet), then ingests like env `INGEST_X_QUERY`.
+ * - `onlyXSearchFromTopAeo` — when `true`, skips RSS, env X search, and Cantina for this run (still runs `xStatusUrls` if present). Combine with `xSearchFromTopAeo` or use alone (defaults apply).
+ * - `INGEST_X_TOP_AEO_SOURCE_NAME` — optional `source_name` for tweets from the top-AEO keyword pass (default `X (top AEO topics)`).
  */
 
 export type IngestFeedConfig = {
@@ -64,6 +74,14 @@ export function getIngestDefaultItemLimit(): number {
 function isIngestXGloballyDisabled(): boolean {
   const off = process.env.INGEST_X_ENABLED?.trim().toLowerCase();
   return off === "0" || off === "false" || off === "no";
+}
+
+/** Bearer present and `INGEST_X_ENABLED` is not disabling all X API usage. */
+export function isIngestXBearerAllowed(): boolean {
+  const bearer = process.env.X_BEARER_TOKEN ?? process.env.TWITTER_BEARER_TOKEN;
+  if (!bearer) return false;
+  if (isIngestXGloballyDisabled()) return false;
+  return true;
 }
 
 /** True when X recent-search ingest should run: query + bearer, and not explicitly disabled. */

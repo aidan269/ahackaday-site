@@ -1,7 +1,7 @@
 "use client";
 
 import type { CSSProperties } from "react";
-import { Suspense } from "react";
+import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 
@@ -9,6 +9,7 @@ import { useEmotionalPreferences } from "@/components/emotional-preferences-prov
 import { COMPANY_FOCUS_IDS, type CompanyFocusId } from "@/lib/focus-lenses";
 import { buildFeedHref } from "@/lib/feed-nav";
 import type { SidebarCounts } from "@/lib/sidebar-counts";
+import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
 
 type Props = { counts: SidebarCounts };
 
@@ -84,6 +85,15 @@ function IconSaved() {
         fill="none"
         strokeLinejoin="round"
       />
+    </svg>
+  );
+}
+
+function IconMessages() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden>
+      <path d="M2.2 3.2h9.6v6.4H5.4L2.2 12V3.2z" stroke="currentColor" strokeWidth="1.2" fill="none" strokeLinejoin="round" />
+      <path d="M4.2 5.4h5.6M4.2 7.4h3.8" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
     </svg>
   );
 }
@@ -240,11 +250,33 @@ const COMPANY_FOCUS_LABELS: Record<CompanyFocusId, string> = {
 function SidebarBody({ counts, filters }: Props & { filters: UrlFilters }) {
   const pathname = usePathname();
   const { reviewCount, savedCount, userEmail } = useEmotionalPreferences();
+  const [messageUnreadCount, setMessageUnreadCount] = useState(0);
 
   const isFeed = pathname === "/";
   const isCalendar = pathname.startsWith("/calendar");
   const isRss = pathname === "/zero-day-clock";
   const isSaved = pathname === "/saved";
+  const isMessages = pathname.startsWith("/messages");
+
+  useEffect(() => {
+    if (!userEmail) {
+      queueMicrotask(() => setMessageUnreadCount(0));
+      return;
+    }
+    let active = true;
+    void (async () => {
+      const token = await getSupabaseBrowserClient()?.auth.getSession().then((r) => r.data.session?.access_token ?? null);
+      if (!token) return;
+      const res = await fetch("/api/messages/threads", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const json = (await res.json().catch(() => null)) as { ok?: boolean; unreadCount?: number } | null;
+      if (active && res.ok && json?.ok) setMessageUnreadCount(json.unreadCount ?? 0);
+    })();
+    return () => {
+      active = false;
+    };
+  }, [userEmail, pathname]);
 
   const feedHomeHref = buildFeedHref({});
   const typeClear = filters.type === "all";
@@ -291,6 +323,13 @@ function SidebarBody({ counts, filters }: Props & { filters: UrlFilters }) {
           </span>
           <span>saved</span>
           <span className="sidebar__count">{savedCount}</span>
+        </Link>
+        <Link href="/messages" className={`sidebar__item${isMessages ? " is-active" : ""}`}>
+          <span className="sidebar__icon" aria-hidden>
+            <IconMessages />
+          </span>
+          <span>messages</span>
+          {messageUnreadCount > 0 ? <span className="sidebar__count">{messageUnreadCount}</span> : null}
         </Link>
       </nav>
 

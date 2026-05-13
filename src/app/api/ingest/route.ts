@@ -3,18 +3,17 @@ import { createClient } from "@supabase/supabase-js";
 import { revalidateTag } from "next/cache";
 
 import { getAnthropicModel } from "@/lib/anthropic-model";
+import { listCantinaTimelineHandlesForIngest, sourceNameForExplicitXStatusUrl } from "@/lib/cantina-x-timeline";
+import { buildXSearchQueryFromTopAeoScores, parseTopAeoXIngestBody } from "@/lib/ingest-x-aeo-query";
 import {
   getIngestMaxNewPerRun,
+  isIngestXBearerAllowed,
   isIngestXCantinaTimelineConfigured,
   isIngestXSearchConfigured,
   loadIngestFeeds,
 } from "@/lib/ingest-config";
 import { fetchFeedForConfig, type FeedItem } from "@/lib/ingest-feed-parse";
-import {
-  DEFAULT_CANTINA_X_USERNAME,
-  fetchIngestXCantinaUserTimeline,
-  fetchIngestXTweets,
-} from "@/lib/ingest-x-tweets";
+import { fetchIngestXCantinaUserTimeline, fetchIngestXTweets, fetchIngestXTweetsByIds, parseXTweetIdFromStatusUrl } from "@/lib/ingest-x-tweets";
 import { decodeHtmlEntities, stripInvisibleUnicode } from "@/lib/html-entities";
 
 export const dynamic = "force-dynamic";
@@ -408,6 +407,40 @@ async function runIngest(request: Request) {
     return Response.json({ ok: false, error: "Unauthorized" }, { status: 401 });
   }
 
+  const errors: string[] = [];
+  let xDirectStatusUrls: string[] = [];
+  let onlyXStatusUrls = false;
+  let ingestPostJson: Record<string, unknown> | null = null;
+  if (request.method === "POST") {
+    const ct = request.headers.get("content-type")?.toLowerCase() ?? "";
+    if (ct.includes("application/json")) {
+      try {
+        ingestPostJson = (await request.json()) as Record<string, unknown>;
+        if (Array.isArray(ingestPostJson.xStatusUrls)) {
+          xDirectStatusUrls = ingestPostJson.xStatusUrls
+            .filter((u): u is string => typeof u === "string")
+            .map((u) => u.trim())
+            .filter((u) => u.length > 0)
+            .slice(0, 25);
+        }
+        if (ingestPostJson.onlyXStatusUrls === true) {
+          onlyXStatusUrls = true;
+        }
+      } catch {
+        /* ignore invalid or empty JSON body */
+      }
+    }
+  }
+
+  const { topAeo, onlyTopAeoX } = parseTopAeoXIngestBody(ingestPostJson);
+
+  if (onlyXStatusUrls && xDirectStatusUrls.length === 0) {
+    return Response.json({ ok: false, error: "onlyXStatusUrls requires non-empty xStatusUrls" }, { status: 400 });
+  }
+  if (onlyXStatusUrls && !xDirectStatusUrls.some((u) => parseXTweetIdFromStatusUrl(u))) {
+    return Response.json({ ok: false, error: "onlyXStatusUrls: no parsable x.com/.../status/<id> URLs" }, { status: 400 });
+  }
+
   const t0 = Date.now();
   const supabase = createSupabaseAdminClient();
   const anthropic = process.env.ANTHROPIC_API_KEY
@@ -425,10 +458,59 @@ async function runIngest(request: Request) {
     claudeOutputTokens: 0,
     claudeCalls: 0,
   };
-  const errors: string[] = [];
   const feedReports: PerFeedReport[] = [];
 
-  outer: for (const feed of feeds) {
+  if (xDirectStatusUrls.length > 0) {
+    const idToSourceName = new Map<string, string>();
+    for (const pageUrl of xDirectStatusUrls) {
+      const id = parseXTweetIdFromStatusUrl(pageUrl);
+      if (id && !idToSourceName.has(id)) {
+        idToSourceName.set(id, sourceNameForExplicitXStatusUrl(pageUrl));
+      }
+    }
+    const lookupRep: PerFeedReport = {
+      source: "X (tweet lookup)",
+      url:
+        idToSourceName.size > 0
+          ? `https://api.x.com/2/tweets?ids=${encodeURIComponent([...idToSourceName.keys()].join(","))}`
+          : "https://api.x.com/2/tweets",
+      itemLimit: idToSourceName.size,
+      enabled: true,
+      itemsFetched: 0,
+      inserted: 0,
+      skippedExisting: 0,
+      newProcessingErrors: 0,
+      skipped: false,
+    };
+    if (idToSourceName.size === 0) {
+      lookupRep.skipNote = "xStatusUrls: no valid x.com/.../status/<id> URLs";
+      feedReports.push(lookupRep);
+    } else {
+      const ids = [...idToSourceName.keys()];
+      const lk = await fetchIngestXTweetsByIds(fetch, ids, idToSourceName);
+      if (!lk.ok) {
+        errors.push(lk.error);
+        lookupRep.skipNote = lk.error;
+      } else {
+        lookupRep.itemsFetched = lk.items.length;
+        for (const mid of lk.missingIds) {
+          errors.push(`X tweet lookup: id ${mid} not returned (deleted, protected, or inaccessible)`);
+        }
+        for (const item of lk.items) {
+          const br = await tryUpsertIngestItem(supabase, anthropic, item, lookupRep, counters, maxNewPerRun, errors);
+          if (br === "break_outer") {
+            lookupRep.skipNote = `cap: INGEST_MAX_NEW_PER_RUN (${maxNewPerRun}) reached`;
+            counters.capReached = true;
+            break;
+          }
+        }
+      }
+      feedReports.push(lookupRep);
+    }
+  }
+
+  if (!onlyXStatusUrls && !onlyTopAeoX) {
+    outer: for (const feed of feeds) {
     const rep: PerFeedReport = {
       source: feed.source,
       url: feed.url,
@@ -467,8 +549,9 @@ async function runIngest(request: Request) {
     }
     feedReports.push(rep);
   }
+  }
 
-  if (!counters.capReached && isIngestXSearchConfigured()) {
+  if (!onlyXStatusUrls && !onlyTopAeoX && !counters.capReached && isIngestXSearchConfigured()) {
     const q = process.env.INGEST_X_QUERY?.trim() ?? "";
     const rawLimit = Number.parseInt(process.env.INGEST_X_MAX_RESULTS?.trim() ?? "10", 10);
     const itemLimit = Math.min(100, Math.max(10, Number.isFinite(rawLimit) ? rawLimit : 10));
@@ -500,16 +583,52 @@ async function runIngest(request: Request) {
     feedReports.push(xRep);
   }
 
-  if (!counters.capReached && isIngestXCantinaTimelineConfigured()) {
+  if (!onlyXStatusUrls && !onlyTopAeoX && !counters.capReached && isIngestXCantinaTimelineConfigured()) {
     const rawCantinaLimit = Number.parseInt(process.env.INGEST_X_CANTINA_MAX_RESULTS?.trim() ?? "10", 10);
     const cantinaItemLimit = Math.min(100, Math.max(5, Number.isFinite(rawCantinaLimit) ? rawCantinaLimit : 10));
-    const cantinaHandle =
-      process.env.INGEST_X_CANTINA_USERNAME?.trim().replace(/^@/, "").toLowerCase() ||
-      DEFAULT_CANTINA_X_USERNAME;
-    const cantinaRep: PerFeedReport = {
-      source: process.env.INGEST_X_CANTINA_SOURCE_NAME?.trim() || "Cantina (X)",
-      url: `https://api.x.com/2/users/by/username/${encodeURIComponent(cantinaHandle)}`,
-      itemLimit: cantinaItemLimit,
+    for (const cantinaHandle of listCantinaTimelineHandlesForIngest()) {
+      if (counters.capReached) break;
+      const cantinaRep: PerFeedReport = {
+        source: process.env.INGEST_X_CANTINA_SOURCE_NAME?.trim() || "Cantina (X)",
+        url: `https://api.x.com/2/users/by/username/${encodeURIComponent(cantinaHandle)}`,
+        itemLimit: cantinaItemLimit,
+        enabled: true,
+        itemsFetched: 0,
+        inserted: 0,
+        skippedExisting: 0,
+        newProcessingErrors: 0,
+        skipped: false,
+      };
+      const cantinaResult = await fetchIngestXCantinaUserTimeline(fetch, cantinaHandle);
+      if (!cantinaResult.ok) {
+        errors.push(cantinaResult.error);
+        cantinaRep.skipNote = cantinaResult.error;
+      } else {
+        cantinaRep.itemsFetched = cantinaResult.items.length;
+        for (const item of cantinaResult.items) {
+          const br = await tryUpsertIngestItem(supabase, anthropic, item, cantinaRep, counters, maxNewPerRun, errors);
+          if (br === "break_outer") {
+            cantinaRep.skipNote = `cap: INGEST_MAX_NEW_PER_RUN (${maxNewPerRun}) reached`;
+            break;
+          }
+        }
+      }
+      feedReports.push(cantinaRep);
+    }
+  }
+
+  let topAeoIngest: { query: string; keywords: string[] } | null = null;
+  if (!counters.capReached && topAeo && isIngestXBearerAllowed()) {
+    const topSource = process.env.INGEST_X_TOP_AEO_SOURCE_NAME?.trim() || "X (top AEO topics)";
+    const rawLimit = Number.parseInt(process.env.INGEST_X_MAX_RESULTS?.trim() ?? "10", 10);
+    const itemLimit = Math.min(100, Math.max(10, Number.isFinite(rawLimit) ? rawLimit : 10));
+    const built = await buildXSearchQueryFromTopAeoScores(supabase, topAeo);
+    const aeoRep: PerFeedReport = {
+      source: topSource,
+      url: built.ok
+        ? `https://api.x.com/2/tweets/search/recent?q=${encodeURIComponent(built.query.slice(0, 180))}...`
+        : "https://api.x.com/2/tweets/search/recent",
+      itemLimit,
       enabled: true,
       itemsFetched: 0,
       inserted: 0,
@@ -517,26 +636,37 @@ async function runIngest(request: Request) {
       newProcessingErrors: 0,
       skipped: false,
     };
-    const cantinaResult = await fetchIngestXCantinaUserTimeline(fetch);
-    if (!cantinaResult.ok) {
-      errors.push(cantinaResult.error);
-      cantinaRep.skipNote = cantinaResult.error;
+    if (!built.ok) {
+      errors.push(built.error);
+      aeoRep.skipNote = built.error;
     } else {
-      cantinaRep.itemsFetched = cantinaResult.items.length;
-      for (const item of cantinaResult.items) {
-        const br = await tryUpsertIngestItem(supabase, anthropic, item, cantinaRep, counters, maxNewPerRun, errors);
-        if (br === "break_outer") {
-          cantinaRep.skipNote = `cap: INGEST_MAX_NEW_PER_RUN (${maxNewPerRun}) reached`;
-          break;
+      topAeoIngest = { query: built.query, keywords: built.keywords };
+      const xResult = await fetchIngestXTweets(fetch, { query: built.query, sourceName: topSource });
+      if (!xResult.ok) {
+        errors.push(xResult.error);
+        aeoRep.skipNote = xResult.error;
+      } else {
+        aeoRep.itemsFetched = xResult.items.length;
+        for (const item of xResult.items) {
+          const br = await tryUpsertIngestItem(supabase, anthropic, item, aeoRep, counters, maxNewPerRun, errors);
+          if (br === "break_outer") {
+            aeoRep.skipNote = `cap: INGEST_MAX_NEW_PER_RUN (${maxNewPerRun}) reached`;
+            counters.capReached = true;
+            break;
+          }
         }
       }
     }
-    feedReports.push(cantinaRep);
+    feedReports.push(aeoRep);
   }
 
   const durationMs = Date.now() - t0;
   if (counters.inserted > 0) {
-    revalidateTag("incidents", "max");
+    try {
+      revalidateTag("incidents", "max");
+    } catch {
+      /* Outside a Next.js request (e.g. `tsx scripts/ingest-x-status-url.ts` calling this handler). */
+    }
   }
   return Response.json({
     ok: true,
@@ -557,6 +687,7 @@ async function runIngest(request: Request) {
       noApiKey: !process.env.ANTHROPIC_API_KEY,
     },
     feeds: feedReports,
+    ...(topAeoIngest ? { topAeoIngest } : {}),
   });
 }
 

@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 
 import type { Incident } from "@/lib/incident-types";
+import { extractIncidentKeywordsForGrace } from "@/lib/ask-grace-keywords";
 import { graceAvatarUrl } from "@/lib/ecosystem";
 import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
 
@@ -45,6 +46,7 @@ export function AskAI({ incident }: { incident: Incident }) {
   const [thinkingIdx, setThinkingIdx] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [showCitations, setShowCitations] = useState(false);
+  const [pulledKeywords, setPulledKeywords] = useState<string[] | null>(null);
   const bodyRef = useRef<HTMLDivElement>(null);
   const reqIdRef = useRef(0);
   const promptTitle = PROMPTS.find((p) => p.id === promptId)?.title ?? "Pick a play";
@@ -70,6 +72,7 @@ export function AskAI({ incident }: { incident: Incident }) {
     setThinkingIdx(0);
     setError(null);
     setShowCitations(false);
+    setPulledKeywords(null);
   }, [incident.slug]);
 
   useEffect(() => {
@@ -201,6 +204,21 @@ ${incident.sources.join("\n")}`;
     } catch {}
   }
 
+  function pullKeywords() {
+    setPulledKeywords(extractIncidentKeywordsForGrace(incident));
+  }
+
+  function copyKeywordsList(words: string[]) {
+    try {
+      navigator.clipboard.writeText(words.join(", "));
+    } catch {}
+  }
+
+  function useKeywordsInQuestion(words: string[]) {
+    const line = `Using these keywords from the brief (${words.length} terms): ${words.join(", ")} — `;
+    setInput((prev) => (prev.trim() ? `${prev.trim()}\n\n${line}` : line));
+  }
+
   return (
     <div className="askai">
       <div className="askai__head">
@@ -218,6 +236,34 @@ ${incident.sources.join("\n")}`;
       <div className="askai__hint">
         Grounded in this brief only — {incident.title}. Press <kbd>⌘K</kbd> any time.
       </div>
+
+      <div className="askai__kw-row">
+        <button type="button" className="askai__kw-pull" onClick={pullKeywords} disabled={state.kind === "thinking"}>
+          Pull keywords
+        </button>
+        {pulledKeywords && pulledKeywords.length > 0 ? (
+          <>
+            <span className="askai__kw-count">{pulledKeywords.length} terms</span>
+            <button type="button" className="askai__kw-action" onClick={() => copyKeywordsList(pulledKeywords)}>
+              Copy
+            </button>
+            <button type="button" className="askai__kw-action" onClick={() => useKeywordsInQuestion(pulledKeywords)}>
+              Use in question
+            </button>
+          </>
+        ) : pulledKeywords && pulledKeywords.length === 0 ? (
+          <span className="askai__kw-empty">No keywords extracted — try a richer brief.</span>
+        ) : null}
+      </div>
+      {pulledKeywords && pulledKeywords.length > 0 ? (
+        <div className="askai__kw-chips" aria-label="Extracted keywords">
+          {pulledKeywords.map((kw) => (
+            <span key={kw} className="askai__kw-chip">
+              {kw}
+            </span>
+          ))}
+        </div>
+      ) : null}
 
       <div className="askai__meta-label"><span>You're answering as</span><span>change anytime</span></div>
       <div className="askai__roles" role="radiogroup" aria-label="Your role">
