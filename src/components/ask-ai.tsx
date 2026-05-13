@@ -28,6 +28,8 @@ const THINKING_STEPS = [
   "Checking for quotes vs invented claims",
 ] as const;
 
+const MAX_ASK_INPUT_CHARS = 3500;
+
 type OutputMode = "brief" | "checklist" | "slack-ready";
 type Role = (typeof ROLES)[number];
 type PromptId = (typeof PROMPTS)[number]["id"];
@@ -46,7 +48,7 @@ export function AskAI({ incident }: { incident: Incident }) {
   const [thinkingIdx, setThinkingIdx] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [showCitations, setShowCitations] = useState(false);
-  const [pulledKeywords, setPulledKeywords] = useState<string[] | null>(null);
+  const [keywordPullHint, setKeywordPullHint] = useState<string | null>(null);
   const bodyRef = useRef<HTMLDivElement>(null);
   const reqIdRef = useRef(0);
   const promptTitle = PROMPTS.find((p) => p.id === promptId)?.title ?? "Pick a play";
@@ -72,7 +74,7 @@ export function AskAI({ incident }: { incident: Incident }) {
     setThinkingIdx(0);
     setError(null);
     setShowCitations(false);
-    setPulledKeywords(null);
+    setKeywordPullHint(null);
   }, [incident.slug]);
 
   useEffect(() => {
@@ -96,7 +98,7 @@ export function AskAI({ incident }: { incident: Incident }) {
     }
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [state.kind, promptId, role, tone, input, pulledKeywords]);
+  }, [state.kind, promptId, role, tone, input]);
 
   useEffect(() => {
     if (!bodyRef.current) return;
@@ -104,16 +106,12 @@ export function AskAI({ incident }: { incident: Incident }) {
   }, [state.kind, state.kind === "answered" ? state.answer : ""]);
 
   function buildAskPayload(): { question: string; apiPromptId: PromptId | null } | null {
-    const freeText = input.trim();
-    const kwRaw = pulledKeywords?.length ? pulledKeywords.join(", ") : "";
-    const kw = kwRaw.length > 2800 ? `${kwRaw.slice(0, 2797)}...` : kwRaw;
-    if (freeText) {
-      return { question: freeText, apiPromptId: promptId };
+    const freeText = input.trim().slice(0, MAX_ASK_INPUT_CHARS);
+    if (freeText && promptId) {
+      return { question: `${PROMPT_TEXT[promptId]}\n\n${freeText}`, apiPromptId: promptId };
     }
-    const play = promptId ? PROMPT_TEXT[promptId] : "";
-    if (play && kw) return { question: `${play}\n\nKeywords: ${kw}`, apiPromptId: promptId };
-    if (play) return { question: play, apiPromptId: promptId };
-    if (kw) return { question: `${PROMPT_TEXT.tldr}\n\nKeywords: ${kw}`, apiPromptId: "tldr" };
+    if (freeText) return { question: freeText, apiPromptId: null };
+    if (promptId) return { question: PROMPT_TEXT[promptId], apiPromptId: promptId };
     return null;
   }
 
@@ -220,12 +218,21 @@ ${incident.sources.join("\n")}`;
   }
 
   function pullKeywords() {
-    setPulledKeywords(extractIncidentKeywordsForGrace(incident));
+    setKeywordPullHint(null);
+    const kws = extractIncidentKeywordsForGrace(incident);
+    if (!kws.length) {
+      setKeywordPullHint("No keywords extracted from this brief.");
+      setInput("");
+      return;
+    }
+    setInput(kws.join(", "));
   }
 
-  function copyKeywordsList(words: string[]) {
+  function copyChatBox() {
+    const t = input.trim();
+    if (!t) return;
     try {
-      navigator.clipboard.writeText(words.join(", "));
+      navigator.clipboard.writeText(t);
     } catch {}
   }
 
@@ -251,26 +258,13 @@ ${incident.sources.join("\n")}`;
         <button type="button" className="askai__kw-pull" onClick={pullKeywords} disabled={state.kind === "thinking"}>
           Pull keywords
         </button>
-        {pulledKeywords && pulledKeywords.length > 0 ? (
-          <>
-            <span className="askai__kw-count">{pulledKeywords.length} terms</span>
-            <button type="button" className="askai__kw-action" onClick={() => copyKeywordsList(pulledKeywords)}>
-              Copy
-            </button>
-          </>
-        ) : pulledKeywords && pulledKeywords.length === 0 ? (
-          <span className="askai__kw-empty">No keywords extracted — try a richer brief.</span>
+        {input.trim() ? (
+          <button type="button" className="askai__kw-action" onClick={copyChatBox}>
+            Copy
+          </button>
         ) : null}
+        {keywordPullHint ? <span className="askai__kw-empty">{keywordPullHint}</span> : null}
       </div>
-      {pulledKeywords && pulledKeywords.length > 0 ? (
-        <div className="askai__kw-chips" aria-label="Extracted keywords">
-          {pulledKeywords.map((kw) => (
-            <span key={kw} className="askai__kw-chip">
-              {kw}
-            </span>
-          ))}
-        </div>
-      ) : null}
 
       <div className="askai__meta-label"><span>You're answering as</span><span>change anytime</span></div>
       <div className="askai__roles" role="radiogroup" aria-label="Your role">
@@ -318,17 +312,7 @@ ${incident.sources.join("\n")}`;
         </div>
       </div>
       <div className="askai__combo">
-        {state.kind === "thinking"
-          ? "● est. 4 sec · cancel any time with esc"
-          : input.trim()
-            ? `Ask Grace: "${input.trim().slice(0, 40)}${input.trim().length > 40 ? "..." : ""}"`
-            : pulledKeywords && pulledKeywords.length > 0
-              ? promptId
-                ? `Pull keywords → Generate · ${promptTitle} · ${role}`
-                : `Pull keywords → Generate · TL;DR · ${role}`
-              : promptId
-                ? `One next move → Generate ${promptTitle} for ${role}`
-                : "Pick a play, pull keywords, or type your question"}
+        {state.kind === "thinking" ? "● est. 4 sec · cancel any time with esc" : "Pull keywords → Generate"}
       </div>
 
       <div className="askai__body" ref={bodyRef}>
@@ -386,11 +370,25 @@ ${incident.sources.join("\n")}`;
 
       <form className="askai__form" onSubmit={submit}>
         <div className="askai__input-wrap">
-          <input
-            type="text"
-            placeholder={state.kind === "answered" ? "Translate this for an exec audience" : "…or ask anything about this incident"}
+          <textarea
+            className="askai__chat"
+            rows={3}
+            placeholder={
+              state.kind === "answered"
+                ? "Translate this for an exec audience"
+                : "Keywords appear here after Pull keywords (comma-separated), or type your question"
+            }
             value={input}
-            onChange={(e) => setInput(e.target.value)}
+            onChange={(e) => {
+              setInput(e.target.value.slice(0, MAX_ASK_INPUT_CHARS));
+              if (keywordPullHint) setKeywordPullHint(null);
+            }}
+            onKeyDown={(e) => {
+              if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+                e.preventDefault();
+                void onGenerate();
+              }
+            }}
             disabled={state.kind === "thinking"}
           />
           <kbd>⌘ ⏎</kbd>
@@ -400,7 +398,7 @@ ${incident.sources.join("\n")}`;
             Cancel
           </button>
         ) : (
-          <button type="submit" disabled={!input.trim() && !promptId && !(pulledKeywords && pulledKeywords.length > 0)}>
+          <button type="submit" disabled={!input.trim() && !promptId}>
             Generate
           </button>
         )}
