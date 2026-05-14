@@ -36,3 +36,38 @@ test("extractIncidentKeywordsForGrace picks CVEs and substantive tokens", () => 
   assert.ok(k.some((x) => /instructure/i.test(x)));
   assert.ok(k.some((x) => /shinyhunters/i.test(x)));
 });
+
+test("extractIncidentKeywordsForGrace drops generic English noise tokens", () => {
+  const k = extractIncidentKeywordsForGrace(
+    minimalIncident({
+      summary:
+        "The environment and human response matter whether software updates affect the window path stack.",
+    }),
+  );
+  for (const bad of [
+    "environment",
+    "whether",
+    "human",
+    "window",
+    "path",
+    "stack",
+    "software",
+    "response",
+    "updates",
+    "systems",
+    "matters",
+    "affect",
+  ]) {
+    assert.ok(!k.some((x) => x.toLowerCase() === bad), `should drop ${bad}`);
+  }
+});
+
+test("extractIncidentKeywordsForGrace keeps socialKeywords even if generic-looking", () => {
+  const k = extractIncidentKeywordsForGrace(
+    minimalIncident({
+      socialKeywords: ["environment", "Zscaler"],
+    }),
+  );
+  assert.ok(k.some((x) => x.toLowerCase() === "environment"));
+  assert.ok(k.some((x) => /zscaler/i.test(x)));
+});
