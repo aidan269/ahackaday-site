@@ -1,89 +1,86 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# AHackaday
 
-As seen on: https://x.com/cantinasecurity/status/2051291349757165785
+> **Archived project:** The AHackaday site is no longer running. This repository is retained as a reference for the original application layout, API design, and data-flow skeleton.
 
-## Getting Started
+AHackaday was a Next.js prototype for browsing and summarizing cybersecurity incidents. The project combined an incident-focused web interface with a small read-only API and a scheduled social-metrics refresh process.
 
-First, run the development server:
+The original deployment was hosted at `ahackaday-intel.vercel.app`, but it should be considered offline. The code remains available for reference, experimentation, or reuse.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+## Original application skeleton
+
+At a high level, the project was organized around four pieces:
+
+1. **Web interface** — a Next.js application for viewing and filtering security incidents.
+2. **Incident API** — read-only endpoints for incident lists, individual records, aggregate statistics, and service health.
+3. **Data storage** — Supabase-backed application data, including incident social metrics.
+4. **Scheduled refresh** — an authenticated endpoint that refreshed external social metrics, with optional GitHub API access.
+
+```text
+Browser
+  |
+  v
+Next.js application
+  |-- incident pages and filters
+  |-- /api/v1/incidents
+  |-- /api/v1/incidents/[slug]
+  |-- /api/v1/stats
+  |-- /api/v1/health
+  `-- /api/social/refresh
+           |
+           v
+        Supabase
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## API outline
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
-
-## AHackaday v1 API
-
-Read-only endpoints are available under `/api/v1`:
+The original read-only API was exposed under `/api/v1`:
 
 - `GET /api/v1/incidents`
 - `GET /api/v1/incidents/[slug]`
 - `GET /api/v1/stats`
 - `GET /api/v1/health`
 
-### Incidents query params
+The incident-list endpoint supported:
 
-- `severity`: `critical|high|medium|low|all`
-- `category`: `zero-day|supply-chain|breach|ransomware|identity|cloud|web|email|critical-infrastructure|exploitation|consumer-security|other|all`
-- `window`: `7d|30d|90d|all`
-- `q`: free text query
-- `limit`: max 100 (default 25)
-- `cursor`: opaque pagination cursor from previous response
+- `severity`: `critical | high | medium | low | all`
+- `category`: `zero-day | supply-chain | breach | ransomware | identity | cloud | web | email | critical-infrastructure | exploitation | consumer-security | other | all`
+- `window`: `7d | 30d | 90d | all`
+- `q`: free-text search
+- `limit`: up to 100, with a default of 25
+- `cursor`: opaque pagination cursor returned by the preceding request
 
-### Demo curl flow
+These routes document the former interface only; the hosted endpoints are no longer expected to respond.
 
-```bash
-curl "https://ahackaday-intel.vercel.app/api/v1/incidents?severity=critical&window=all&limit=5"
-curl "https://ahackaday-intel.vercel.app/api/v1/incidents/<slug-from-first-call>"
-curl "https://ahackaday-intel.vercel.app/api/v1/stats"
-curl "https://ahackaday-intel.vercel.app/api/v1/health"
-```
+## Social-metrics refresh
 
-## Social Metrics Refresh (Phase A)
-
-Real social metrics are stored in Supabase `incident_social_metrics` and refreshed via:
+The prototype stored social metrics in the Supabase `incident_social_metrics` table and included an authenticated refresh route:
 
 - `POST /api/social/refresh`
 - `GET /api/social/refresh?limit=60`
 
-Auth:
+The refresh flow expected the following environment variables:
 
-- Requires `Authorization: Bearer $CRON_SECRET`
+- `CRON_SECRET` — bearer token used to protect the refresh endpoint
+- `SUPABASE_URL` — Supabase project URL
+- `SUPABASE_SERVICE_ROLE_KEY` — server-side credential used for writes
+- `GITHUB_TOKEN` — optional token for increased GitHub API limits
 
-Environment:
+Do not reuse credentials from the former deployment. Create new, restricted credentials if you adapt the project.
 
-- `CRON_SECRET` (required for the refresh endpoint)
-- `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` (required for writes)
-- `GITHUB_TOKEN` (optional but recommended for higher GitHub API limits)
+## Running the skeleton locally
 
-Example:
+The repository was created with Next.js. If its dependencies and external services remain compatible, the basic development flow is:
 
 ```bash
-curl -X POST "https://ahackaday-intel.vercel.app/api/social/refresh?limit=60" \
-  -H "Authorization: Bearer $CRON_SECRET"
+npm install
+npm run dev
 ```
+
+Then open `http://localhost:3000`. The primary page entry point is `app/page.tsx`.
+
+Because the project is archived, local setup may require dependency updates, new Supabase configuration, and replacement data sources. No active deployment or ongoing maintenance is implied.
+
+## Historical note
+
+The project was previously shared by Cantina Security: [view the original post](https://x.com/cantinasecurity/status/2051291349757165785).
+
